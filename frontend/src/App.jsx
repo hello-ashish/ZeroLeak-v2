@@ -7,6 +7,7 @@ function App() {
   return (
     <>
       <h1>Hello Zeroleak</h1>
+      <h2>test</h2>
     </>
   )
 }
