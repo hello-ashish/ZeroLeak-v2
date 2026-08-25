@@ -1,14 +1,14 @@
-import { Professor } from "../models/professor.models";
+import { Professor } from "../models/professor.models.js";
 
 export const createProfessor = async (req, res) => {
     try {
 
         // getting the data from the req body (the form admin fills)
-        const { id, name, email, contact, address, password } = req.body
+        const { id, name, email, contact, address, password } = req.body || {}
 
         // validate the required fields are provided
         if (!id || !name || !email || !password) {
-            return res.status(400).json({ message: "ID, name, email, and password are required fields." })
+            return res.status(400).json({ message: "id, name, email, and password are required fields." })
         }
 
         // check if the user already exists
