@@ -1,5 +1,6 @@
 import mongoose, { Schema } from "mongoose"
 import bcrypt from "bcrypt"
+import jwt from "jsonwebtoken"
 
 const adminSchema = new Schema(
     {
@@ -31,4 +32,16 @@ adminSchema.methods.isPasswordCorrect = async function (password) {
     return await bcrypt.compare(password, this.password)
 }
 
-export const Admin = mongoose.models("Admin", adminSchema)
+adminSchema.methods.generateAccessToken = function () {
+    return jwt.sign(
+        {
+            id: this._id,
+            email: this.email,
+        },
+        process.env.ACCESS_TOKEN_SECRET,
+        {
+            expiresIn: process.env.ACCESS_TOKEN_EXPIRY || "1h",
+        }
+    )
+}
+export const Admin = mongoose.model("Admin", adminSchema)

@@ -1,4 +1,74 @@
 import { Professor } from "../models/professor.models.js";
+import { Admin } from "../models/admin.models.js"; 
+
+export const registerAdmin = async (req, res) => {
+    try {
+        const {adminId, email, password } = req.body
+
+        // validate input
+        if(!adminId || !email || !password){
+            return res.status(400).json({ message: "adminId, email, and password are required" })
+        }
+
+        // check if admin already exists
+        const exixtingAdmin = await Admin.findOne(
+            { $or: [{ adminId }, { email }] }
+        )
+
+        if(exixtingAdmin){
+            return res.status(400).json({ message: "Admin with this adminId or email already exists" })
+        }
+
+        // create new admin
+        const admin = await Admin.create({ adminId, email, password })
+
+        // remove password from the response for security
+        const createdAdmin = await Admin.findById(admin._id).select("-password")
+
+        return res.status(201).json({
+            message: "Admin registered successfully",
+            admin: createdAdmin
+        })
+    } catch (error) {
+        console.error("Admin Registration Error:", error.message)
+        return res.status(500).json({ message: "Internal server error" })
+    }
+}
+
+export const loginAdmin = async (req, res) => {
+    try {
+        const { email, password } = req.body
+        if(!email || !password){
+            return res.status(400).json({ message: "Email and password are required" })
+        }
+
+        const admin = await Admin.findOne({ email })
+        if(!admin){
+            return res.status(401).json({ message: "Invalid email or password" })
+        }
+
+        const isPasswordCorrect = await admin.isPasswordCorrect(password)
+        if(!isPasswordCorrect){
+            return res.status(401).json({ message: "Invalid credentials" })
+        }
+
+        // generate token
+        const token = admin.generateAccessToken()
+
+        const loggedInAdmin = await Admin.findById(admin._id).select("-password")
+        
+        // send the token back to the client
+        return res.status(200).json({
+            message: "Login successful",
+            token,
+            admin: loggedInAdmin
+        })
+
+    } catch (error) {
+        console.error("Admin Login Error:", error.message)
+        return res.status(500).json({ message: "Internal server error" })
+    }
+}
 
 export const createProfessor = async (req, res) => {
     try {
