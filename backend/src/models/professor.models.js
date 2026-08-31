@@ -1,5 +1,6 @@
 import mongoose, { Schema } from "mongoose"
 import bcrypt from "bcrypt"
+import jwt from "jsonwebtoken"
 
 const professorSchema = new Schema(
     {
@@ -42,6 +43,21 @@ professorSchema.pre("save", async function () {
 
 professorSchema.methods.isPasswordCorrect = async function (password) {
     return await bcrypt.compare(password, this.password)
+}
+
+// generate tokens
+
+professorSchema.methods.generateAccessToken = function () {
+    return jwt.sign(
+        {
+            id: this._id,
+            email: this.email,
+        },
+        process.env.ACCESS_TOKEN_SECRET,
+        {
+            expiresIn: process.env.ACCESS_TOKEN_EXPIRY || "1h",
+        }
+    )
 }
 
 export const Professor = mongoose.model("Professor", professorSchema)

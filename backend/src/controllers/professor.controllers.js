@@ -1,12 +1,12 @@
 import { Professor } from "../models/professor.models.js";
 
-export const loginProfessor = async (res, req) => {
+export const loginProfessor = async (req, res) => {
 
     try {
-        // get login credentials from the request body
-        const { id, email, password } = req.body
+        // get login credentials from the request body with a safe fallback
+        const { id, email, password } = req.body || {}
 
-        // validate taht password and at least one identifier  is apporoved
+        // validate that password and at least one identifier is provided
         if (!password) {
             return res.status(400).json({ message: "Password is required" })
         }
@@ -30,6 +30,9 @@ export const loginProfessor = async (res, req) => {
             return res.status(401).json({ message: "Invalid Password" })
         }
 
+        // generate JWT token for the professor
+        const token = professor.generateAccessToken()
+
         // if login is successful, remove the password from the data
         const loggedInProfessor = await Professor.findById(professor._id).select("-password")
 
@@ -37,6 +40,7 @@ export const loginProfessor = async (res, req) => {
 
         return res.status(200).json({
             message: "Professor logged in successfully",
+            token,
             professor: loggedInProfessor
         })
     } catch (error) {

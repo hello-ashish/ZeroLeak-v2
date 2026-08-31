@@ -1,5 +1,6 @@
 import express from "express"
 import cors from "cors"
+import questionRouter from "./routes/question.routes.js"
 
 const app = express()
 
@@ -23,5 +24,9 @@ app.use("/api/admin", adminRouter)
 
 // this says: any request starting with /api/professor goes to the professorRouter
 app.use("/api/professor", professorRouter)
+
+// Tell the app to use our new question routes!
+app.use("/api/question", questionRouter)
+app.use("/api/questions", questionRouter)
 
 export { app }
