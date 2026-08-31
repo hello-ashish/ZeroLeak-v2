@@ -8,13 +8,21 @@ import { BrowserRouter, Routes, Route} from "react-router-dom"
 import AdminLogin from "./AdminLogin";
 import AdminDashboard from "./AdminDashboard"
 import './index.css'
+import ProfessorDashboard from "./ProfessorDashboard";
+import ProfessorLogin from "./professorLogin"
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Admin Routes */}
         <Route path="/" element={<AdminLogin />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
+
+        {/* Professor Routes */}
+        <Route path="/professor/login" element={<ProfessorLogin />} />
+        <Route path="/professor/dashboard" element={<ProfessorDashboard />} />
+
       </Routes>
     </BrowserRouter>
   )
