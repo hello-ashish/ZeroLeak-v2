@@ -1,7 +1,9 @@
 import React, { useState } from "react"
 import axios from "axios"
+import { useNavigate } from 'react-router-dom';
 
 const AdminLogin = () => {
+    const navigate = useNavigate()
     // create 3 state variables for email, password, and error message
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
@@ -24,7 +26,8 @@ const AdminLogin = () => {
             const admin = response.data.admin
 
             localStorage.setItem('adminToken', token)
-            alert('Login Successful! Welcome' + admin.email)
+            localStorage.setItem('adminData', JSON.stringify(admin))
+            navigate('/admin/dashboard')
         } catch (err) {
             if(err.response){
                 setError(err.response.data.message)
