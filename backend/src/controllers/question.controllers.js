@@ -34,3 +34,21 @@ export const createQuestion = async (req, res) => {
         })
     }
 }
+
+export const getProfessorQuestions = async (req, res) => {
+    try {
+        const questions = await Question.find({
+            createdBy: req.professor._id
+        }).sort({ createdAt: -1 })
+
+        return res.status(200).json({
+            message: "Questions fetched successfully",
+            questions
+        })
+    } catch (error) {
+        console.error("Error fetching questions: ", error)
+        return res.status(500).json({
+            message: "Something went wrong while fetching questions"
+        })
+    }
+}

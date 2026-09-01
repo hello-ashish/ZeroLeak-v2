@@ -11,8 +11,22 @@ const ProfessorDashboard = () => {
     const [subject, setSubject] = useState('')
     const [topic, setTopic] = useState('')
     const [correctAnswerIndex, setCorrectAnswerIndex] = useState(0)
+    const [questions, setQuestions] = useState([])
 
     const navigate = useNavigate()
+
+    const fetchQuestions = async () => {
+        try {
+            const token = localStorage.getItem('profToken')
+            const response = await axios.get('http://localhost:4000/api/questions', {
+                headers: { Authorization: `Bearer ${token}` }
+            })
+
+            setQuestions(response.data.questions)
+        } catch(error) {
+            console.error("Failed to fetch questions", error)
+        }
+    }
 
     useEffect(() => {
         const token = localStorage.getItem('profToken')
@@ -23,6 +37,8 @@ const ProfessorDashboard = () => {
         } else {
             const profData = JSON.parse(profDataString)
             setProfName(profData.name)
+
+            fetchQuestions()
         }
     }, [navigate])
 
@@ -56,7 +72,9 @@ const ProfessorDashboard = () => {
             setCorrectAnswer('')
             setSubject('')
             setTopic('')
-            setCorrectAnswerIndex(0);   
+            setCorrectAnswerIndex(0)
+
+            fetchQuestions()
         } catch (error) {
             alert("Error: " + (error.response?.data?.message || "Server Error"))
         }
@@ -115,6 +133,38 @@ const ProfessorDashboard = () => {
         </select>
         <button type="submit" className="glass-button" style={{marginTop: '1rem'}}>Save Question to Database</button>
       </form>
+
+      <h2 style={{color: 'white', marginBottom: '1rem', marginTop: '2rem'}}>Your Questions</h2>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        
+        {/* We use .map() to loop over our questions array and create a visual card for each one! */}
+        {questions.map((q) => (
+          <div key={q._id} style={{ background: 'rgba(255,255,255,0.1)', padding: '1rem', borderRadius: '8px', color: 'white' }}>
+            <h3 style={{color: 'var(--accent-primary)', marginBottom: '0.5rem'}}>{q.title}</h3>
+            <p style={{fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '0.5rem'}}>
+              Subject: {q.subject} | Topic: {q.topic} | Difficulty: {q.difficultyLevel}
+            </p>
+            
+            {/* We can even map over the options array inside the question! */}
+            <div style={{display: 'flex', gap: '10px', flexWrap: 'wrap'}}>
+              {q.options.map((opt, index) => (
+                <span key={index} style={{ 
+                  // If this option is the correct answer, color it green! Otherwise, dark grey.
+                  background: index === q.correctAnswerIndex ? 'var(--success)' : 'rgba(0,0,0,0.3)', 
+                  padding: '5px 10px', 
+                  borderRadius: '4px',
+                  fontSize: '0.85rem'
+                }}>
+                  {opt}
+                </span>
+              ))}
+            </div>
+          </div>
+        ))}
+        
+        {/* If the array is empty, show a fallback message */}
+        {questions.length === 0 && <p style={{color: 'gray'}}>You haven't created any questions yet.</p>}
+      </div>
     </div>
   );
 };
