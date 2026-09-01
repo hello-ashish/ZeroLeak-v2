@@ -39,7 +39,7 @@ const StudentDashboard = () => {
   };
 
   return (
-    <div className="glass-container" style={{ maxWidth: '800px', marginTop: '2rem', marginBottom: '2rem' }}>
+    <div className="glass-container" style={{ maxWidth: '1000px', marginTop: '1rem', marginBottom: '1rem' }}>
       <h1 className="glass-title" style={{color: 'var(--success)'}}>Student Portal</h1>
       <p className="glass-subtitle" style={{marginBottom: '1rem'}}>Welcome, {studentName}!</p>
       
@@ -61,7 +61,11 @@ const StudentDashboard = () => {
                 <strong>Professor:</strong> {exam.createdBy?.name || "Unknown"} | <strong>Duration:</strong> {exam.durationMinutes} mins
               </span>
               
-              <button className="glass-button" style={{width: 'auto', background: 'var(--success)'}} onClick={() => alert("Actually taking the exams is a feature for another day!")}>
+               <button 
+                className="glass-button" 
+                style={{width: 'auto', background: 'var(--success)'}} 
+                onClick={() => navigate(`/student/take-exam/${exam._id}`)}
+              >
                 Start Exam
               </button>
             </div>

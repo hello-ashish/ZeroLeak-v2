@@ -8,6 +8,7 @@ import ProfessorLogin from './ProfessorLogin'
 import ProfessorDashboard from './ProfessorDashboard'
 import StudentLogin from './StudentLogin'
 import StudentDashboard from './StudentDashboard'
+import TakeExam from './TakeExam'
 import './index.css'
 
 function App() {
@@ -27,6 +28,7 @@ function App() {
         {/* Student Routes */}
         <Route path="/student/login" element={<StudentLogin />} />
         <Route path="/student/dashboard" element={<StudentDashboard />} />
+        <Route path="/student/take-exam/:id" element={<TakeExam />} />
         
       </Routes>
     </BrowserRouter>
