@@ -1,6 +1,8 @@
 import express from "express"
 import cors from "cors"
 import questionRouter from "./routes/question.routes.js"
+import examRouter from "./routes/exam.routes.js"
+import studentRouter from "./routes/student.routes.js"
 
 const app = express()
 
@@ -28,5 +30,11 @@ app.use("/api/professor", professorRouter)
 // Tell the app to use our new question routes!
 app.use("/api/question", questionRouter)
 app.use("/api/questions", questionRouter)
+
+// Exam route
+app.use("/api/exams", examRouter)
+
+// Student route
+app.use("/api/students", studentRouter);
 
 export { app }

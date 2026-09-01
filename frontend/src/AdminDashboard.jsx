@@ -4,12 +4,22 @@ import axios from "axios"
 
 const AdminDashboard = () => {
     const [adminEmail, setAdminEmail] = useState("")
+
+    // Professor
     const [profId, setProfId] = useState('');
     const [profName, setProfName] = useState('');
     const [profEmail, setProfEmail] = useState('');
     const [profPassword, setProfPassword] = useState('');
-
+    const [showProfPassword, setShowProfPassword] = useState(false)
     const [professors, setProfessors] = useState([])
+
+    // Student
+    const [studentId, setStudentId] = useState('')
+    const [studentName, setStudentName] = useState('')
+    const [studentEmail, setStudentEmail] = useState('')
+    const [studentPassword, setStudentPassword] = useState('')
+    const [showStudentPassword, setShowStudentPassword] = useState(false)
+    const [students, setStudents] = useState([])
 
     const navigate = useNavigate()
 
@@ -30,6 +40,17 @@ const AdminDashboard = () => {
         }
     }
 
+    const fetchStudents = async (token) => {
+        try {
+            const response = await axios.get('http://localhost:4000/api/students', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setStudents(response.data.students);
+        } catch (error) {
+            console.error("Failed to fetch students", error);
+        }
+    }
+
     useEffect(() => {
         const token = localStorage.getItem('adminToken')
         const adminDataString = localStorage.getItem('adminData')
@@ -41,7 +62,8 @@ const AdminDashboard = () => {
             const adminData = JSON.parse(adminDataString)
             setAdminEmail(adminData.email)
 
-            fetchProfessors()
+            fetchProfessors(token)
+            fetchStudents(token)
         }
     }, [navigate])
 
@@ -69,47 +91,162 @@ const AdminDashboard = () => {
         }
     }
 
+    const handleCreateStudent = async (e) => {
+        e.preventDefault()
+        try {
+            const token = localStorage.getItem('adminToken')
+
+            await axios.post('http://localhost:4000/api/students/register', {
+                studentId: studentId,
+                name: studentName,
+                email: studentEmail,
+                password: studentPassword
+                }, {headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            })
+
+            alert('Student created successfully')
+            setStudentId(''); setStudentName(''); setStudentEmail(''); setStudentPassword('');
+
+            fetchStudents(token);
+        } catch (error) {
+            alert("Error creating student: " + (error.response?.data?.message || "Server Error"));
+        }
+    }
+
     const handleLogout = () => {
         localStorage.clear()
         navigate('/')
     }
 
     return (
-    <div className="glass-container" style={{ maxWidth: '800px' }}>
+    <div className="glass-container" style={{ maxWidth: '900px', marginTop: '2rem', marginBottom: '2rem' }}>
       <h1 className="glass-title">Admin Dashboard</h1>
-      <p className="glass-subtitle" style={{marginBottom: '1rem'}}>Welcome back, {adminEmail}</p>
-      <button onClick={handleLogout} className="glass-button" style={{ background: 'var(--danger)', marginBottom: '2rem' }}>
-        Logout
-      </button>
-      {/* THE CREATE PROFESSOR FORM */}
-      <h2 style={{color: 'white', marginBottom: '1rem'}}>Create New Professor</h2>
-      <form onSubmit={handleCreateProfessor} style={{ display: 'flex', gap: '10px', marginBottom: '2rem', flexWrap: 'wrap' }}>
-        <input className="glass-input" style={{flex: 1}} type="text" placeholder="ID (e.g. PROF-01)" value={profId} onChange={(e) => setProfId(e.target.value)} required />
-        <input className="glass-input" style={{flex: 1}} type="text" placeholder="Name" value={profName} onChange={(e) => setProfName(e.target.value)} required />
-        <input className="glass-input" style={{flex: 1}} type="email" placeholder="Email" value={profEmail} onChange={(e) => setProfEmail(e.target.value)} required />
-        <input className="glass-input" style={{flex: 1}} type="password" placeholder="Password" value={profPassword} onChange={(e) => setProfPassword(e.target.value)} required />
-        <button type="submit" className="glass-button" style={{ width: 'auto' }}>Create</button>
-      </form>
-      {/* DISPLAYING THE PROFESSORS */}
-      <h2 style={{color: 'white', marginBottom: '1rem'}}>Existing Professors</h2>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <p className="glass-subtitle">Welcome back, {adminEmail}</p>
+      <button onClick={handleLogout} className="glass-button" style={{ background: 'var(--danger)', marginBottom: '2rem' }}>Logout</button>
+      {/* --- PROFESSOR MANAGEMENT SECTION --- */}
+      <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '1.5rem', borderRadius: '12px', marginBottom: '2rem', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
+        <h2 style={{color: 'white', marginBottom: '1rem'}}>Manage Professors</h2>
         
-        {/* 
-            .map(): A built-in JavaScript array function. 
-            It loops through the 'professors' array and creates a new HTML <div> for each one! 
-        */}
-        {professors.map((prof) => (
-          <div key={prof._id} style={{ background: 'rgba(255,255,255,0.1)', padding: '1rem', borderRadius: '8px', color: 'white' }}>
-            <p><strong>Name:</strong> {prof.name} | <strong>ID:</strong> {prof.id} | <strong>Email:</strong> {prof.email}</p>
+        <form onSubmit={handleCreateProfessor} style={{ display: 'flex', gap: '10px', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+          <input className="glass-input" style={{flex: 1}} type="text" placeholder="ID (PROF-01)" value={profId} onChange={(e) => setProfId(e.target.value)} required />
+          <input className="glass-input" style={{flex: 1}} type="text" placeholder="Name" value={profName} onChange={(e) => setProfName(e.target.value)} required />
+          <input className="glass-input" style={{flex: 1}} type="email" placeholder="Email" value={profEmail} onChange={(e) => setProfEmail(e.target.value)} required />
+          <div style={{ position: 'relative', flex: 1, minWidth: '180px' }}>
+            <input
+              className="glass-input"
+              style={{ width: '100%', paddingRight: '2.5rem' }}
+              type={showProfPassword ? 'text' : 'password'}
+              placeholder="Password"
+              value={profPassword}
+              onChange={(e) => setProfPassword(e.target.value)}
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShowProfPassword((prev) => !prev)}
+              aria-label={showProfPassword ? 'Hide professor password' : 'Show professor password'}
+              style={{
+                position: 'absolute',
+                right: '8px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'transparent',
+                border: 'none',
+                color: '#fff',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '4px'
+              }}
+            >
+              {showProfPassword ? (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 9.9A3 3 0 0 1 14.1 14.1M3 3l18 18" />
+                  <path d="M10.58 10.58A2 2 0 0 0 13.42 13.42" />
+                </svg>
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              )}
+            </button>
           </div>
-        ))}
+          <button type="submit" className="glass-button" style={{ width: 'auto' }}>Create</button>
+        </form>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {professors.map((prof) => (
+            <div key={prof._id} style={{ background: 'rgba(255,255,255,0.1)', padding: '0.75rem', borderRadius: '8px', color: 'white' }}>
+              <p><strong>Name:</strong> {prof.name} | <strong>ID:</strong> {prof.id} | <strong>Email:</strong> {prof.email}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+      {/* --- STUDENT MANAGEMENT SECTION --- */}
+      <div style={{ background: 'rgba(16, 185, 129, 0.1)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+        <h2 style={{color: 'white', marginBottom: '1rem'}}>Manage Students</h2>
         
-        {/* If the array is empty, we show a fallback message */}
-        {professors.length === 0 && <p style={{color: 'gray'}}>No professors found.</p>}
-      
+        <form onSubmit={handleCreateStudent} style={{ display: 'flex', gap: '10px', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+          <input className="glass-input" style={{flex: 1}} type="text" placeholder="ID (STU-01)" value={studentId} onChange={(e) => setStudentId(e.target.value)} required />
+          <input className="glass-input" style={{flex: 1}} type="text" placeholder="Name" value={studentName} onChange={(e) => setStudentName(e.target.value)} required />
+          <input className="glass-input" style={{flex: 1}} type="email" placeholder="Email" value={studentEmail} onChange={(e) => setStudentEmail(e.target.value)} required />
+          <div style={{ position: 'relative', flex: 1, minWidth: '180px' }}>
+            <input
+              className="glass-input"
+              style={{ width: '100%', paddingRight: '2.5rem' }}
+              type={showStudentPassword ? 'text' : 'password'}
+              placeholder="Password"
+              value={studentPassword}
+              onChange={(e) => setStudentPassword(e.target.value)}
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShowStudentPassword((prev) => !prev)}
+              aria-label={showStudentPassword ? 'Hide student password' : 'Show student password'}
+              style={{
+                position: 'absolute',
+                right: '8px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'transparent',
+                border: 'none',
+                color: '#fff',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '4px'
+              }}
+            >
+              {showStudentPassword ? (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 9.9A3 3 0 0 1 14.1 14.1M3 3l18 18" />
+                  <path d="M10.58 10.58A2 2 0 0 0 13.42 13.42" />
+                </svg>
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              )}
+            </button>
+          </div>
+          <button type="submit" className="glass-button" style={{ width: 'auto', background: 'var(--success)' }}>Create</button>
+        </form>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {students.map((student) => (
+            <div key={student._id} style={{ background: 'rgba(255,255,255,0.1)', padding: '0.75rem', borderRadius: '8px', color: 'white' }}>
+              <p><strong>Name:</strong> {student.name} | <strong>ID:</strong> {student.studentId} | <strong>Email:</strong> {student.email}</p>
+            </div>
+          ))}
+          {students.length === 0 && <p style={{color: 'gray'}}>No students registered yet.</p>}
+        </div>
       </div>
     </div>
   );
 };
-
-export default AdminDashboard
+export default AdminDashboard;
