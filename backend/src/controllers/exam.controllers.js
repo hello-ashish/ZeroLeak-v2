@@ -1,4 +1,5 @@
 import { Exam } from "../models/exam.models.js"
+import { Result } from "../models/result.models.js"
 
 export const createExam = async (req, res) => {
     try {
@@ -31,5 +32,21 @@ export const getProfessorExams = async (req, res) => {
         return res.status(200).json({ exams })
     } catch (error) {
         return res.status(500).json({ message: "Failed to fetch exams", error: error.message })
+    }
+}
+
+export const getProfessorExamResults = async (req, res) => {
+    try {
+        const professorExams = await Exam.find({ createdBy: req.professor._id })
+        const examIds = professorExams.map(exam => exam._id)
+
+        const results = await Result.find({ exam: { $in: examIds } })
+            .populate("student", "name email studentId")
+            .populate("exam", "title")
+            .sort({ createdAt: -1 })
+
+        return res.status(200).json({ results })
+    } catch (error) {
+        return res.status(500).json({ message: "Failed to fetch results", error: error.message })
     }
 }
