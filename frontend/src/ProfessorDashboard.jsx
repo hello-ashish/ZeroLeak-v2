@@ -23,6 +23,9 @@ const ProfessorDashboard = () => {
     const [selectedQuestions, setSelectedQuestions] = useState([])
     const [exams, setExams] = useState([])
 
+    // Student Results State
+    const [studentResults, setStudentResults] = useState([]);
+
     // Fetching Data
     const fetchQuestions = async () => {
         try {
@@ -49,6 +52,17 @@ const ProfessorDashboard = () => {
         }
     }
 
+    const fetchStudentResults = async () => {
+        try {
+            const token = localStorage.getItem('profToken')
+            const response = await axios.get('http://localhost:4000/api/exams/results', {
+                headers: { Authorization: `Bearer ${token}` }
+            })
+            setStudentResults(response.data.results)
+        } catch (error) {
+            console.error("Failed to fetch student results", error)
+        }
+    }
     useEffect(() => {
         const token = localStorage.getItem('profToken')
         const profDataString = localStorage.getItem('profData')
@@ -61,6 +75,7 @@ const ProfessorDashboard = () => {
 
             fetchQuestions()
             fetchExams()
+            fetchStudentResults()
         }
     }, [navigate])
 
@@ -224,6 +239,25 @@ const ProfessorDashboard = () => {
                     </div>
                 ))}
             </div>
+             <h2 style={{color: 'white', marginBottom: '1rem', marginTop: '3rem'}}>5. Student Performance (Gradebook)</h2>
+      
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {studentResults.map((result) => (
+          <div key={result._id} style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '1rem', borderRadius: '8px', color: 'white' }}>
+            {/* Because we used .populate(), we have access to the student's name and ID! */}
+            <h3 style={{color: 'var(--danger)', marginBottom: '0.5rem'}}>
+                {result.student?.name} ({result.student?.studentId})
+            </h3>
+            
+            <p style={{fontSize: '0.9rem', color: 'var(--text-secondary)'}}>Exam: {result.exam?.title}</p>
+            
+            <p style={{fontSize: '1.1rem', fontWeight: 'bold', marginTop: '0.5rem'}}>
+              Score: {result.score} / {result.totalQuestions} ({Math.round((result.score / result.totalQuestions) * 100)}%)
+            </p>
+          </div>
+        ))}
+        {studentResults.length === 0 && <p style={{color: 'gray'}}>No students have taken your exams yet.</p>}
+      </div>
         </div>
     );
 };
