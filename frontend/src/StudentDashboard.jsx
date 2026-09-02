@@ -5,6 +5,7 @@ import axios from 'axios';
 const StudentDashboard = () => {
   const [studentName, setStudentName] = useState('');
   const [exams, setExams] = useState([]);
+  const [results, setResults] = useState([]);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -19,6 +20,7 @@ const StudentDashboard = () => {
       
       // Fetch the available exams as soon as the student logs in
       fetchExams(token);
+      fetchResults(token);
     }
   }, [navigate]);
 
@@ -32,6 +34,17 @@ const StudentDashboard = () => {
       console.error("Failed to fetch exams", error);
     }
   };
+
+  const fetchResults = async (token) => {
+    try {
+      const response = await axios.get('http://localhost:4000/api/students/results', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setResults(response.data.results);
+    } catch (error) {
+      console.error("Failed to fetch results", error);
+    }
+  }
 
   const handleLogout = () => {
     localStorage.clear();
@@ -74,6 +87,28 @@ const StudentDashboard = () => {
 
         {exams.length === 0 && <p style={{color: 'gray'}}>There are no exams available right now.</p>}
       </div>
+
+      <h2 style={{color: 'white', marginBottom: '1rem', marginTop: '3rem'}}>My Past Results</h2>
+      
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+        {results.map((result) => (
+          <div key={result._id} style={{ background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)', padding: '1.5rem', borderRadius: '12px', color: 'white' }}>
+            {/* Because we used .populate("exam", "title") in the backend, we can access the exam title here! */}
+            <h3 style={{color: 'var(--accent-primary)', marginBottom: '0.5rem'}}>
+                {result.exam?.title || "Deleted Exam"}
+            </h3>
+            
+            <p style={{fontSize: '1.1rem', margin: 0}}>
+              <strong>Score:</strong> {result.score} / {result.totalQuestions} 
+              <span style={{marginLeft: '10px', color: 'var(--text-secondary)'}}>
+                ({Math.round((result.score / result.totalQuestions) * 100)}%)
+              </span>
+            </p>
+          </div>
+        ))}
+        {results.length === 0 && <p style={{color: 'gray'}}>You haven't taken any exams yet.</p>}
+      </div>
+
     </div>
   );
 };

@@ -43,7 +43,7 @@ const TakeExam = () => {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     // Validation: Check if they answered every question
@@ -63,6 +63,21 @@ const TakeExam = () => {
 
     // Save the final score to state to trigger the UI update!
     setScore(totalScore);
+
+    try {
+      const token = localStorage.getItem('studentToken');
+      await axios.post('http://localhost:4000/api/students/results', {
+        examId: exam._id,
+        score: totalScore,
+        totalQuestions: exam.questions.length
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      console.log("Exam result submitted successfully!");
+    } catch (error) {
+      console.error("Failed to submit exam result", error);
+      alert("Failed to submit exam result. Please try again.");
+    }
   };
 
   if (!exam) return <div className="glass-container"><h2 style={{color: 'white', textAlign: 'center'}}>Loading Exam...</h2></div>;
