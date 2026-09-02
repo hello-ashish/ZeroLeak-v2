@@ -17,7 +17,7 @@ const examSchema = new mongoose.Schema({
     },
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Professor',
+        ref: 'Admin',
         required: true,
     },
     questions: [{

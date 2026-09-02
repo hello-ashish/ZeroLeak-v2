@@ -52,3 +52,19 @@ export const getProfessorQuestions = async (req, res) => {
         })
     }
 }
+
+export const getAllQuestions = async (req, res) => {
+    try {
+        const questions = await Question.find({}).sort({ createdAt: -1 })
+
+        return res.status(200).json({
+            message: "All questions fetched successfully",
+            questions
+        })
+    } catch (error) {
+        console.error("Error fetching all questions: ", error)
+        return res.status(500).json({
+            message: "Something went wrong while fetching all questions"
+        })
+    }
+}

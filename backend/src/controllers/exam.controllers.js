@@ -1,52 +1,58 @@
-import { Exam } from "../models/exam.models.js"
-import { Result } from "../models/result.models.js"
+import { Exam } from "../models/exam.models.js";
+import { Result } from "../models/result.models.js";
 
 export const createExam = async (req, res) => {
     try {
-        const { title, description, durationMinutes, questions } = req.body
+        const { title, description, duration, questions } = req.body;
 
         if (!title || !description || !questions || questions.length === 0) {
             return res.status(400).json({ message: "Title, description, and at least one question are required." });
         }
 
-        const newExam = await Exam.create({
+        const exam = await Exam.create({
             title,
             description,
-            durationMinutes,
-            questions,
-            createdBy: req.professor._id
-        })
+            durationMinutes: duration || 60,
+            createdBy: req.admin._id,
+            questions
+        });
 
-        return res.status(201).json({ message: "Exam created successfully!", exam: newExam });
+        return res.status(201).json({
+            message: "Exam created successfully",
+            exam
+        });
     } catch (error) {
-        return res.status(500).json({ message: "Failed to create exam", error: error.message });
+        console.error("Error creating exam: ", error);
+        return res.status(500).json({ message: "Internal server error while creating exam" });
     }
-}
+};
 
-export const getProfessorExams = async (req, res) => {
+export const getExams = async (req, res) => {
     try {
-        const exams = await Exam.find({ createdBy: req.professor._id })
-            .populate("questions")
-            .sort({ createdAt: -1 })
-        
-        return res.status(200).json({ exams })
+        const exams = await Exam.find({}).sort({ createdAt: -1 });
+        return res.status(200).json({
+            message: "Exams fetched successfully",
+            exams
+        });
     } catch (error) {
-        return res.status(500).json({ message: "Failed to fetch exams", error: error.message })
+        console.error("Error fetching exams: ", error);
+        return res.status(500).json({ message: "Something went wrong while fetching exams" });
     }
-}
+};
 
-export const getProfessorExamResults = async (req, res) => {
+export const getExamResults = async (req, res) => {
     try {
-        const professorExams = await Exam.find({ createdBy: req.professor._id })
-        const examIds = professorExams.map(exam => exam._id)
-
-        const results = await Result.find({ exam: { $in: examIds } })
-            .populate("student", "name email studentId")
+        const results = await Result.find({})
+            .populate("student", "name studentId")
             .populate("exam", "title")
-            .sort({ createdAt: -1 })
-
-        return res.status(200).json({ results })
+            .sort({ createdAt: -1 });
+            
+        return res.status(200).json({
+            message: "Results fetched successfully",
+            results
+        });
     } catch (error) {
-        return res.status(500).json({ message: "Failed to fetch results", error: error.message })
+        console.error("Error fetching results: ", error);
+        return res.status(500).json({ message: "Something went wrong while fetching results" });
     }
-}
+};
