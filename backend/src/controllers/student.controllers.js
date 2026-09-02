@@ -1,5 +1,6 @@
 import { Student } from "../models/student.models.js"
 import { Exam } from "../models/exam.models.js"
+import { Result } from "../models/result.models.js";
 
 // 1. Register Student
 export const registerStudent = async (req, res) => {
@@ -54,7 +55,7 @@ export const getAllStudents = async (req, res) => {
     }
 }
 
-// fetch a single exam by its id
+// 5. Fetch a single exam by its id
 export const getExamById = async (req, res) => {
     try {
         const { id } = req.params
@@ -67,5 +68,38 @@ export const getExamById = async (req, res) => {
         return res.status(200).json({ exam })
     } catch (error) {
         return res.status(500).json({ message: "Error fetching exam", error: error.message })
+    }
+}
+
+// 6. Save exam score to the database
+export const submitExamResult = async (req, res) => {
+    try {
+        const { examId, score, totalQuestions } = req.body
+
+        if(!examId || score === undefined || !totalQuestions) {
+            return res.status(400).json({ message: "Exam ID, score, and total questions are required" });
+        }
+
+        const result = await Result.create({
+            student: req.student._id,
+            exam: examId,
+            score: score,
+            totalQuestions: totalQuestions
+        })
+        return res.status(201).json({ message: "Result saved successfully", result })
+    } catch (error) {
+        return res.status(500).json({ message: "Error saving result", error: error.message })
+    }
+}
+
+// 7. Fetch all results for the logged-in student
+export const getStudentResults = async (req, res) => {
+    try {
+        const results = await Result.find({ student: req.student._id })
+            .populate("exam", "title")
+            .sort({ createdAt: -1 })
+        return res.status(200).json({ results })
+    } catch (error) {
+        return res.status(500).json({ message: "Error fetching results", error: error.message })
     }
 }
