@@ -48,9 +48,9 @@ const ProfessorDashboard = () => {
 
     // helper function for batch color
     const getBatchColor = (batch) => {
-        if(batch.status === 'Rejected') return 'rgba(239, 68, 68, 0.2)'
-        if(batch.openedByAdmin && batch.status === 'Submitted') return 'rgba(234, 179, 8, 0.2)'
-        if(batch.status === 'Submitted' || batch.status === 'Accepted') return 'rgba(16, 185, 129, 0.2)'
+        if (batch.status === 'Rejected') return 'rgba(239, 68, 68, 0.2)'
+        if (batch.openedByAdmin && batch.status === 'Submitted') return 'rgba(234, 179, 8, 0.2)'
+        if (batch.status === 'Submitted' || batch.status === 'Accepted') return 'rgba(16, 185, 129, 0.2)'
         return 'rgba(255, 255, 255, 0.1)'
     }
 
@@ -61,8 +61,8 @@ const ProfessorDashboard = () => {
                 headers: { Authorization: `Bearer ${token}` }
             })
             setBatches(response.data.batches)
-            } catch (error) {
-                console.error("Error fetching batches: ", error)
+        } catch (error) {
+            console.error("Error fetching batches: ", error)
         }
     }
 
@@ -96,7 +96,7 @@ const ProfessorDashboard = () => {
             }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            
+
             alert("Question successfully added to the batch!");
             setTitle(''); setOptions(['', '', '', '']); setCorrectAnswer(''); setCorrectAnswerIndex(0);
             setActiveBatchId(null); // Hide form
@@ -113,7 +113,7 @@ const ProfessorDashboard = () => {
                 headers: { Authorization: `Bearer ${token}` }
             });
             alert("Batch submitted to admin for review!");
-            fetchMyBatches(); 
+            fetchMyBatches();
         } catch (error) {
             alert("Error submitting batch");
         }
@@ -123,8 +123,11 @@ const ProfessorDashboard = () => {
         <div className="glass-container" style={{ maxWidth: '900px', marginTop: '2rem', marginBottom: '2rem' }}>
             <h1 className="glass-title">Professor Dashboard</h1>
             <p className="glass-subtitle">Welcome back, Professor {profName}</p>
+            <button onClick={() => navigate('/professor/profile')} className="glass-button" style={{ background: 'var(--accent-primary)' }}>
+                Edit Profile
+            </button>
             <button onClick={handleLogout} className="glass-button" style={{ background: 'var(--danger)', marginBottom: '2rem' }}>Logout</button>
-            
+
             {/* --- CREATE NEW BATCH SECTION --- */}
             <div style={{ background: 'rgba(16, 185, 129, 0.1)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.3)', marginBottom: '2rem' }}>
                 <h2 style={{ color: 'white', marginBottom: '1rem' }}>1. Create a Question Batch</h2>
@@ -143,7 +146,7 @@ const ProfessorDashboard = () => {
                         <h2 style={{ color: 'white' }}>Add Question to Batch</h2>
                         <button onClick={() => setActiveBatchId(null)} className="glass-button" style={{ width: 'auto', background: 'rgba(255,255,255,0.2)' }}>Cancel</button>
                     </div>
-                    
+
                     <form onSubmit={handleAddQuestionToBatch} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                         <input className="glass-input" type="text" placeholder="Question Title (e.g. What is React?)" value={title} onChange={(e) => setTitle(e.target.value)} required />
                         <div style={{ display: 'flex', gap: '10px' }}>
@@ -180,15 +183,15 @@ const ProfessorDashboard = () => {
                                 {batch.status}
                             </span>
                         </div>
-                        
+
                         <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '10px' }}>Subject: {batch.subject} | Questions inside: {batch.questions?.length || 0}</p>
-                        
+
                         {batch.adminMessage && (
                             <p style={{ color: 'var(--accent-primary)', marginBottom: '10px', background: 'rgba(0,0,0,0.2)', padding: '8px', borderRadius: '4px' }}>
                                 <strong>Admin Note:</strong> {batch.adminMessage}
                             </p>
                         )}
-                        
+
                         {/* If Draft, show buttons to Add Questions and Submit */}
                         {(batch.status === 'Draft' || batch.status === 'MarkForReview') && (
                             <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
@@ -198,7 +201,7 @@ const ProfessorDashboard = () => {
                         )}
                     </div>
                 ))}
-                {batches.length === 0 && <p style={{color: 'gray'}}>You haven't created any batches yet.</p>}
+                {batches.length === 0 && <p style={{ color: 'gray' }}>You haven't created any batches yet.</p>}
             </div>
         </div>
     )

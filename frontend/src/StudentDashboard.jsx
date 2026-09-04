@@ -17,7 +17,7 @@ const StudentDashboard = () => {
     } else {
       const studentData = JSON.parse(studentDataString);
       setStudentName(studentData.name);
-      
+
       // Fetch the available exams as soon as the student logs in
       fetchExams(token);
       fetchResults(token);
@@ -53,30 +53,32 @@ const StudentDashboard = () => {
 
   return (
     <div className="glass-container" style={{ maxWidth: '1000px', marginTop: '1rem', marginBottom: '1rem' }}>
-      <h1 className="glass-title" style={{color: 'var(--success)'}}>Student Portal</h1>
-      <p className="glass-subtitle" style={{marginBottom: '1rem'}}>Welcome, {studentName}!</p>
-      
+      <h1 className="glass-title" style={{ color: 'var(--success)' }}>Student Portal</h1>
+      <p className="glass-subtitle" style={{ marginBottom: '1rem' }}>Welcome, {studentName}!</p>
+      <button onClick={() => navigate('/student/profile')} className="glass-button" style={{ background: 'var(--accent-primary)' }}>
+        Edit Profile
+      </button>
       <button onClick={handleLogout} className="glass-button" style={{ background: 'var(--danger)', marginBottom: '2rem' }}>
         Logout
       </button>
 
-      <h2 style={{color: 'white', marginBottom: '1rem'}}>Available Exams</h2>
-      
+      <h2 style={{ color: 'white', marginBottom: '1rem' }}>Available Exams</h2>
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
         {exams.map((exam) => (
           <div key={exam._id} style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '1.5rem', borderRadius: '12px', color: 'white' }}>
-            <h3 style={{color: 'var(--success)', marginBottom: '0.5rem'}}>{exam.title}</h3>
-            <p style={{color: 'var(--text-secondary)', marginBottom: '1rem'}}>{exam.description}</p>
-            
-            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-              <span style={{fontSize: '0.9rem'}}>
+            <h3 style={{ color: 'var(--success)', marginBottom: '0.5rem' }}>{exam.title}</h3>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>{exam.description}</p>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.9rem' }}>
                 {/* We can access .email because we used .populate("createdBy", "email") in the backend! */}
                 <strong>Created By:</strong> {exam.createdBy?.email || "Unknown"} | <strong>Duration:</strong> {exam.durationMinutes} mins
               </span>
-              
-               <button 
-                className="glass-button" 
-                style={{width: 'auto', background: 'var(--success)'}} 
+
+              <button
+                className="glass-button"
+                style={{ width: 'auto', background: 'var(--success)' }}
                 onClick={() => navigate(`/student/take-exam/${exam._id}`)}
               >
                 Start Exam
@@ -85,28 +87,28 @@ const StudentDashboard = () => {
           </div>
         ))}
 
-        {exams.length === 0 && <p style={{color: 'gray'}}>There are no exams available right now.</p>}
+        {exams.length === 0 && <p style={{ color: 'gray' }}>There are no exams available right now.</p>}
       </div>
 
-      <h2 style={{color: 'white', marginBottom: '1rem', marginTop: '3rem'}}>My Past Results</h2>
-      
+      <h2 style={{ color: 'white', marginBottom: '1rem', marginTop: '3rem' }}>My Past Results</h2>
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
         {results.map((result) => (
           <div key={result._id} style={{ background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)', padding: '1.5rem', borderRadius: '12px', color: 'white' }}>
             {/* Because we used .populate("exam", "title") in the backend, we can access the exam title here! */}
-            <h3 style={{color: 'var(--accent-primary)', marginBottom: '0.5rem'}}>
-                {result.exam?.title || "Deleted Exam"}
+            <h3 style={{ color: 'var(--accent-primary)', marginBottom: '0.5rem' }}>
+              {result.exam?.title || "Deleted Exam"}
             </h3>
-            
-            <p style={{fontSize: '1.1rem', margin: 0}}>
-              <strong>Score:</strong> {result.score} / {result.totalQuestions} 
-              <span style={{marginLeft: '10px', color: 'var(--text-secondary)'}}>
+
+            <p style={{ fontSize: '1.1rem', margin: 0 }}>
+              <strong>Score:</strong> {result.score} / {result.totalQuestions}
+              <span style={{ marginLeft: '10px', color: 'var(--text-secondary)' }}>
                 ({Math.round((result.score / result.totalQuestions) * 100)}%)
               </span>
             </p>
           </div>
         ))}
-        {results.length === 0 && <p style={{color: 'gray'}}>You haven't taken any exams yet.</p>}
+        {results.length === 0 && <p style={{ color: 'gray' }}>You haven't taken any exams yet.</p>}
       </div>
 
     </div>

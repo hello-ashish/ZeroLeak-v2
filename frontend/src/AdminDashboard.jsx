@@ -110,7 +110,7 @@ const AdminDashboard = () => {
             const allBatches = Array.isArray(allRes.data.batches)
                 ? allRes.data.batches
                 : []
-            const reviewed = allBatches.filter(b => 
+            const reviewed = allBatches.filter(b =>
                 ['Accepted', 'Rejected', 'MarkForReview'].includes(b.status)
             );
             setReviewedBatches(reviewed);
@@ -231,7 +231,7 @@ const AdminDashboard = () => {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setActiveReviewBatch(res.data.batch);
-            fetchBatches(token); 
+            fetchBatches(token);
         } catch (error) {
             console.error("Error opening batch details");
         }
@@ -241,15 +241,15 @@ const AdminDashboard = () => {
         let adminMessage = "";
         if (action === 'Reject' || action === 'MarkForReview') {
             adminMessage = prompt(`Please provide a reason to ${action} this batch:`);
-            if (adminMessage === null) return; 
+            if (adminMessage === null) return;
         }
-        
+
         try {
             const token = localStorage.getItem('adminToken');
             await axios.post(`http://localhost:4000/api/admin/batches/${activeReviewBatch._id}/review`, {
                 action, adminMessage
-            }, { headers: { Authorization: `Bearer ${token}` }});
-            
+            }, { headers: { Authorization: `Bearer ${token}` } });
+
             alert(`Batch ${action}ed successfully`);
             setActiveReviewBatch(null);
             fetchBatches(token);
@@ -263,12 +263,15 @@ const AdminDashboard = () => {
         <div className="glass-container" style={{ maxWidth: '900px', marginTop: '2rem', marginBottom: '2rem' }}>
             <h1 className="glass-title">Admin Dashboard</h1>
             <p className="glass-subtitle">Welcome back, {adminEmail}</p>
+            <button onClick={() => navigate('/admin/profile')} className="glass-button" style={{ background: 'var(--accent-primary)' }}>
+                Edit Profile
+            </button>
             <button onClick={handleLogout} className="glass-button" style={{ background: 'var(--danger)', marginBottom: '2rem' }}>Logout</button>
 
             {/* --- BATCH REVIEW DESK SECTION --- */}
             <div style={{ background: 'rgba(234, 179, 8, 0.1)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(234, 179, 8, 0.3)', marginBottom: '2rem' }}>
-                <h2 style={{color: 'white', marginBottom: '1rem'}}>Batch Review Desk</h2>
-                
+                <h2 style={{ color: 'white', marginBottom: '1rem' }}>Batch Review Desk</h2>
+
                 {activeReviewBatch ? (
                     <div style={{ background: 'rgba(0,0,0,0.4)', padding: '1.5rem', borderRadius: '8px', marginBottom: '2rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
@@ -276,12 +279,12 @@ const AdminDashboard = () => {
                             <button onClick={() => setActiveReviewBatch(null)} className="glass-button" style={{ width: 'auto', background: 'rgba(255,255,255,0.2)' }}>Close</button>
                         </div>
                         <p style={{ color: 'white', marginBottom: '1rem' }}>Subject: {activeReviewBatch.subject}</p>
-                        
+
                         <h4 style={{ color: 'white', marginBottom: '0.5rem' }}>Questions in this batch:</h4>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '1.5rem', maxHeight: '300px', overflowY: 'auto' }}>
                             {activeReviewBatch.questions.map((q, idx) => (
                                 <div key={idx} style={{ background: 'rgba(255,255,255,0.1)', padding: '10px', borderRadius: '6px' }}>
-                                    <p style={{ color: 'white' }}><strong>Q{idx+1}:</strong> {q.title}</p>
+                                    <p style={{ color: 'white' }}><strong>Q{idx + 1}:</strong> {q.title}</p>
                                     <p style={{ color: 'var(--success)', fontSize: '0.9rem' }}>Correct Answer: {q.correctAnswer}</p>
                                 </div>
                             ))}
@@ -412,7 +415,7 @@ const AdminDashboard = () => {
                         <div key={exam._id} style={{ background: 'rgba(255,255,255,0.1)', padding: '1rem', borderRadius: '8px', color: 'white' }}>
                             <h3 style={{ color: 'var(--success)' }}>{exam.title}</h3>
                             <p style={{ color: 'var(--text-secondary)' }}>{exam.description}</p>
-                              <p style={{ fontSize: '0.9rem' }}><strong>Duration:</strong> {exam.durationMinutes} mins | <strong>Questions:</strong> {exam.questions?.length || 0}</p>
+                            <p style={{ fontSize: '0.9rem' }}><strong>Duration:</strong> {exam.durationMinutes} mins | <strong>Questions:</strong> {exam.questions?.length || 0}</p>
                         </div>
                     ))}
                     {exams.length === 0 && <p style={{ color: 'gray' }}>No exams published yet.</p>}

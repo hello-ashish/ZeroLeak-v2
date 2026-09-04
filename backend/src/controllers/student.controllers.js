@@ -103,3 +103,26 @@ export const getStudentResults = async (req, res) => {
         return res.status(500).json({ message: "Error fetching results", error: error.message })
     }
 }
+
+// 8. Update Student Profile
+export const updateStudentProfile = async (req, res) => {
+    try {
+        const { name, email, password } = req.body
+        const student = await Student.findById(req.student._id)
+
+        if (name) student.name = name
+        if (email) student.email = email
+        if (password) student.password = password
+
+        await student.save()
+
+        const updatedStudent = await Student.findById(student._id).select("-password")
+        return res.status(200).json({
+            message: "profile updated successfully", student: updatedStudent
+        })
+    } catch (error) {
+        return res.status(500).json({
+            message: "Error updating profile", error: error.message
+        })
+    }
+}

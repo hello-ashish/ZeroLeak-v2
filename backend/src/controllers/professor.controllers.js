@@ -110,3 +110,26 @@ export const getMyBatches = async (req, res) => {
         res.status(500).json({ message: error.message })
     }
 }
+
+// 5. Update Professor Profile
+export const updateProfessorProfile = async (req, res) => {
+    try {
+        const { name, email, contact, address, password } = req.body
+        const professor = await Professor.findById(req.professor._id)
+
+        if (name) professor.name = name
+        if (email) professor.email = email
+        if (contact) professor.contact = contact
+        if (address) professor.address = address
+        if (password) professor.password = password
+
+        await professor.save()
+
+        const updatedProfessor = await Professor.findById(professor._id).select("-password")
+        return res.status(200).json({
+            message: "Profile Updated Successfully", professor: updatedProfessor
+        })
+    } catch (error) {
+         return res.status(500).json({ message: "Error updating profile", error: error.message })
+    }
+}

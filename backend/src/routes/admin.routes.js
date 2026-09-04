@@ -1,5 +1,5 @@
 import { Router } from "express"
-import { createProfessor, getAllProfessors, deleteProfessor, registerAdmin, loginAdmin } from "../controllers/admin.controllers.js"
+import { createProfessor, getAllProfessors, deleteProfessor, registerAdmin, loginAdmin, updateAdminProfile } from "../controllers/admin.controllers.js"
 import { verifyAdminJWT } from "../middlewares/auth.middleware.js"
 import { getBatches, openBatchDetails, reviewBatch } from "../controllers/admin.controllers.js"
 
@@ -8,6 +8,11 @@ const router = Router()
 // Public Routes
 router.route("/register").post(registerAdmin)
 router.route("/login").post(loginAdmin)
+
+// Protected Routes
+
+// route to update admin profile
+router.route("/profile").put(verifyAdminJWT, updateAdminProfile)
 
 // route to create anew professor
 router.route("/professors").post(verifyAdminJWT, createProfessor)

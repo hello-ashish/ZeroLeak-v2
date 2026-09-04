@@ -39,7 +39,7 @@ const AdminLogin = () => {
     }
     return (
         <div className='glass-container'>
-            <h1 classname='glass-title'>ZeroLeak</h1>
+            <h1 className='glass-title'>ZeroLeak</h1>
 
             <form onSubmit={handleLogin}>
 

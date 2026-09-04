@@ -224,3 +224,21 @@ export const reviewBatch = async (req, res) => {
         res.status(500).json({ message: error.message })
     }
 }
+
+// Update Admin Profile
+export const updateAdminProfile = async (req, res) => {
+    try {
+        const { email, password } = req.params
+        const admin = await Admin.findById(req.admin._id)
+
+        if (email) admin.email = email
+        if (password) admin.password = password
+
+        await admin.save()
+
+        const updatedAdmin = await Admin.findById(admin._id).select("-password")
+        return res.status(200).json({ message: "Profile updated successfully", admin: updatedAdmin })
+    } catch (error) {
+        return res.status(500).json({ message: "Error updating profile", error: error.message })
+    }
+}
