@@ -1,6 +1,9 @@
 import { Professor } from "../models/professor.models.js";
 import { Admin } from "../models/admin.models.js"; 
+import { Batch } from "../models/batch.models.js";
+import { Question } from "../models/question.models.js";
 
+// Register Admin
 export const registerAdmin = async (req, res) => {
     try {
         const {adminId, email, password } = req.body
@@ -35,6 +38,7 @@ export const registerAdmin = async (req, res) => {
     }
 }
 
+// Login Admin
 export const loginAdmin = async (req, res) => {
     try {
         const { email, password } = req.body
@@ -70,6 +74,7 @@ export const loginAdmin = async (req, res) => {
     }
 }
 
+// Register Professor
 export const createProfessor = async (req, res) => {
     try {
 
@@ -118,7 +123,6 @@ export const createProfessor = async (req, res) => {
 }
 
 // controller function to get all professors
-
 export const getAllProfessors = async (req, res) => {
     try {
         // fetch all professsors from db, but exclide password field
@@ -135,7 +139,6 @@ export const getAllProfessors = async (req, res) => {
 }
 
 // controller function to delete a professor
-
 export const deleteProfessor = async (req, res) => {
     try {
         // Get the id from the request parameters
@@ -157,5 +160,67 @@ export const deleteProfessor = async (req, res) => {
         return res.status(500).json({
             message: "Internal server error while deleting professor"
         })
+    }
+}
+
+// Get Batches
+export const getBatches = async (req, res) => {
+    try {
+        const {status} = req.query
+        const query = status ? {status} : {}
+        const batches = await Batch.find(query)
+            .populate('createdBy', 'name email')
+        res.status(200).json({ batches })
+    } catch (error) {
+        res.status(500).json({ message: error.message })
+    }
+}
+
+// Open Batch Details
+export const openBatchDetails = async (req, res) => {
+    try {
+        const batch = await Batch.findByIdAndUpdate(req.params.batchId, { openedByAdmin: true }, { new: true })
+            .populate('createdBy', 'name email')
+        res.status(200).json({ batch })
+    } catch (error) {
+        res.status(500).json({ message: error.message})
+    }
+}
+
+// Review Batch
+export const reviewBatch = async (req, res) => {
+    try {
+        const { batchId } = req.params
+        const { action, adminMessage} = req.body
+
+        const batch = await Batch.findById(batchId)
+
+        if (action === 'Accept'){
+            const questionsToInsert = batch.questions.map(q => ({
+                title: q.title, options: q.options, correctAnswer: q.correctAnswer,
+                difficultyLevel: q.difficultyLevel, subject: q.subject, topic: q.topic,
+                correctAnswerIndex: q.correctAnswerIndex, createdBy: batch.createdBy
+            }))
+            await Question.insertMany(questionsToInsert)
+
+            batch.status = 'Accepted'
+            batch.adminMessage = 'Batch Approved and added to Pool'
+        }
+        else if (action === 'Reject'){
+            batch.status = 'Rejected'
+            batch.adminMessage = adminMessage || 'Rejected without specific reason.'
+            batch.questions = []
+        }
+        else if (action === 'MarkForReview') {
+            batch.status = 'MarkForReview'
+            batch.adminMessage = adminMessage || 'Please revise these questions.'
+        }
+
+        await batch.save()
+        res.status(200).json({
+            message: `Batch ${action}ed`, batch
+        })
+    } catch (error) {
+        res.status(500).json({ message: error.message })
     }
 }

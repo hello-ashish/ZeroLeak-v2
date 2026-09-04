@@ -37,8 +37,8 @@ export const loginStudent = async (req, res) => {
 // 3. Get all available Exams for Students to see!
 export const getAvailableExams = async (req, res) => {
     try {
-        // We fetch ALL exams, and we use .populate to inject the Professor's name into the "createdBy" field!
-        const exams = await Exam.find().populate("createdBy", "name").sort({ createdAt: -1 });
+        // We fetch ALL exams, and we use .populate to inject the Admin's email into the "createdBy" field!
+        const exams = await Exam.find().populate("createdBy", "email").sort({ createdAt: -1 });
         return res.status(200).json({ exams });
     } catch (error) {
         return res.status(500).json({ message: "Error fetching exams", error: error.message });
@@ -60,7 +60,7 @@ export const getExamById = async (req, res) => {
     try {
         const { id } = req.params
         const exam = await Exam.findById(id)
-            .populate("createdBy", "name")
+            .populate("createdBy", "email")
             .populate("questions")
         
         if (!exam) return res.status(404).json({ message: "Exam not found" })

@@ -89,7 +89,7 @@ const TakeExam = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <div>
           <h1 className="glass-title">{exam.title}</h1>
-          <p className="glass-subtitle">Professor: {exam.createdBy.name} | Duration: {exam.durationMinutes} mins</p>
+          <p className="glass-subtitle">Created By: {exam.createdBy?.email || "Unknown"} | Duration: {exam.durationMinutes} mins</p>
         </div>
         <button className="glass-button" style={{width: 'auto', background: 'rgba(255,255,255,0.2)'}} onClick={() => navigate('/student/dashboard')}>
           Back to Dashboard

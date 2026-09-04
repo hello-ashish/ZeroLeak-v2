@@ -70,8 +70,8 @@ const StudentDashboard = () => {
             
             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
               <span style={{fontSize: '0.9rem'}}>
-                {/* We can access .name because we used .populate("createdBy") in the backend! */}
-                <strong>Professor:</strong> {exam.createdBy?.name || "Unknown"} | <strong>Duration:</strong> {exam.durationMinutes} mins
+                {/* We can access .email because we used .populate("createdBy", "email") in the backend! */}
+                <strong>Created By:</strong> {exam.createdBy?.email || "Unknown"} | <strong>Duration:</strong> {exam.durationMinutes} mins
               </span>
               
                <button 
