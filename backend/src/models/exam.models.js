@@ -13,7 +13,28 @@ const examSchema = new mongoose.Schema({
     durationMinutes: {
         type: Number,
         required: true,
-        default: 60, // default duration in minutes
+        default: 60,
+    },
+    passingPercentage: {
+        type: Number,
+        default: 50, // % required to pass
+    },
+    totalMarks: {
+        type: Number,
+        default: 0,
+    },
+    status: {
+        type: String,
+        enum: ["Draft", "Scheduled", "Live", "Completed", "Archived"],
+        default: "Draft",
+    },
+    scheduledAt: {
+        type: Date,
+        default: null,
+    },
+    endsAt: {
+        type: Date,
+        default: null,
     },
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
