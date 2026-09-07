@@ -5,7 +5,7 @@ import { AdminLayout } from './AdminLayout.jsx'
 import { DifficultyBadge } from '../../components/StatusBadge.jsx'
 import { SkeletonTable, EmptyState } from '../../components/SkeletonLoader.jsx'
 import { useToast } from '../../components/Toast.jsx'
-import { Database, CircleDot, Search, PackageOpen, X, BarChart3, Clock, AlertTriangle, CheckCircle2 } from 'lucide-react'
+import { Database, CircleDot, Search, PackageOpen, X, BarChart3, Clock, AlertTriangle, CheckCircle2, Trash2 } from 'lucide-react'
 
 const API = 'http://localhost:4000/api'
 const getToken = () => localStorage.getItem('adminToken')
@@ -68,6 +68,17 @@ export default function AdminQuestionsPage() {
             hard: questions.filter(q => q.difficultyLevel === 'hard').length,
         }
     }, [questions])
+
+    const handleEditQuestion = () => {
+        toast.info('Edit question functionality coming soon')
+    }
+
+    const handleArchiveQuestion = () => {
+        if (!selectedQuestion) return;
+        setQuestions(prev => prev.filter(q => q._id !== selectedQuestion._id))
+        setSelectedQuestion(null)
+        toast.success('Question archived successfully')
+    }
 
     return (
         <AdminLayout>
@@ -172,7 +183,7 @@ export default function AdminQuestionsPage() {
                                             >
                                                 <td style={{ maxWidth: 300 }}>
                                                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                                                        {q.health.flagged && <AlertTriangle size={14} color="var(--danger)" flexShrink={0} />}
+                                                        {q.health.flagged && <AlertTriangle size={14} color="var(--danger)" style={{ flexShrink: 0 }} />}
                                                         <p style={{ fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.4 }} className="truncate">{q.title}</p>
                                                     </div>
                                                 </td>
@@ -289,8 +300,8 @@ export default function AdminQuestionsPage() {
                             </div>
                             
                             <div style={{ marginTop: 24, display: 'flex', gap: 12 }}>
-                                <button className="btn btn-secondary" style={{ flex: 1 }}>Edit Question</button>
-                                <button className="btn btn-danger btn-icon" title="Archive"><Trash2 size={16} /></button>
+                                <button className="btn btn-secondary" style={{ flex: 1 }} onClick={handleEditQuestion}>Edit Question</button>
+                                <button className="btn btn-danger btn-icon" title="Archive" onClick={handleArchiveQuestion}><Trash2 size={16} /></button>
                             </div>
                         </div>
                     </div>

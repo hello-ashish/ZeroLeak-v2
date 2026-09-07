@@ -57,6 +57,32 @@ export default function AdminActivityPage() {
 
     const totalPages = Math.ceil(total / LIMIT)
 
+    const handleExport = () => {
+        if (!logs.length) {
+            toast.info('No logs to export')
+            return
+        }
+        const csvContent = "data:text/csv;charset=utf-8," 
+            + "Timestamp,Event Type,Actor,Target Object,Details\n"
+            + logs.map(l => {
+                const date = new Date(l.createdAt).toLocaleString()
+                const action = getActionDetails(l.action).label
+                const actor = l.actor?.email || 'System'
+                const target = l.targetModel ? `${l.targetModel} (${l.targetId})` : '—'
+                const details = l.details ? JSON.stringify(l.details).replace(/"/g, '""') : '—'
+                return `"${date}","${action}","${actor}","${target}","${details}"`
+            }).join("\n")
+        
+        const encodedUri = encodeURI(csvContent)
+        const link = document.createElement("a")
+        link.setAttribute("href", encodedUri)
+        link.setAttribute("download", `audit_logs_${new Date().toISOString().split('T')[0]}.csv`)
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        toast.success('Logs exported successfully')
+    }
+
     return (
         <AdminLayout>
             <div className="page-header">
@@ -69,7 +95,7 @@ export default function AdminActivityPage() {
                         <button className="btn btn-secondary flex items-center gap-2" onClick={() => fetchLogs(page)}>
                             <RefreshCw size={14} /> Refresh
                         </button>
-                        <button className="btn btn-secondary flex items-center gap-2">
+                        <button className="btn btn-secondary flex items-center gap-2" onClick={handleExport}>
                             <Download size={14} /> Export Logs
                         </button>
                     </div>
