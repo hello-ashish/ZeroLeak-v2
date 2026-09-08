@@ -133,3 +133,23 @@ export const updateProfessorProfile = async (req, res) => {
          return res.status(500).json({ message: "Error updating profile", error: error.message })
     }
 }
+
+// 6. Change Professor Password
+export const changeProfessorPassword = async (req, res) => {
+    try {
+        const { oldPassword, newPassword } = req.body
+        const professor = await Professor.findById(req.professor._id)
+        
+        const isPasswordCorrect = await professor.isPasswordCorrect(oldPassword)
+        if (!isPasswordCorrect) {
+             return res.status(401).json({ message: "Incorrect current password" })
+        }
+        
+        professor.password = newPassword
+        await professor.save()
+        
+        return res.status(200).json({ message: "Password updated successfully" })
+    } catch (error) {
+         return res.status(500).json({ message: "Error changing password", error: error.message })
+    }
+}

@@ -8,12 +8,21 @@ import Home from './Home'
 import AdminLogin from './AdminLogin'
 import AdminProfile from "./AdminProfile"
 import ProfessorLogin from './ProfessorLogin'
-import ProfessorDashboard from './ProfessorDashboard'
+import { ProfessorLayout } from './pages/professor/ProfessorLayout.jsx'
+import ProfessorDashboardPage from './pages/professor/ProfessorDashboardPage.jsx'
+import ProfessorBatchesPage from './pages/professor/ProfessorBatchesPage.jsx'
 import ProfessorProfile from "./ProfessorProfile"
 import StudentLogin from './StudentLogin'
-import StudentDashboard from './StudentDashboard'
 import TakeExam from './TakeExam'
 import StudentProfile from "./StudentProfile"
+
+// New Student Command Center pages
+import { StudentLayout } from './pages/student/StudentLayout.jsx'
+import StudentDashboardPage from './pages/student/StudentDashboardPage.jsx'
+import StudentExamsPage from './pages/student/StudentExamsPage.jsx'
+import StudentResultsPage from './pages/student/StudentResultsPage.jsx'
+import StudentPerformancePage from './pages/student/StudentPerformancePage.jsx'
+import StudentSettingsPage from './pages/student/StudentSettingsPage.jsx'
 
 // New Admin Command Center pages
 import AdminDashboardPage from './pages/admin/AdminDashboardPage.jsx'
@@ -56,14 +65,23 @@ function App() {
 
           {/* ── Professor Routes ── */}
           <Route path="/professor/login" element={<ProfessorLogin />} />
-          <Route path="/professor/dashboard" element={<ProfessorDashboard />} />
-          <Route path="/professor/profile" element={<ProfessorProfile />} />
+          <Route element={<ProfessorLayout />}>
+              <Route path="/professor/dashboard" element={<ProfessorDashboardPage />} />
+              <Route path="/professor/batches" element={<ProfessorBatchesPage />} />
+              <Route path="/professor/profile" element={<ProfessorProfile />} />
+          </Route>
 
           {/* ── Student Routes ── */}
           <Route path="/student/login" element={<StudentLogin />} />
-          <Route path="/student/dashboard" element={<StudentDashboard />} />
           <Route path="/student/take-exam/:id" element={<TakeExam />} />
-          <Route path="/student/profile" element={<StudentProfile />} />
+          <Route element={<StudentLayout />}>
+              <Route path="/student/dashboard" element={<StudentDashboardPage />} />
+              <Route path="/student/exams" element={<StudentExamsPage />} />
+              <Route path="/student/results" element={<StudentResultsPage />} />
+              <Route path="/student/performance" element={<StudentPerformancePage />} />
+              <Route path="/student/profile" element={<StudentProfile />} />
+              <Route path="/student/settings" element={<StudentSettingsPage />} />
+          </Route>
 
         </Routes>
       </BrowserRouter>

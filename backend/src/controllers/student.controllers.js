@@ -126,3 +126,23 @@ export const updateStudentProfile = async (req, res) => {
         })
     }
 }
+
+// 9. Change Student Password
+export const changeStudentPassword = async (req, res) => {
+    try {
+        const { oldPassword, newPassword } = req.body
+        const student = await Student.findById(req.student._id)
+        
+        const isPasswordCorrect = await student.isPasswordCorrect(oldPassword)
+        if (!isPasswordCorrect) {
+             return res.status(401).json({ message: "Incorrect current password" })
+        }
+        
+        student.password = newPassword
+        await student.save()
+        
+        return res.status(200).json({ message: "Password updated successfully" })
+    } catch (error) {
+         return res.status(500).json({ message: "Error changing password", error: error.message })
+    }
+}

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { registerStudent, loginStudent, getAvailableExams, getAllStudents, getExamById, submitExamResult, getStudentResults, updateStudentProfile } from "../controllers/student.controllers.js";
+import { registerStudent, loginStudent, getAvailableExams, getAllStudents, getExamById, submitExamResult, getStudentResults, updateStudentProfile, changeStudentPassword } from "../controllers/student.controllers.js";
 import { verifyStudentJWT, verifyAdminJWT } from "../middlewares/auth.middleware.js";
 
 const router = Router();
@@ -15,6 +15,7 @@ router.route("/").get(verifyAdminJWT, getAllStudents);
 router.route("/exams").get(verifyStudentJWT, getAvailableExams);
 router.route("/exams/:id").get(verifyStudentJWT, getExamById);
 router.route("/profile").put(verifyStudentJWT, updateStudentProfile)
+router.route("/change-password").put(verifyStudentJWT, changeStudentPassword)
 
 // Protected Route: Only logged in students can submit exam results
 router.route("/results")
