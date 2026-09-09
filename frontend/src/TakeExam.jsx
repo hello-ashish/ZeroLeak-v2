@@ -4,7 +4,7 @@ import axios from 'axios';
 import { 
     Clock, AlertCircle, CheckCircle2, ChevronLeft, ChevronRight, 
     Flag, Maximize2, Minimize2, Edit3, Bookmark, HelpCircle, 
-    PanelRightClose, PanelRightOpen, X, Activity 
+    PanelRightClose, PanelRightOpen, X, Activity, LayoutDashboard 
 } from 'lucide-react';
 
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];

@@ -27,17 +27,7 @@ export default function AdminQuestionsPage() {
             setLoading(true)
             const res = await axios.get(`${API}/questions`, { headers: { Authorization: `Bearer ${token}` } })
             
-            // Inject simulated "health" metrics for demo purposes if backend doesn't provide it
-            const qs = (res.data.questions || []).map(q => ({
-                ...q,
-                health: {
-                    usageCount: Math.floor(Math.random() * 12),
-                    successRate: Math.floor(Math.random() * 60) + 30, // 30-90%
-                    flagged: Math.random() > 0.9
-                }
-            }))
-            
-            setQuestions(qs)
+            setQuestions(res.data.questions || [])
         } catch {
             toast.error('Failed to load question bank')
         } finally {

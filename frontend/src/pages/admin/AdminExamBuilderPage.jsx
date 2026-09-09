@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AdminLayout } from './AdminLayout.jsx'
-import { ArrowLeft, Check, BookOpen, Clock, Settings, Upload } from 'lucide-react'
+import { ArrowLeft, Check, BookOpen, Clock, Settings, Upload, Search, Database } from 'lucide-react'
 import { useToast } from '../../components/Toast.jsx'
 import axios from 'axios'
 
@@ -10,7 +10,9 @@ const getToken = () => localStorage.getItem('adminToken')
 
 export const AdminExamBuilderPage = () => {
     const [step, setStep] = useState(1)
-    const [form, setForm] = useState({ title: '', description: '', durationMinutes: 60, passingPercentage: 50, status: 'Draft' })
+    const [form, setForm] = useState({ title: '', description: '', durationMinutes: 60, passingPercentage: 50, status: 'Draft', selectedQuestions: [] })
+    const [allQuestions, setAllQuestions] = useState([])
+    const [qSearch, setQSearch] = useState('')
     const [creating, setCreating] = useState(false)
     const navigate = useNavigate()
     const toast = useToast()
@@ -23,7 +25,7 @@ export const AdminExamBuilderPage = () => {
                 description: form.description,
                 duration: form.durationMinutes,
                 passingPercentage: form.passingPercentage,
-                questions: [], // Admin will add questions later in the detailed view
+                questions: form.selectedQuestions,
                 status: form.status
             }, { headers: { Authorization: `Bearer ${getToken()}` } })
             toast.success('Exam created successfully!')
@@ -34,6 +36,12 @@ export const AdminExamBuilderPage = () => {
             setCreating(false)
         }
     }
+
+    React.useEffect(() => {
+        axios.get(`${API}/questions`, { headers: { Authorization: `Bearer ${getToken()}` } })
+            .then(res => setAllQuestions(res.data.questions || []))
+            .catch(console.error)
+    }, [])
 
     return (
         <AdminLayout>
@@ -55,7 +63,8 @@ export const AdminExamBuilderPage = () => {
                     {[
                         { num: 1, label: 'Details', icon: <BookOpen size={16} /> },
                         { num: 2, label: 'Configuration', icon: <Settings size={16} /> },
-                        { num: 3, label: 'Review', icon: <Check size={16} /> }
+                        { num: 3, label: 'Questions', icon: <Database size={16} /> },
+                        { num: 4, label: 'Review', icon: <Check size={16} /> }
                     ].map(s => (
                         <div key={s.num} style={{ 
                             flex: 1, 
@@ -119,6 +128,39 @@ export const AdminExamBuilderPage = () => {
 
                     {step === 3 && (
                         <div style={{ animation: 'dialogScale 200ms ease' }}>
+                            <h2 style={{ fontSize: 18, marginBottom: 24 }}>Select Questions</h2>
+                            <p style={{ color: 'var(--text-secondary)', marginBottom: 16 }}>Select the questions you want to include in this exam.</p>
+                            
+                            <div className="search-input-wrap" style={{ marginBottom: 16 }}>
+                                <Search size={16} style={{ color: 'var(--text-tertiary)' }} />
+                                <input className="search-input" placeholder="Search questions..." value={qSearch} onChange={e => setQSearch(e.target.value)} />
+                            </div>
+
+                            <div style={{ maxHeight: 300, overflowY: 'auto', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', background: 'var(--bg-surface)' }}>
+                                {allQuestions.filter(q => q.title?.toLowerCase().includes(qSearch.toLowerCase()) || q.subject?.toLowerCase().includes(qSearch.toLowerCase())).map(q => (
+                                    <label key={q._id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--border-subtle)', cursor: 'pointer' }}>
+                                        <input type="checkbox" checked={form.selectedQuestions.includes(q._id)} onChange={(e) => {
+                                            if (e.target.checked) {
+                                                setForm(f => ({ ...f, selectedQuestions: [...f.selectedQuestions, q._id] }))
+                                            } else {
+                                                setForm(f => ({ ...f, selectedQuestions: f.selectedQuestions.filter(id => id !== q._id) }))
+                                            }
+                                        }} />
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{q.title}</div>
+                                            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>{q.subject} • {q.difficultyLevel}</div>
+                                        </div>
+                                    </label>
+                                ))}
+                            </div>
+                            <div style={{ marginTop: 12, fontSize: 13, color: 'var(--text-secondary)' }}>
+                                {form.selectedQuestions.length} questions selected
+                            </div>
+                        </div>
+                    )}
+
+                    {step === 4 && (
+                        <div style={{ animation: 'dialogScale 200ms ease' }}>
                             <h2 style={{ fontSize: 18, marginBottom: 24 }}>Review & Publish</h2>
                             <div style={{ background: 'var(--bg-elevated)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)', padding: 24, marginBottom: 24 }}>
                                 <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
@@ -133,6 +175,10 @@ export const AdminExamBuilderPage = () => {
                                     <div style={{ width: 120, color: 'var(--text-secondary)', fontSize: 13 }}>Pass Requirement</div>
                                     <div>{form.passingPercentage}%</div>
                                 </div>
+                                <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
+                                    <div style={{ width: 120, color: 'var(--text-secondary)', fontSize: 13 }}>Questions</div>
+                                    <div>{form.selectedQuestions.length} selected</div>
+                                </div>
                                 <div style={{ display: 'flex', gap: 16 }}>
                                     <div style={{ width: 120, color: 'var(--text-secondary)', fontSize: 13 }}>Status</div>
                                     <div>
@@ -142,10 +188,12 @@ export const AdminExamBuilderPage = () => {
                                     </div>
                                 </div>
                             </div>
-                            <div style={{ display: 'flex', gap: 12, alignItems: 'center', padding: 16, background: 'var(--info-subtle)', borderRadius: 'var(--radius-md)', color: 'var(--info)' }}>
-                                <Upload size={20} />
-                                <span style={{ fontSize: 13 }}>After creation, you will be redirected to the Exam Details page where you can add questions from the Question Bank.</span>
-                            </div>
+                            {form.selectedQuestions.length === 0 && (
+                                <div style={{ display: 'flex', gap: 12, alignItems: 'center', padding: 16, background: 'var(--warning-subtle)', borderRadius: 'var(--radius-md)', color: 'var(--warning)' }}>
+                                    <Upload size={20} />
+                                    <span style={{ fontSize: 13 }}>You haven't selected any questions. You can add them later in the Exam Details page.</span>
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -155,7 +203,7 @@ export const AdminExamBuilderPage = () => {
                             {step > 1 ? '← Back' : 'Cancel'}
                         </button>
                         
-                        {step < 3 ? (
+                        {step < 4 ? (
                             <button className="btn btn-primary" onClick={() => {
                                 if (step === 1 && !form.title.trim()) {
                                     toast.error('Title is required')
