@@ -3,18 +3,20 @@ import { Result } from "../models/result.models.js";
 
 export const createExam = async (req, res) => {
     try {
-        const { title, description, duration, questions } = req.body;
+        const { title, description, duration, questions, passingPercentage, status } = req.body;
 
-        if (!title || !description || !questions || questions.length === 0) {
-            return res.status(400).json({ message: "Title, description, and at least one question are required." });
+        if (!title || !description) {
+            return res.status(400).json({ message: "Title and description are required." });
         }
 
         const exam = await Exam.create({
             title,
             description,
             durationMinutes: duration || 60,
+            passingPercentage: passingPercentage || 50,
+            status: status || 'Draft',
             createdBy: req.admin._id,
-            questions
+            questions: questions || []
         });
 
         return res.status(201).json({

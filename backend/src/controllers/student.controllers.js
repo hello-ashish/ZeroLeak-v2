@@ -80,6 +80,11 @@ export const submitExamResult = async (req, res) => {
             return res.status(400).json({ message: "Exam ID, score, and total questions are required" });
         }
 
+        const existingResult = await Result.findOne({ student: req.student._id, exam: examId });
+        if (existingResult) {
+            return res.status(400).json({ message: "You have already submitted this exam." });
+        }
+
         const result = await Result.create({
             student: req.student._id,
             exam: examId,

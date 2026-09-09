@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import axios from 'axios'
 import { AdminLayout } from './AdminLayout.jsx'
 import { SkeletonTable, EmptyState } from '../../components/SkeletonLoader.jsx'
@@ -47,7 +47,8 @@ export default function AdminGradebookPage() {
     const [exams, setExams] = useState([])
     const [loading, setLoading] = useState(true)
     const [selectedExam, setSelectedExam] = useState('all')
-    const [search, setSearch] = useState('')
+    const [searchParams] = useSearchParams()
+    const [search, setSearch] = useState(searchParams.get('student') || '')
     const [sortDir, setSortDir] = useState('desc')
     const navigate = useNavigate()
     const toast = useToast()
@@ -77,17 +78,31 @@ export default function AdminGradebookPage() {
 
     const filtered = useMemo(() => {
         let data = results
-        if (selectedExam !== 'all') data = data.filter(r => r.exam?._id === selectedExam || r.exam === selectedExam)
+        if (selectedExam === 'deleted') {
+            data = data.filter(r => !r.exam)
+        } else if (selectedExam !== 'all') {
+            data = data.filter(r => r.exam?._id === selectedExam || r.exam === selectedExam)
+        }
+        
         if (search) {
             const s = search.toLowerCase()
             data = data.filter(r => r.student?.name?.toLowerCase().includes(s) || r.student?.studentId?.toLowerCase().includes(s))
         }
+        
         return [...data].sort((a, b) => {
+            const titleA = a.exam?.title || 'Deleted Exam'
+            const titleB = b.exam?.title || 'Deleted Exam'
+            
+            if (titleA < titleB) return -1
+            if (titleA > titleB) return 1
+            
             const pa = (a.score / a.totalQuestions)
             const pb = (b.score / b.totalQuestions)
             return sortDir === 'desc' ? pb - pa : pa - pb
         })
     }, [results, selectedExam, search, sortDir])
+
+    const hasOrphaned = useMemo(() => results.some(r => !r.exam), [results])
 
     const classSummary = useMemo(() => {
         if (filtered.length === 0) return null
@@ -174,6 +189,7 @@ export default function AdminGradebookPage() {
                                     <Tooltip 
                                         cursor={{ fill: 'var(--bg-hover)' }}
                                         contentStyle={{ background: 'var(--bg-overlay)', border: '1px solid var(--border-default)', borderRadius: 8, fontSize: 13, boxShadow: 'var(--shadow-md)' }}
+                                        itemStyle={{ color: 'var(--text-primary)' }}
                                     />
                                     <Bar dataKey="count" name="Students" radius={[4, 4, 0, 0]}>
                                         {classSummary.dist.map((entry, index) => (
@@ -192,6 +208,7 @@ export default function AdminGradebookPage() {
                 <select className="form-select" style={{ width: 240 }} value={selectedExam} onChange={e => setSelectedExam(e.target.value)}>
                     <option value="all">All Exams</option>
                     {exams.map(e => <option key={e._id} value={e._id}>{e.title}</option>)}
+                    {hasOrphaned && <option value="deleted">Deleted Exams</option>}
                 </select>
                 <div className="search-input-wrap" style={{ flex: 1, maxWidth: 300 }}>
                     <Search size={16} style={{ color: 'var(--text-tertiary)' }} />
@@ -255,7 +272,7 @@ export default function AdminGradebookPage() {
                                             </div>
                                         </td>
                                         <td style={{ fontSize: 12, color: 'var(--text-secondary)', maxWidth: 200 }}>
-                                            <span className="truncate" style={{ display: 'block' }}>{r.exam?.title || '—'}</span>
+                                            <span className="truncate" style={{ display: 'block' }}>{r.exam?.title || 'Deleted Exam'}</span>
                                         </td>
                                         <td style={{ fontFamily: 'var(--font-mono)', fontSize: 13 }}>
                                             {r.score} / {r.totalQuestions}

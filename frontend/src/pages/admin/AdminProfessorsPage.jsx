@@ -248,19 +248,19 @@ export default function AdminProfessorsPage() {
                                 <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Joined {new Date(selectedProf.createdAt).toLocaleDateString()}</div>
                             </div>
 
-                            <div style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', marginBottom: 12 }}>Contributions Snapshot (Simulated)</div>
+                            <div style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', marginBottom: 12 }}>Contributions Snapshot</div>
                             
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
                                 <div style={{ background: 'var(--bg-surface)', padding: 16, borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
                                     <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Batches Submitted</div>
                                     <div style={{ fontSize: 24, fontWeight: 600, color: 'var(--text-primary)', marginTop: 4 }}>
-                                        {Math.floor(Math.random() * 5) + 1}
+                                        {selectedProf.batchesSubmitted || 0}
                                     </div>
                                 </div>
                                 <div style={{ background: 'var(--bg-surface)', padding: 16, borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
                                     <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Questions Approved</div>
                                     <div style={{ fontSize: 24, fontWeight: 600, color: 'var(--text-primary)', marginTop: 4 }}>
-                                        {Math.floor(Math.random() * 50) + 10}
+                                        {selectedProf.questionsApproved || 0}
                                     </div>
                                 </div>
                             </div>

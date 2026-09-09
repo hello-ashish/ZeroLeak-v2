@@ -316,14 +316,14 @@ export default function AdminStudentsPage() {
                                         {studentStats[selectedStudent._id].exams.slice(0, 5).map(res => (
                                             <div key={res._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--bg-surface)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
                                                 <div style={{ flex: 1, minWidth: 0, paddingRight: 12 }}>
-                                                    <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }} className="truncate">{res.exam?.title || 'Unknown Exam'}</div>
+                                                    <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }} className="truncate">{res.exam?.title || 'Deleted Exam'}</div>
                                                     <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>{new Date(res.createdAt).toLocaleDateString()}</div>
                                                 </div>
                                                 <ScorePill score={res.score} total={res.totalQuestions} />
                                             </div>
                                         ))}
                                     </div>
-                                    <button className="btn btn-ghost btn-sm" style={{ width: '100%', marginTop: 8 }} onClick={() => navigate('/admin/gradebook')}>View Full History <ChevronRight size={14} /></button>
+                                    <button className="btn btn-ghost btn-sm" style={{ width: '100%', marginTop: 8 }} onClick={() => navigate(`/admin/gradebook?student=${selectedStudent.studentId}`)}>View Full History <ChevronRight size={14} /></button>
                                 </>
                             )}
                             

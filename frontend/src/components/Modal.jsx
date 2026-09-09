@@ -3,13 +3,18 @@ import React, { useEffect, useRef } from 'react'
 export const Modal = ({ open, onClose, title, children, footer, size = '', }) => {
     const ref = useRef(null)
 
+    const onCloseRef = useRef(onClose)
+    useEffect(() => {
+        onCloseRef.current = onClose
+    }, [onClose])
+
     useEffect(() => {
         if (!open) return
         const prev = document.activeElement
         ref.current?.focus()
 
         const handler = (e) => {
-            if (e.key === 'Escape') onClose()
+            if (e.key === 'Escape') onCloseRef.current?.()
         }
         document.addEventListener('keydown', handler)
         document.body.style.overflow = 'hidden'
@@ -18,7 +23,7 @@ export const Modal = ({ open, onClose, title, children, footer, size = '', }) =>
             document.body.style.overflow = ''
             prev?.focus()
         }
-    }, [open, onClose])
+    }, [open])
 
     if (!open) return null
 

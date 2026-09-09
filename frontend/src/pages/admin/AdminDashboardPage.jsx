@@ -4,14 +4,15 @@ import axios from 'axios'
 import { AdminLayout } from './AdminLayout.jsx'
 import { SkeletonCard, SkeletonTable } from '../../components/SkeletonLoader.jsx'
 import { StatusBadge } from '../../components/StatusBadge.jsx'
-import { 
-    AlertTriangle, TrendingUp, TrendingDown, Users, 
-    BookOpen, CheckCircle2, AlertCircle, Activity, 
-    Clock, Plus, FileText, ChevronRight, Zap, BarChart3
+import {
+    AlertTriangle, TrendingUp, TrendingDown, Users,
+    BookOpen, CheckCircle2, AlertCircle, Activity,
+    Clock, Plus, FileText, ChevronRight, Zap, BarChart3,
+    PackageOpen
 } from 'lucide-react'
-import { 
-    ResponsiveContainer, AreaChart, Area, XAxis, YAxis, 
-    Tooltip, CartesianGrid, BarChart, Bar, Cell 
+import {
+    ResponsiveContainer, AreaChart, Area, XAxis, YAxis,
+    Tooltip, CartesianGrid, BarChart, Bar, Cell
 } from 'recharts'
 import { format, subDays } from 'date-fns'
 
@@ -134,7 +135,7 @@ export default function AdminDashboardPage() {
                                 <AlertTriangle size={24} color="var(--warning)" />
                                 <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Attention Required</h2>
                             </div>
-                            
+
                             <div style={{ display: 'grid', gap: 12 }}>
                                 {s.pendingBatches > 0 && (
                                     <div className="insight-card" style={{ background: 'var(--bg-card)' }}>
@@ -156,7 +157,7 @@ export default function AdminDashboardPage() {
                                         </div>
                                     </div>
                                 )}
-                                
+
                                 {stats?.atRiskStudents?.length > 0 && (
                                     <div className="insight-card" style={{ background: 'var(--bg-card)' }}>
                                         <div className="insight-icon" style={{ background: 'var(--danger-subtle)', color: 'var(--danger)' }}>
@@ -184,7 +185,7 @@ export default function AdminDashboardPage() {
                     {/* KPI Modules */}
                     <div className="kpi-showcase">
                         <div className="kpi-module">
-                            <p className="kpi-module-title">Active Learners</p>
+                            <p className="kpi-module-title">Students</p>
                             <p className="kpi-module-value">{s.students?.toLocaleString() || 0}</p>
                             <p className="kpi-module-sub" style={{ color: 'var(--success)' }}>
                                 <TrendingUp size={16} /> <span>+12.4% vs last month</span>
@@ -228,16 +229,16 @@ export default function AdminDashboardPage() {
                                     <AreaChart data={performanceData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                                         <defs>
                                             <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor={CHART_COLORS.primary} stopOpacity={0.3}/>
-                                                <stop offset="95%" stopColor={CHART_COLORS.primary} stopOpacity={0}/>
+                                                <stop offset="5%" stopColor={CHART_COLORS.primary} stopOpacity={0.3} />
+                                                <stop offset="95%" stopColor={CHART_COLORS.primary} stopOpacity={0} />
                                             </linearGradient>
                                         </defs>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-subtle)" />
                                         <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} dy={10} />
                                         <YAxis tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} domain={['auto', 100]} />
-                                        <Tooltip 
+                                        <Tooltip
                                             contentStyle={{ background: 'var(--bg-overlay)', border: '1px solid var(--border-default)', borderRadius: 8, fontSize: 13, boxShadow: 'var(--shadow-md)' }}
-                                            itemStyle={{ fontWeight: 600 }}
+                                            itemStyle={{ color: 'var(--text-primary)', fontWeight: 600 }}
                                         />
                                         <Area type="monotone" dataKey="score" name="Avg Score (%)" stroke={CHART_COLORS.primary} strokeWidth={3} fillOpacity={1} fill="url(#colorScore)" />
                                     </AreaChart>
@@ -260,9 +261,10 @@ export default function AdminDashboardPage() {
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-subtle)" />
                                             <XAxis dataKey="range" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} dy={10} />
                                             <YAxis tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} allowDecimals={false} />
-                                            <Tooltip 
+                                            <Tooltip
                                                 cursor={{ fill: 'var(--bg-hover)' }}
                                                 contentStyle={{ background: 'var(--bg-overlay)', border: '1px solid var(--border-default)', borderRadius: 8, fontSize: 13, boxShadow: 'var(--shadow-md)' }}
+                                                itemStyle={{ color: 'var(--text-primary)' }}
                                             />
                                             <Bar dataKey="count" name="Submissions" radius={[4, 4, 0, 0]}>
                                                 {scoreDistData.map((entry, index) => (
@@ -283,7 +285,7 @@ export default function AdminDashboardPage() {
 
                     {/* Secondary Row (Recent Exams & Activity) */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-                        
+
                         {/* Upcoming / Recent Exams */}
                         <div className="card">
                             <div className="card-header" style={{ padding: '20px 24px' }}>

@@ -42,7 +42,7 @@ const StudentPerformancePage = () => {
                     <h1 className="page-title" style={{ fontSize: 32, fontWeight: 300, letterSpacing: '-0.02em', marginBottom: 8 }}>Academic Performance</h1>
                     <p className="page-subtitle" style={{ fontSize: 15, color: 'var(--text-secondary)' }}>Understand your progress, strengths, and areas for improvement.</p>
                 </div>
-                
+
                 <div style={{ padding: 64, textAlign: 'center', background: 'var(--bg-card)', borderRadius: 16, border: '1px solid var(--border-default)' }}>
                     <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--bg-body)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', color: 'var(--brand-primary)' }}>
                         <Activity size={32} />
@@ -52,7 +52,7 @@ const StudentPerformancePage = () => {
                         Complete your first assessment to unlock intelligent performance analytics, mathematical trends, and subject intelligence.
                     </p>
                     <button onClick={() => navigate('/student/dashboard')} className="btn btn-primary" style={{ padding: '12px 24px', borderRadius: 8, fontSize: 14 }}>
-                        Return to Command Center
+                        Return to Dashboard
                     </button>
                 </div>
             </div>
@@ -82,7 +82,7 @@ const StudentPerformancePage = () => {
         if (pct > bestScore) bestScore = pct;
         totalScorePct += pct;
     });
-    
+
     const averageScore = Math.round(totalScorePct / completedExams);
 
     // --- Personal Benchmark & Trend ---
@@ -128,11 +128,11 @@ const StudentPerformancePage = () => {
     // --- "Why Did My Score Change?" ---
     let whyInsight = "Complete more exams to unlock performance insights.";
     let whyDetails = [];
-    
+
     if (windowSize >= 2) {
         const recentSubjs = calculateSubjectAverages(reverseResults.slice(0, windowSize));
         const prevSubjs = calculateSubjectAverages(reverseResults.slice(windowSize, windowSize * 2));
-        
+
         let biggestGain = { name: null, diff: 0 };
         let biggestDrop = { name: null, diff: 0 };
 
@@ -161,14 +161,14 @@ const StudentPerformancePage = () => {
     if (lifetimeSubjects.length > 0) {
         const weakest = lifetimeSubjects[lifetimeSubjects.length - 1];
         if (weakest.avg < 60) {
-            nextAction = { 
-                title: `Review ${weakest.name}`, 
+            nextAction = {
+                title: `Review ${weakest.name}`,
                 desc: `Your lifetime average in ${weakest.name} is ${weakest.avg}%. Focus your next study session here.`,
                 icon: <AlertCircle size={20} color="var(--danger)" />
             };
         } else if (trendDiff < 0) {
-            nextAction = { 
-                title: "Reassess recent topics", 
+            nextAction = {
+                title: "Reassess recent topics",
                 desc: "Your recent scores have dipped. Review your latest incorrect answers.",
                 icon: <AlertCircle size={20} color="var(--warning)" />
             };
@@ -182,7 +182,7 @@ const StudentPerformancePage = () => {
         const width = 800;
         const height = 220;
         const stepX = width / (chartData.length - 1);
-        
+
         const points = chartData.map((r, i) => {
             const pct = (r.score / r.totalQuestions) * 100;
             const x = i * stepX;
@@ -194,7 +194,7 @@ const StudentPerformancePage = () => {
 
     return (
         <div style={{ maxWidth: 1100, margin: '0 auto', paddingBottom: 64, fontFamily: 'Inter, system-ui, sans-serif' }}>
-            
+
             {/* Header */}
             <div style={{ marginBottom: 40 }}>
                 <h1 style={{ fontSize: 32, fontWeight: 300, color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: 8 }}>Academic Performance</h1>
@@ -238,7 +238,7 @@ const StudentPerformancePage = () => {
 
             {/* MIDDLE TIER: Score Progression & Insights */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 24, marginBottom: 24, '@media (min-width: 1024px)': { gridTemplateColumns: '2fr 1fr' } }}>
-                
+
                 {/* SVG CHART */}
                 <section style={{ display: 'flex', flexDirection: 'column' }}>
                     <h2 style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Score Progression</h2>
@@ -249,7 +249,7 @@ const StudentPerformancePage = () => {
                                 <div style={{ position: 'absolute', top: 30, left: 0, right: 0, borderTop: '1px dashed var(--border-default)', zIndex: 0 }} />
                                 <div style={{ position: 'absolute', top: 110, left: 0, right: 0, borderTop: '1px dashed var(--border-default)', zIndex: 0 }} />
                                 <div style={{ position: 'absolute', top: 190, left: 0, right: 0, borderTop: '1px dashed var(--border-default)', zIndex: 0 }} />
-                                
+
                                 <svg width="100%" height="260" viewBox="0 0 800 260" preserveAspectRatio="none" style={{ overflow: 'visible', zIndex: 1, position: 'relative' }} onMouseLeave={() => setHoveredPoint(null)}>
                                     <path d={pathD} fill="none" stroke="var(--brand-primary)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
                                     {chartData.map((r, i) => {
@@ -257,11 +257,11 @@ const StudentPerformancePage = () => {
                                         const x = i * (800 / (chartData.length - 1));
                                         const y = 260 - ((pct / 100) * 200 + 30);
                                         const isHovered = hoveredPoint === i;
-                                        
+
                                         // Tooltip bounds calculation
                                         const tooltipX = Math.max(10, Math.min(x - 100, 590));
                                         const tooltipY = Math.max(10, y - 90);
-                                        
+
                                         // Hit area width
                                         const hitWidth = 800 / Math.max(1, chartData.length - 1);
                                         const hitX = Math.max(0, x - hitWidth / 2);
@@ -269,22 +269,22 @@ const StudentPerformancePage = () => {
                                         return (
                                             <g key={i} className="chart-node">
                                                 {/* Invisible hover area spanning full height */}
-                                                <rect 
-                                                    x={hitX} 
-                                                    y={0} 
-                                                    width={hitWidth} 
-                                                    height={260} 
-                                                    fill="transparent" 
+                                                <rect
+                                                    x={hitX}
+                                                    y={0}
+                                                    width={hitWidth}
+                                                    height={260}
+                                                    fill="transparent"
                                                     onMouseEnter={() => setHoveredPoint(i)}
                                                     style={{ cursor: 'crosshair' }}
                                                 />
-                                                
+
                                                 {/* Vertical guide line on hover */}
                                                 {isHovered && <line x1={x} y1={0} x2={x} y2={260} stroke="var(--border-default)" strokeWidth="1" strokeDasharray="4 4" style={{ pointerEvents: 'none' }} />}
-                                                
+
                                                 {/* Node */}
                                                 <circle cx={x} cy={y} r={isHovered ? "8" : "6"} fill={isHovered ? "var(--brand-primary)" : "var(--bg-base)"} stroke="var(--brand-primary)" strokeWidth={isHovered ? "0" : "2.5"} style={{ transition: 'all 0.2s ease', pointerEvents: 'none' }} />
-                                                
+
                                                 {/* Label or Tooltip */}
                                                 {isHovered ? (
                                                     <foreignObject x={tooltipX} y={tooltipY} width="200" height="100" style={{ pointerEvents: 'none', overflow: 'visible' }}>
@@ -321,7 +321,7 @@ const StudentPerformancePage = () => {
                 <section style={{ display: 'flex', flexDirection: 'column' }}>
                     <h2 style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Performance Insights</h2>
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 24 }}>
-                        
+
                         <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', borderRadius: 16, padding: 32, flex: 1 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
                                 <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--bg-body)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--brand-primary)' }}>
@@ -354,7 +354,7 @@ const StudentPerformancePage = () => {
 
             {/* LOWER TIER: Subject & Recent Lists */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 24, '@media (min-width: 1024px)': { gridTemplateColumns: '1fr 2fr' } }}>
-                
+
                 {/* SUBJECT PERFORMANCE */}
                 <section style={{ display: 'flex', flexDirection: 'column' }}>
                     <h2 style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Subject Mastery</h2>
@@ -385,7 +385,7 @@ const StudentPerformancePage = () => {
                             View Full History <ChevronRight size={14} />
                         </button>
                     </div>
-                    
+
                     <div style={{ flex: 1, background: 'var(--bg-card)', border: '1px solid var(--border-default)', borderRadius: 16, overflow: 'hidden' }}>
                         {reverseResults.length === 0 ? (
                             <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>No past assessments available.</div>

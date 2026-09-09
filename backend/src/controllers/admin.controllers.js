@@ -323,6 +323,10 @@ export const deleteExam = async (req, res) => {
         const { id } = req.params;
         const exam = await Exam.findByIdAndDelete(id);
         if (!exam) return res.status(404).json({ message: "Exam not found" });
+        
+        // Cascade delete results associated with this exam
+        await Result.deleteMany({ exam: id });
+        
         await logAction({ actor: req.admin?.email, action: "EXAM_DELETED", targetType: "Exam", targetId: exam._id, targetLabel: exam.title });
         return res.status(200).json({ message: "Exam deleted successfully" });
     } catch (error) {

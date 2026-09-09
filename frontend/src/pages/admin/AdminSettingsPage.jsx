@@ -108,7 +108,7 @@ export default function AdminSettingsPage() {
                 {/* Content */}
                 <div style={{ minWidth: 0, paddingBottom: 60 }}>
                     {activeSection === 'profile' && (
-                        <div className="card" style={{ animation: 'dialogScale 200ms ease' }}>
+                        <div className="card">
                             <div className="card-header" style={{ padding: '24px 32px' }}>
                                 <h2 className="card-title" style={{ fontSize: 18 }}>Profile Information</h2>
                                 <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>Manage your contact details and administrative identity.</p>
@@ -145,7 +145,7 @@ export default function AdminSettingsPage() {
                     )}
 
                     {activeSection === 'appearance' && (
-                        <div className="card" style={{ animation: 'dialogScale 200ms ease' }}>
+                        <div className="card">
                             <div className="card-header" style={{ padding: '24px 32px' }}>
                                 <h2 className="card-title" style={{ fontSize: 18 }}>Appearance Preferences</h2>
                                 <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>Customize the look and feel of your command center.</p>
@@ -186,7 +186,7 @@ export default function AdminSettingsPage() {
                     )}
 
                     {activeSection === 'security' && (
-                        <div className="card" style={{ animation: 'dialogScale 200ms ease' }}>
+                        <div className="card">
                             <div className="card-header" style={{ padding: '24px 32px' }}>
                                 <h2 className="card-title" style={{ fontSize: 18 }}>Security Settings</h2>
                                 <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>Update your password and secure your account.</p>
@@ -218,7 +218,7 @@ export default function AdminSettingsPage() {
                     )}
 
                     {activeSection === 'about' && (
-                        <div className="card" style={{ animation: 'dialogScale 200ms ease' }}>
+                        <div className="card">
                             <div className="card-header" style={{ padding: '24px 32px' }}>
                                 <h2 className="card-title" style={{ fontSize: 18 }}>About ZeroLeak</h2>
                                 <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>System information and infrastructure details.</p>

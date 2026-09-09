@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
-import { Plus, Send, AlertCircle, PackageOpen } from 'lucide-react'
+import { Plus, Send, AlertCircle, PackageOpen, Edit2, Trash2, Eye, EyeOff } from 'lucide-react'
 import { StatusBadge } from '../../components/StatusBadge.jsx'
 import { Skeleton } from '../../components/SkeletonLoader.jsx'
 
@@ -25,6 +25,12 @@ const ProfessorBatchesPage = () => {
     const [subject, setSubject] = useState('')
     const [topic, setTopic] = useState('')
     const [correctAnswerIndex, setCorrectAnswerIndex] = useState(0)
+    const [editingQuestionId, setEditingQuestionId] = useState(null)
+    const [expandedBatches, setExpandedBatches] = useState({})
+
+    const toggleBatchExpansion = (batchId) => {
+        setExpandedBatches(prev => ({ ...prev, [batchId]: !prev[batchId] }))
+    }
 
     useEffect(() => {
         const token = localStorage.getItem('profToken')
@@ -79,14 +85,45 @@ const ProfessorBatchesPage = () => {
         e.preventDefault();
         try {
             const token = localStorage.getItem('profToken');
-            await axios.post(`http://localhost:4000/api/professor/batches/${activeBatchId}/questions`, {
-                title, options, correctAnswer, difficultyLevel, subject, topic, correctAnswerIndex: Number(correctAnswerIndex)
-            }, {
+            const payload = { title, options, correctAnswer, difficultyLevel, subject, topic, correctAnswerIndex: Number(correctAnswerIndex) };
+            
+            if (editingQuestionId) {
+                await axios.put(`http://localhost:4000/api/professor/batches/${activeBatchId}/questions/${editingQuestionId}`, payload, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+            } else {
+                await axios.post(`http://localhost:4000/api/professor/batches/${activeBatchId}/questions`, payload, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+            }
+
+            setTitle(''); setOptions(['', '', '', '']); setCorrectAnswer(''); setCorrectAnswerIndex(0); setTopic('');
+            setActiveBatchId(null); setEditingQuestionId(null);
+            fetchMyBatches(token);
+        } catch (error) {
+            alert("Error: " + (error.response?.data?.message || "Server Error"));
+        }
+    };
+
+    const handleEditQuestion = (batchId, batchSubject, q) => {
+        setActiveBatchId(batchId);
+        setEditingQuestionId(q._id);
+        setSubject(batchSubject);
+        setTitle(q.title || '');
+        setOptions(q.options && q.options.length === 4 ? q.options : ['', '', '', '']);
+        setCorrectAnswer(q.correctAnswer || '');
+        setCorrectAnswerIndex(q.correctAnswerIndex || 0);
+        setDifficultyLevel(q.difficultyLevel || 'easy');
+        setTopic(q.topic || '');
+    };
+
+    const handleDeleteQuestion = async (batchId, questionId) => {
+        if (!window.confirm("Are you sure you want to delete this question?")) return;
+        try {
+            const token = localStorage.getItem('profToken');
+            await axios.delete(`http://localhost:4000/api/professor/batches/${batchId}/questions/${questionId}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-
-            setTitle(''); setOptions(['', '', '', '']); setCorrectAnswer(''); setCorrectAnswerIndex(0);
-            setActiveBatchId(null);
             fetchMyBatches(token);
         } catch (error) {
             alert("Error: " + (error.response?.data?.message || "Server Error"));
@@ -159,8 +196,8 @@ const ProfessorBatchesPage = () => {
             {activeBatchId && (
                 <div className="card" style={{ marginBottom: 24, border: '1px solid var(--brand-primary)' }}>
                     <div className="card-header" style={{ padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <h2 className="card-title">Add Question to Batch</h2>
-                        <button className="btn btn-secondary btn-sm" onClick={() => setActiveBatchId(null)}>Close</button>
+                        <h2 className="card-title">{editingQuestionId ? 'Edit Question' : 'Add Question to Batch'}</h2>
+                        <button className="btn btn-secondary btn-sm" onClick={() => { setActiveBatchId(null); setEditingQuestionId(null); setTitle(''); setOptions(['', '', '', '']); setCorrectAnswer(''); setTopic(''); }}>Close</button>
                     </div>
                     <div className="card-body" style={{ padding: '24px' }}>
                         <form onSubmit={handleAddQuestionToBatch} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
@@ -170,8 +207,8 @@ const ProfessorBatchesPage = () => {
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
                                 <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                    <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>Subject</label>
-                                    <input className="form-input" style={{ background: 'var(--bg-input)', border: '1px solid var(--border-default)', padding: '8px 12px', borderRadius: 6, color: 'white' }} type="text" placeholder="Subject" value={subject} onChange={(e) => setSubject(e.target.value)} required />
+                                    <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>Subject (Inherited)</label>
+                                    <input className="form-input" style={{ background: 'var(--bg-input)', border: '1px solid var(--border-default)', padding: '8px 12px', borderRadius: 6, color: 'var(--text-secondary)', opacity: 0.7 }} type="text" placeholder="Subject" value={subject} readOnly disabled />
                                 </div>
                                 <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                                     <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>Topic</label>
@@ -224,7 +261,14 @@ const ProfessorBatchesPage = () => {
                                     <h3 style={{ margin: '0 0 4px 0', fontSize: 16, color: 'var(--text-primary)' }}>{batch.title}</h3>
                                     <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 13 }}>Subject: {batch.subject} • {batch.questions?.length || 0} Questions</p>
                                 </div>
-                                <StatusBadge status={batch.status} />
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                    {batch.questions && batch.questions.length > 0 && (
+                                        <button className="btn btn-ghost btn-sm" onClick={() => toggleBatchExpansion(batch._id)}>
+                                            {expandedBatches[batch._id] ? <><EyeOff size={14} style={{ marginRight: 6 }}/> Hide Questions</> : <><Eye size={14} style={{ marginRight: 6 }}/> View Questions</>}
+                                        </button>
+                                    )}
+                                    <StatusBadge status={batch.status} />
+                                </div>
                             </div>
 
                             {batch.adminMessage && (
@@ -236,9 +280,49 @@ const ProfessorBatchesPage = () => {
                                 </div>
                             )}
 
+                            {expandedBatches[batch._id] && batch.questions && batch.questions.length > 0 && (
+                                <div style={{ display: 'grid', gap: 12, marginTop: 16 }}>
+                                    {batch.questions.map((q, idx) => (
+                                        <div key={q._id} style={{ padding: 16, border: '1px solid var(--border-subtle)', borderRadius: 8, background: 'var(--bg-surface)' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                                                <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>
+                                                    {idx + 1}. {q.title}
+                                                </div>
+                                                {(batch.status === 'Draft' || batch.status === 'MarkForReview' || batch.status === 'Rejected') && (
+                                                    <div style={{ display: 'flex', gap: 8 }}>
+                                                        <button className="btn btn-ghost btn-sm btn-icon" onClick={() => handleEditQuestion(batch._id, batch.subject, q)} title="Edit Question">
+                                                            <Edit2 size={14} />
+                                                        </button>
+                                                        <button className="btn btn-ghost btn-sm btn-icon" style={{ color: 'var(--danger)' }} onClick={() => handleDeleteQuestion(batch._id, q._id)} title="Delete Question">
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                                                {q.options && q.options.map((opt, oIdx) => (
+                                                    <div key={oIdx} style={{ padding: '4px 8px', background: oIdx === q.correctAnswerIndex ? 'var(--success-subtle)' : 'var(--bg-base)', color: oIdx === q.correctAnswerIndex ? 'var(--success)' : 'var(--text-secondary)', borderRadius: 4, border: oIdx === q.correctAnswerIndex ? '1px solid var(--success)' : '1px solid var(--border-default)' }}>
+                                                        {String.fromCharCode(65 + oIdx)}. {opt}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-tertiary)', display: 'flex', gap: 16 }}>
+                                                <span>Topic: {q.topic}</span>
+                                                <span style={{ textTransform: 'capitalize' }}>Difficulty: {q.difficultyLevel}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
                             {(batch.status === 'Draft' || batch.status === 'MarkForReview' || batch.status === 'Rejected') && (
                                 <div style={{ display: 'flex', gap: 8, marginTop: 24, borderTop: '1px solid var(--border-default)', paddingTop: 16 }}>
-                                    <button className="btn btn-secondary btn-sm" onClick={() => setActiveBatchId(batch._id)}>
+                                    <button className="btn btn-secondary btn-sm" onClick={() => {
+                                        setActiveBatchId(batch._id);
+                                        setEditingQuestionId(null);
+                                        setSubject(batch.subject);
+                                        setTitle(''); setOptions(['', '', '', '']); setCorrectAnswer(''); setCorrectAnswerIndex(0); setTopic('');
+                                    }}>
                                         <Plus size={14} style={{ marginRight: 4 }}/> Add Question
                                     </button>
                                     <button className="btn btn-primary btn-sm" onClick={() => submitBatch(batch._id)} disabled={!batch.questions || batch.questions.length === 0}>

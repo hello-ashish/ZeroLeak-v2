@@ -47,6 +47,18 @@ const TakeExam = () => {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 const fetchedExam = response.data.exam;
+
+                // Check if already taken
+                const resultsRes = await axios.get(`http://localhost:4000/api/students/results`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                const alreadyTaken = resultsRes.data.results?.some(r => (r.exam?._id === id || r.exam === id));
+                
+                if (alreadyTaken) {
+                    alert("You have already completed this exam.");
+                    return navigate('/student/exams');
+                }
+
                 setExam(fetchedExam);
 
                 const savedSession = localStorage.getItem(sessionKey);

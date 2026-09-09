@@ -80,9 +80,57 @@ export const addQuestionToBatch = async (req, res) => {
         if(batch.status !== 'Draft' && batch.status !== 'MarkForReview') {
             return res.status(400).json({ message: "Can only edit Draft or Review batches." })
         }
+        
+        questionData.subject = batch.subject;
+        
         batch.questions.push(questionData)
         await batch.save()
         res.status(200).json({ message: "Question added", batch })
+    } catch (error) {
+        res.status(500).json({ message: error.message })
+    }
+}
+
+// Edit Question in a Draft Batch
+export const editQuestionInBatch = async (req, res) => {
+    try {
+        const { batchId, questionId } = req.params
+        const questionData = req.body
+
+        const batch = await Batch.findById(batchId)
+        if(batch.status !== 'Draft' && batch.status !== 'MarkForReview') {
+            return res.status(400).json({ message: "Can only edit Draft or Review batches." })
+        }
+        
+        const question = batch.questions.id(questionId)
+        if (!question) {
+            return res.status(404).json({ message: "Question not found." })
+        }
+
+        questionData.subject = batch.subject;
+        question.set(questionData)
+
+        await batch.save()
+        res.status(200).json({ message: "Question updated", batch })
+    } catch (error) {
+        res.status(500).json({ message: error.message })
+    }
+}
+
+// Delete Question from a Draft Batch
+export const deleteQuestionFromBatch = async (req, res) => {
+    try {
+        const { batchId, questionId } = req.params
+
+        const batch = await Batch.findById(batchId)
+        if(batch.status !== 'Draft' && batch.status !== 'MarkForReview') {
+            return res.status(400).json({ message: "Can only edit Draft or Review batches." })
+        }
+        
+        batch.questions.pull(questionId)
+
+        await batch.save()
+        res.status(200).json({ message: "Question deleted", batch })
     } catch (error) {
         res.status(500).json({ message: error.message })
     }
