@@ -29,10 +29,11 @@ const StudentResultsPage = () => {
     }, [navigate]);
 
     const getGrade = (pct) => {
-        if (pct >= 90) return 'A';
-        if (pct >= 80) return 'B';
-        if (pct >= 70) return 'C';
-        if (pct >= 60) return 'D';
+        if (pct >= 90) return 'A+';
+        if (pct >= 80) return 'A';
+        if (pct >= 70) return 'B';
+        if (pct >= 60) return 'C';
+        if (pct >= 50) return 'D';
         return 'F';
     };
 
@@ -139,8 +140,8 @@ const StudentResultsPage = () => {
                                                     borderRadius: '50%',
                                                     fontSize: 13, 
                                                     fontWeight: 700, 
-                                                    background: grade === 'A' || grade === 'B' ? 'var(--success-subtle)' : grade === 'C' ? 'var(--warning-subtle)' : 'var(--danger-subtle)',
-                                                    color: grade === 'A' || grade === 'B' ? 'var(--success)' : grade === 'C' ? 'var(--warning)' : 'var(--danger)'
+                                                    background: pct >= 70 ? 'var(--success-subtle)' : pct >= 50 ? 'var(--warning-subtle)' : 'var(--danger-subtle)',
+                                                    color: pct >= 70 ? 'var(--success)' : pct >= 50 ? 'var(--warning)' : 'var(--danger)'
                                                 }}>
                                                     {grade}
                                                 </span>
@@ -201,8 +202,8 @@ const StudentResultsPage = () => {
                                         borderRadius: '50%',
                                         fontSize: 20, 
                                         fontWeight: 700, 
-                                        background: getGrade(Math.round((selectedResult.score / selectedResult.totalQuestions) * 100)) === 'A' || getGrade(Math.round((selectedResult.score / selectedResult.totalQuestions) * 100)) === 'B' ? 'var(--success-subtle)' : getGrade(Math.round((selectedResult.score / selectedResult.totalQuestions) * 100)) === 'C' ? 'var(--warning-subtle)' : 'var(--danger-subtle)',
-                                        color: getGrade(Math.round((selectedResult.score / selectedResult.totalQuestions) * 100)) === 'A' || getGrade(Math.round((selectedResult.score / selectedResult.totalQuestions) * 100)) === 'B' ? 'var(--success)' : getGrade(Math.round((selectedResult.score / selectedResult.totalQuestions) * 100)) === 'C' ? 'var(--warning)' : 'var(--danger)'
+                                        background: Math.round((selectedResult.score / selectedResult.totalQuestions) * 100) >= 70 ? 'var(--success-subtle)' : Math.round((selectedResult.score / selectedResult.totalQuestions) * 100) >= 50 ? 'var(--warning-subtle)' : 'var(--danger-subtle)',
+                                        color: Math.round((selectedResult.score / selectedResult.totalQuestions) * 100) >= 70 ? 'var(--success)' : Math.round((selectedResult.score / selectedResult.totalQuestions) * 100) >= 50 ? 'var(--warning)' : 'var(--danger)'
                                     }}>
                                         {getGrade(Math.round((selectedResult.score / selectedResult.totalQuestions) * 100))}
                                     </span>

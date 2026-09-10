@@ -76,10 +76,11 @@ const StudentDashboardPage = () => {
 
     // Helpers
     const getGrade = (pct) => {
-        if (pct >= 90) return { letter: 'A', color: 'var(--success)' };
-        if (pct >= 80) return { letter: 'B', color: 'var(--success)' };
-        if (pct >= 70) return { letter: 'C', color: 'var(--warning)' };
-        if (pct >= 60) return { letter: 'D', color: 'var(--warning)' };
+        if (pct >= 90) return { letter: 'A+', color: 'var(--success)' };
+        if (pct >= 80) return { letter: 'A', color: 'var(--success)' };
+        if (pct >= 70) return { letter: 'B', color: 'var(--success)' };
+        if (pct >= 60) return { letter: 'C', color: 'var(--warning)' };
+        if (pct >= 50) return { letter: 'D', color: 'var(--warning)' };
         return { letter: 'F', color: 'var(--danger)' };
     };
 

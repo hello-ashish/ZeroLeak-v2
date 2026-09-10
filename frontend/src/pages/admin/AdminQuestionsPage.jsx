@@ -26,7 +26,7 @@ export default function AdminQuestionsPage() {
         try {
             setLoading(true)
             const res = await axios.get(`${API}/questions`, { headers: { Authorization: `Bearer ${token}` } })
-            
+
             setQuestions(res.data.questions || [])
         } catch {
             toast.error('Failed to load question bank')
@@ -87,12 +87,12 @@ export default function AdminQuestionsPage() {
                     { label: 'Total Questions', value: stats.total, icon: <Database size={20} color="var(--brand-primary)" />, bg: 'var(--brand-primary-subtle)' },
                     { label: 'High Success (>70%)', value: questions.filter(q => q.health.successRate > 70).length, icon: <CheckCircle2 size={20} color="var(--success)" />, bg: 'var(--success-subtle)' },
                     { label: 'Low Success (<40%)', value: questions.filter(q => q.health.successRate < 40).length, icon: <BarChart3 size={20} color="var(--warning)" />, bg: 'var(--warning-subtle)' },
-                    { label: 'Flagged / Needs Review', value: questions.filter(q => q.health.flagged).length, icon: <AlertTriangle size={20} color="var(--danger)" />, bg: 'var(--danger-subtle)' },
+                    { label: 'Flagged / Needs Review', value: questions.filter(q => q.health.flagged).length, icon: questions.filter(q => q.health.flagged).length > 0 ? <AlertTriangle size={20} color="var(--danger)" /> : null, bg: questions.filter(q => q.health.flagged).length > 0 ? 'var(--danger-subtle)' : 'transparent' },
                 ].map(s => (
                     <div className="kpi-card" key={s.label}>
                         <div className="kpi-card-header">
                             <span className="kpi-label">{s.label}</span>
-                            <span className="kpi-icon" style={{ background: s.bg }}>{s.icon}</span>
+                            {s.icon && <span className="kpi-icon" style={{ background: s.bg }}>{s.icon}</span>}
                         </div>
                         <div className="kpi-value">{loading ? '—' : s.value}</div>
                     </div>
@@ -100,7 +100,7 @@ export default function AdminQuestionsPage() {
             </div>
 
             <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
-                
+
                 {/* Main Content Area */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                     {/* Filters */}
@@ -163,9 +163,9 @@ export default function AdminQuestionsPage() {
                                     ) : filtered.map(q => {
                                         const isSelected = selectedQuestion?._id === q._id
                                         return (
-                                            <tr key={q._id} 
+                                            <tr key={q._id}
                                                 onClick={() => setSelectedQuestion(q)}
-                                                style={{ 
+                                                style={{
                                                     cursor: 'pointer',
                                                     background: isSelected ? 'var(--bg-active)' : 'transparent',
                                                     borderLeft: isSelected ? '2px solid var(--brand-primary)' : '2px solid transparent'
@@ -192,10 +192,10 @@ export default function AdminQuestionsPage() {
                                                 <td>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                                         <div style={{ width: 40, height: 4, background: 'var(--bg-elevated)', borderRadius: 2, overflow: 'hidden' }}>
-                                                            <div style={{ 
-                                                                width: `${q.health.successRate}%`, 
-                                                                height: '100%', 
-                                                                background: q.health.successRate > 70 ? 'var(--success)' : q.health.successRate < 40 ? 'var(--danger)' : 'var(--warning)' 
+                                                            <div style={{
+                                                                width: `${q.health.successRate}%`,
+                                                                height: '100%',
+                                                                background: q.health.successRate > 70 ? 'var(--success)' : q.health.successRate < 40 ? 'var(--danger)' : 'var(--warning)'
                                                             }} />
                                                         </div>
                                                         <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>{q.health.successRate}%</span>
@@ -212,13 +212,13 @@ export default function AdminQuestionsPage() {
 
                 {/* Right Side Drawer / Panel */}
                 {selectedQuestion && (
-                    <div style={{ 
-                        width: 360, 
-                        flexShrink: 0, 
-                        background: 'var(--bg-elevated)', 
-                        border: '1px solid var(--border-default)', 
-                        borderRadius: 'var(--radius-lg)', 
-                        position: 'sticky', 
+                    <div style={{
+                        width: 360,
+                        flexShrink: 0,
+                        background: 'var(--bg-elevated)',
+                        border: '1px solid var(--border-default)',
+                        borderRadius: 'var(--radius-lg)',
+                        position: 'sticky',
                         top: 'var(--topbar-height)',
                         marginTop: 48,
                         animation: 'slideInRight 200ms ease',
@@ -229,7 +229,7 @@ export default function AdminQuestionsPage() {
                         <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-default)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <div>
                                 <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Question Details</h3>
-                                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>ID: {selectedQuestion._id.substring(0,8)}</p>
+                                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>ID: {selectedQuestion._id.substring(0, 8)}</p>
                             </div>
                             <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setSelectedQuestion(null)}>
                                 <X size={16} />
@@ -259,9 +259,9 @@ export default function AdminQuestionsPage() {
                             <h4 style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', marginBottom: 12 }}>Options</h4>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
                                 {selectedQuestion.options?.map((opt, i) => (
-                                    <div key={i} style={{ 
-                                        padding: '10px 14px', 
-                                        borderRadius: 'var(--radius-sm)', 
+                                    <div key={i} style={{
+                                        padding: '10px 14px',
+                                        borderRadius: 'var(--radius-sm)',
                                         border: opt.isCorrect ? '1px solid var(--success-border)' : '1px solid var(--border-subtle)',
                                         background: opt.isCorrect ? 'var(--success-subtle)' : 'var(--bg-surface)',
                                         display: 'flex', gap: 12, alignItems: 'center',
@@ -288,7 +288,7 @@ export default function AdminQuestionsPage() {
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <div style={{ marginTop: 24, display: 'flex', gap: 12 }}>
                                 <button className="btn btn-secondary" style={{ flex: 1 }} onClick={handleEditQuestion}>Edit Question</button>
                                 <button className="btn btn-danger btn-icon" title="Archive" onClick={handleArchiveQuestion}><Trash2 size={16} /></button>
