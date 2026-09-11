@@ -88,11 +88,7 @@ const TakeExam = () => {
     }, [id, navigate, sessionKey]);
 
     const handleAutoSubmit = useCallback(() => {
-        let totalScore = 0;
-        exam.questions.forEach((q) => {
-            if (answers[q._id] === q.correctAnswerIndex) totalScore += 1;
-        });
-        submitExamData(totalScore);
+        submitExamData();
     }, [answers, exam]);
 
     // Timer Logic
@@ -205,18 +201,20 @@ const TakeExam = () => {
         setConfidenceLevels({ ...confidenceLevels, [questionId]: level });
     };
 
-    const submitExamData = async (totalScore) => {
+    const submitExamData = async () => {
         setIsSubmitting(true);
         if (timerRef.current) clearInterval(timerRef.current);
         try {
             const token = localStorage.getItem('studentToken');
-            await axios.post('http://localhost:4000/api/students/results', {
+            const response = await axios.post('http://localhost:4000/api/students/results', {
                 examId: exam._id,
-                score: totalScore,
-                totalQuestions: exam.questions.length
+                answers: Object.entries(answers).map(([questionId, selectedOptionIndex]) => ({
+                    questionId,
+                    selectedOptionIndex
+                }))
             }, { headers: { Authorization: `Bearer ${token}` } });
             
-            setScore(totalScore);
+            setScore(response.data.result.score);
             localStorage.removeItem(sessionKey);
             setShowPreSubmit(false);
         } catch (error) {
@@ -227,11 +225,7 @@ const TakeExam = () => {
     };
 
     const confirmSubmission = () => {
-        let totalScore = 0;
-        exam.questions.forEach((q) => {
-            if (answers[q._id] === q.correctAnswerIndex) totalScore += 1;
-        });
-        submitExamData(totalScore);
+        submitExamData();
     };
 
     if (loading) {
