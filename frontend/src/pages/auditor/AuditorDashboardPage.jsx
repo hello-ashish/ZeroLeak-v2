@@ -5,13 +5,24 @@ import { AuditorLayout } from './AuditorLayout.jsx'
 import { SkeletonCard } from '../../components/SkeletonLoader.jsx'
 import { AlertTriangle, Activity, CheckCircle2, ShieldAlert, FileText, ChevronRight } from 'lucide-react'
 import { format } from 'date-fns'
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 
 const API = 'http://localhost:4000/api'
 const getToken = () => localStorage.getItem('auditorToken')
 
+const CHART_COLORS = {
+    primary: 'var(--brand-primary)',
+    secondary: 'var(--brand-accent)',
+    success: 'var(--success)',
+    warning: 'var(--warning)',
+    danger: 'var(--danger)',
+    muted: 'var(--border-strong)'
+}
+
 export default function AuditorDashboardPage() {
     const [metrics, setMetrics] = useState(null)
     const [recentLogs, setRecentLogs] = useState([])
+    const [activityTrend, setActivityTrend] = useState([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
     const navigate = useNavigate()
@@ -29,6 +40,7 @@ export default function AuditorDashboardPage() {
                 })
                 setMetrics(res.data.metrics)
                 setRecentLogs(res.data.recentLogs)
+                setActivityTrend(res.data.activityTrend || [])
                 setLoading(false)
             } catch (err) {
                 console.error(err)
@@ -42,6 +54,11 @@ export default function AuditorDashboardPage() {
         }
         fetchDashboard()
     }, [])
+
+    const trendData = activityTrend.map(d => ({
+        ...d,
+        date: format(new Date(d.date), 'MMM dd')
+    }))
 
     return (
         <AuditorLayout openAnomaliesCount={metrics?.openAnomalies || 0}>
@@ -83,14 +100,22 @@ export default function AuditorDashboardPage() {
 
                     {/* High-Level Metrics */}
                     <div className="kpi-showcase" style={{ marginBottom: 32 }}>
-                        <div className="kpi-module">
+                        <div
+                            className="kpi-module"
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => navigate('/auditor/audit')}
+                        >
                             <p className="kpi-module-title">Audit Events</p>
                             <p className="kpi-module-value">{metrics?.totalEvents?.toLocaleString() || 0}</p>
                             <p className="kpi-module-sub" style={{ color: 'var(--text-secondary)' }}>
                                 <FileText size={16} /> <span>Historical records</span>
                             </p>
                         </div>
-                        <div className="kpi-module">
+                        <div
+                            className="kpi-module"
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => navigate('/auditor/audit?action=BATCH_REJECTED|EXAM_DELETED|STUDENT_DELETED|PROFESSOR_DELETED')}
+                        >
                             <p className="kpi-module-title">High-Risk Events</p>
                             <p className="kpi-module-value" style={{ color: metrics?.highRiskEvents > 0 ? 'var(--warning)' : 'inherit' }}>
                                 {metrics?.highRiskEvents || 0}
@@ -99,7 +124,11 @@ export default function AuditorDashboardPage() {
                                 <AlertTriangle size={16} /> <span>Require attention</span>
                             </p>
                         </div>
-                        <div className="kpi-module">
+                        <div
+                            className="kpi-module"
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => navigate('/auditor/anomalies')}
+                        >
                             <p className="kpi-module-title">Unresolved Anomalies</p>
                             <p className="kpi-module-value" style={{ color: metrics?.openAnomalies > 0 ? 'var(--danger)' : 'inherit' }}>
                                 {metrics?.openAnomalies || 0}
@@ -108,7 +137,11 @@ export default function AuditorDashboardPage() {
                                 <ShieldAlert size={16} /> <span>Open cases</span>
                             </p>
                         </div>
-                        <div className="kpi-module">
+                        <div
+                            className="kpi-module"
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => navigate('/auditor/audit')}
+                        >
                             <p className="kpi-module-title">Logging Status</p>
                             <p className="kpi-module-value" style={{ fontSize: 24, color: 'var(--success)' }}>
                                 {metrics?.loggingStatus || 'Healthy'}
@@ -116,6 +149,36 @@ export default function AuditorDashboardPage() {
                             <p className="kpi-module-sub" style={{ color: 'var(--success)' }}>
                                 <CheckCircle2 size={16} /> <span>Verified</span>
                             </p>
+                        </div>
+                    </div>
+
+                    {/* Interactive Line Chart for Activity Trend */}
+                    <div className="card" style={{ marginBottom: 32 }}>
+                        <div className="card-header" style={{ padding: '24px' }}>
+                            <div>
+                                <h3 className="card-title" style={{ fontSize: 16 }}>System Activity Trend</h3>
+                                <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 4 }}>7-day rolling volume of audit events</p>
+                            </div>
+                        </div>
+                        <div className="card-body" style={{ padding: '0 24px 24px 10px', height: 320 }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                    <defs>
+                                        <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor={CHART_COLORS.primary} stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor={CHART_COLORS.primary} stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-subtle)" />
+                                    <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} dy={10} />
+                                    <YAxis tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                                    <Tooltip
+                                        contentStyle={{ background: 'var(--bg-overlay)', border: '1px solid var(--border-default)', borderRadius: 8, fontSize: 13, boxShadow: 'var(--shadow-md)' }}
+                                        itemStyle={{ color: 'var(--text-primary)', fontWeight: 600 }}
+                                    />
+                                    <Area type="monotone" dataKey="count" name="Events" stroke={CHART_COLORS.primary} strokeWidth={3} fillOpacity={1} fill="url(#colorCount)" />
+                                </AreaChart>
+                            </ResponsiveContainer>
                         </div>
                     </div>
 

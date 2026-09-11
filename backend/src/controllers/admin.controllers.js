@@ -253,6 +253,35 @@ export const getDashboardStats = async (req, res) => {
             Exam.find({}).sort({ createdAt: -1 }).limit(5).populate("questions", "_id")
         ]);
 
+        // Compute performance trend over the last 7 days
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        const recentResults = allResults.filter(r => new Date(r.createdAt) >= sevenDaysAgo);
+        
+        const performanceMap = {};
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            const dateStr = d.toISOString().split('T')[0];
+            performanceMap[dateStr] = { date: dateStr, totalScore: 0, count: 0, passed: 0 };
+        }
+        
+        recentResults.forEach(r => {
+            const dateStr = new Date(r.createdAt).toISOString().split('T')[0];
+            if (performanceMap[dateStr]) {
+                const scorePct = (r.score / r.totalQuestions) * 100;
+                performanceMap[dateStr].totalScore += scorePct;
+                performanceMap[dateStr].count += 1;
+                if (scorePct >= 50) performanceMap[dateStr].passed += 1;
+            }
+        });
+        
+        const performanceData = Object.values(performanceMap).map(day => ({
+            date: day.date,
+            score: day.count > 0 ? Math.round(day.totalScore / day.count) : 0,
+            passRate: day.count > 0 ? Math.round((day.passed / day.count) * 100) : 0
+        }));
+
         // Compute pass rate and average score from Results
         let avgScore = 0;
         let passRate = 0;
@@ -271,13 +300,26 @@ export const getDashboardStats = async (req, res) => {
 
         // Top and at-risk students (from results)
         const studentPerformance = {};
+        const scoreDistribution = {
+            below50: 0,
+            fiftyToSixtyNine: 0,
+            seventyToEightyNine: 0,
+            above90: 0
+        };
+
         for (const r of allResults) {
+            const pct = (r.score / r.totalQuestions) * 100;
+            if (pct < 50) scoreDistribution.below50 += 1;
+            else if (pct < 70) scoreDistribution.fiftyToSixtyNine += 1;
+            else if (pct < 90) scoreDistribution.seventyToEightyNine += 1;
+            else scoreDistribution.above90 += 1;
+
             if (!r.student) continue;
             const sid = r.student._id.toString();
             if (!studentPerformance[sid]) {
                 studentPerformance[sid] = { name: r.student.name, studentId: r.student.studentId, scores: [] };
             }
-            studentPerformance[sid].scores.push((r.score / r.totalQuestions) * 100);
+            studentPerformance[sid].scores.push(pct);
         }
         const studentStats = Object.values(studentPerformance).map(s => ({
             name: s.name,
@@ -299,12 +341,14 @@ export const getDashboardStats = async (req, res) => {
                 totalResults: allResults.length,
                 avgScore,
                 passRate,
+                scoreDistribution
             },
             questionsBySubject,
             topStudents,
             atRiskStudents,
             recentLogs,
-            recentExams
+            recentExams,
+            performanceData
         });
     } catch (error) {
         console.error("Dashboard Stats Error:", error.message);

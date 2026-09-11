@@ -64,11 +64,9 @@ export default function AdminDashboardPage() {
     const adminData = JSON.parse(localStorage.getItem('adminData') || '{}')
     const adminName = (adminData.email || 'Admin').split('@')[0]
 
-    // Generate mock trend data for the area chart (in a real app, this would come from the API)
-    const performanceData = Array.from({ length: 7 }).map((_, i) => ({
-        date: format(subDays(new Date(), 6 - i), 'MMM dd'),
-        score: Math.floor(Math.random() * (90 - 70 + 1)) + 70,
-        passRate: Math.floor(Math.random() * (100 - 85 + 1)) + 85
+    const performanceData = (stats?.performanceData || []).map(d => ({
+        ...d,
+        date: format(new Date(d.date), 'MMM dd')
     }))
 
     const scoreDistData = [

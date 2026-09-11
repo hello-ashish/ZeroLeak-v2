@@ -1,21 +1,24 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AuditorLayout } from './AuditorLayout.jsx'
 import { SkeletonRow } from '../../components/SkeletonLoader.jsx'
 import axios from 'axios'
 import { format } from 'date-fns'
-import { Search } from 'lucide-react'
+import { Search, Download } from 'lucide-react'
 
 const API = 'http://localhost:4000/api'
 const getToken = () => localStorage.getItem('auditorToken')
 
 export default function AuditorAuditExplorerPage() {
+    const [searchParams] = useSearchParams()
+    const initialAction = searchParams.get('action') || ''
+    
     const [logs, setLogs] = useState([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
     const [page, setPage] = useState(1)
     const [total, setTotal] = useState(0)
-    const [actionFilter, setActionFilter] = useState('')
+    const [actionFilter, setActionFilter] = useState(initialAction)
     const [actorFilter, setActorFilter] = useState('')
     const navigate = useNavigate()
     const limit = 30
@@ -49,6 +52,35 @@ export default function AuditorAuditExplorerPage() {
         setPage(1)
         fetchLogs()
     }
+
+    const exportToCSV = () => {
+        if (logs.length === 0) return;
+        
+        const headers = ['Timestamp', 'Event ID', 'Action', 'Role', 'Actor', 'Target', 'Status'];
+        const csvRows = [headers.join(',')];
+        
+        logs.forEach(log => {
+            const row = [
+                format(new Date(log.createdAt), 'yyyy-MM-dd HH:mm:ss'),
+                log._id,
+                log.action,
+                log.actorRole || '',
+                log.actor || '',
+                log.targetLabel ? `"${log.targetLabel.replace(/"/g, '""')}"` : '',
+                log.status
+            ];
+            csvRows.push(row.join(','));
+        });
+        
+        const csvContent = "data:text/csv;charset=utf-8," + csvRows.join('\n');
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `audit_logs_export_${format(new Date(), 'yyyyMMdd_HHmmss')}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
 
     const totalPages = Math.ceil(total / limit)
 
@@ -89,6 +121,9 @@ export default function AuditorAuditExplorerPage() {
                     </div>
                     <button type="submit" className="btn btn-primary btn-sm">Apply Filters</button>
                     <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setActionFilter(''); setActorFilter(''); setPage(1); fetchLogs() }}>Clear</button>
+                    <button type="button" className="btn btn-secondary btn-sm" onClick={exportToCSV} disabled={logs.length === 0} style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Download size={14} /> Export CSV
+                    </button>
                 </form>
             </div>
 

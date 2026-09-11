@@ -8,6 +8,8 @@ import { Result } from "../models/result.models.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 
+import mongoose from "mongoose";
+
 // ─── Register Auditor (For setup) ─────────────────────────────────────────────
 export const registerAuditor = async (req, res) => {
     try {
@@ -63,19 +65,44 @@ export const getDashboardMetrics = async (req, res) => {
     try {
         const [totalLogs, highRiskLogs, activeAnomalies, recentLogs] = await Promise.all([
             AuditLog.countDocuments(),
-            AuditLog.countDocuments({ action: { $in: ["ADMIN_LOGIN", "BATCH_REJECTED", "EXAM_DELETED", "STUDENT_DELETED", "PROFESSOR_DELETED"] } }), // Mocking high risk logic
+            AuditLog.countDocuments({ action: { $in: ["ADMIN_LOGIN", "BATCH_REJECTED", "EXAM_DELETED", "STUDENT_DELETED", "PROFESSOR_DELETED"] } }),
             Anomaly.countDocuments({ status: { $in: ["Open", "Under Review"] } }),
             AuditLog.find().sort({ createdAt: -1 }).limit(10)
         ]);
+
+        const loggingStatus = mongoose.connection.readyState === 1 ? "Operational" : "Degraded";
+
+        // Compute 7-day activity trend
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        const recentAuditLogs = await AuditLog.find({ createdAt: { $gte: sevenDaysAgo } });
+
+        const trendMap = {};
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            const dateStr = d.toISOString().split('T')[0];
+            trendMap[dateStr] = { date: dateStr, count: 0 };
+        }
+
+        recentAuditLogs.forEach(log => {
+            const dateStr = new Date(log.createdAt).toISOString().split('T')[0];
+            if (trendMap[dateStr]) {
+                trendMap[dateStr].count += 1;
+            }
+        });
+
+        const activityTrend = Object.values(trendMap);
 
         return res.status(200).json({
             metrics: {
                 totalEvents: totalLogs,
                 highRiskEvents: highRiskLogs,
                 openAnomalies: activeAnomalies,
-                loggingStatus: "Operational"
+                loggingStatus
             },
-            recentLogs
+            recentLogs,
+            activityTrend
         });
     } catch (error) {
         return res.status(500).json({ message: "Error fetching dashboard metrics" });
@@ -147,9 +174,7 @@ export const updateAnomalyStatus = async (req, res) => {
 // ─── Run Anomaly Scan (Triggered by Auditor manually or via cron) ───────────
 export const scanAnomalies = async (req, res) => {
     try {
-        // Detect rule: Multiple failed logins (simulated by multiple identical rapid requests or just looking for patterns)
-        // Since we don't have failed login events logged in the DB currently, we will mock rule detection or detect other real events.
-        // For example: Detect if an exam was deleted.
+        // Detect rule 1: Detect if an exam was deleted.
         const deletedExamsLogs = await AuditLog.find({ action: "EXAM_DELETED" });
         for (const log of deletedExamsLogs) {
             const exists = await Anomaly.findOne({ targetId: log.targetId, rule: "Exam Deleted" });
@@ -182,6 +207,122 @@ export const scanAnomalies = async (req, res) => {
                     actor: log.actor,
                     relatedEvents: [log._id]
                 });
+            }
+        }
+
+        // Rule 3: Critical Identity Deletion
+        const identityDeletionLogs = await AuditLog.find({ action: { $in: ["STUDENT_DELETED", "PROFESSOR_DELETED"] } });
+        for (const log of identityDeletionLogs) {
+            const role = log.action === "STUDENT_DELETED" ? "Student" : "Professor";
+            const exists = await Anomaly.findOne({ targetId: log.targetId, rule: "Critical Identity Deletion" });
+            if (!exists) {
+                await Anomaly.create({
+                    rule: "Critical Identity Deletion",
+                    description: `A ${role} account (${log.targetLabel}) was deleted by ${log.actor}.`,
+                    severity: "High",
+                    category: "Access & Identity",
+                    targetType: role,
+                    targetId: log.targetId,
+                    actor: log.actor,
+                    relatedEvents: [log._id]
+                });
+            }
+        }
+
+        // Rule 4: Perfect Score Anomaly (Flagged for Review)
+        const perfectResults = await Result.find({ $expr: { $eq: ["$score", "$totalQuestions"] } }).populate('student exam');
+        for (const result of perfectResults) {
+            if (!result.student || !result.exam) continue;
+            const exists = await Anomaly.findOne({ targetId: result.student._id, rule: "Perfect Score Anomaly", "relatedEvents.0": result._id });
+            if (!exists) {
+                await Anomaly.create({
+                    rule: "Perfect Score Anomaly",
+                    description: `Student ${result.student.name} achieved a perfect score on ${result.exam.title}. Flagged for routine review.`,
+                    severity: "Low",
+                    category: "Academic Integrity",
+                    targetType: "Student",
+                    targetId: result.student._id,
+                    actor: "System",
+                    relatedEvents: [result._id] // Storing Result ID instead of AuditLog ID
+                });
+            }
+        }
+
+        // Rules 5 & 6: Mass Failure and Probable Exam Leak
+        const examStats = await Result.aggregate([
+            {
+                $group: {
+                    _id: "$exam",
+                    totalSubmissions: { $sum: 1 },
+                    perfectScores: { $sum: { $cond: [{ $eq: ["$score", "$totalQuestions"] }, 1, 0] } },
+                    passes: { $sum: { $cond: [{ $gte: [{ $divide: ["$score", "$totalQuestions"] }, 0.5] }, 1, 0] } }
+                }
+            }
+        ]);
+
+        for (const stat of examStats) {
+            if (stat.totalSubmissions >= 5) {
+                const passRate = stat.passes / stat.totalSubmissions;
+                const perfectRate = stat.perfectScores / stat.totalSubmissions;
+                const examObj = await Exam.findById(stat._id);
+                if (!examObj) continue;
+
+                if (passRate < 0.2) {
+                    const exists = await Anomaly.findOne({ targetId: stat._id, rule: "Mass Failure Detected" });
+                    if (!exists) {
+                        await Anomaly.create({
+                            rule: "Mass Failure Detected",
+                            description: `Exam '${examObj.title}' has an unusually low pass rate (${Math.round(passRate * 100)}%). Indicates flawed or excessively difficult questions.`,
+                            severity: "High",
+                            category: "Academic Integrity",
+                            targetType: "Exam",
+                            targetId: stat._id,
+                            actor: "System",
+                            relatedEvents: []
+                        });
+                    }
+                }
+
+                if (perfectRate > 0.3) {
+                    const exists = await Anomaly.findOne({ targetId: stat._id, rule: "Probable Exam Leak" });
+                    if (!exists) {
+                        await Anomaly.create({
+                            rule: "Probable Exam Leak",
+                            description: `Exam '${examObj.title}' has an unusually high perfect score rate (${Math.round(perfectRate * 100)}%). Strongly indicates a compromised exam.`,
+                            severity: "Critical",
+                            category: "Academic Integrity",
+                            targetType: "Exam",
+                            targetId: stat._id,
+                            actor: "System",
+                            relatedEvents: []
+                        });
+                    }
+                }
+            }
+        }
+
+        // Rule 7: Suspicious Admin Activity
+        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const suspiciousAdminActivity = await AuditLog.aggregate([
+            { $match: { actorRole: "Admin", action: { $in: ["STUDENT_DELETED", "PROFESSOR_DELETED", "EXAM_DELETED", "BATCH_REJECTED"] }, createdAt: { $gte: oneDayAgo } } },
+            { $group: { _id: "$actor", count: { $sum: 1 }, events: { $push: "$_id" } } }
+        ]);
+
+        for (const activity of suspiciousAdminActivity) {
+            if (activity.count >= 3) {
+                const exists = await Anomaly.findOne({ actor: activity._id, rule: "Suspicious Admin Activity" });
+                if (!exists) {
+                    await Anomaly.create({
+                        rule: "Suspicious Admin Activity",
+                        description: `Admin ${activity._id} performed ${activity.count} destructive actions in the last 24 hours. Investigate for potential account compromise.`,
+                        severity: "High",
+                        category: "Access & Identity",
+                        targetType: "Admin",
+                        targetId: activity._id,
+                        actor: activity._id,
+                        relatedEvents: activity.events
+                    });
+                }
             }
         }
 

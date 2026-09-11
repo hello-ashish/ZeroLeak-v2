@@ -4,7 +4,7 @@ import { AuditorLayout } from './AuditorLayout.jsx'
 import { SkeletonRow } from '../../components/SkeletonLoader.jsx'
 import axios from 'axios'
 import { format } from 'date-fns'
-import { ShieldAlert, RefreshCw, CheckCircle2 } from 'lucide-react'
+import { ShieldAlert, RefreshCw, CheckCircle2, Filter } from 'lucide-react'
 
 const API = 'http://localhost:4000/api'
 const getToken = () => localStorage.getItem('auditorToken')
@@ -13,6 +13,8 @@ export default function AuditorAnomaliesPage() {
     const [anomalies, setAnomalies] = useState([])
     const [loading, setLoading] = useState(true)
     const [scanning, setScanning] = useState(false)
+    const [statusFilter, setStatusFilter] = useState('All')
+    const [severityFilter, setSeverityFilter] = useState('All')
     const navigate = useNavigate()
 
     const fetchAnomalies = async () => {
@@ -60,6 +62,12 @@ export default function AuditorAnomaliesPage() {
         }
     }
 
+    const filteredAnomalies = anomalies.filter(a => {
+        const matchStatus = statusFilter === 'All' || a.status === statusFilter
+        const matchSeverity = severityFilter === 'All' || a.severity === severityFilter
+        return matchStatus && matchSeverity
+    })
+
     const openCount = anomalies.filter(a => a.status === 'Open').length
 
     const severityColors = {
@@ -102,6 +110,39 @@ export default function AuditorAnomaliesPage() {
                 ))}
             </div>
 
+            {/* Filter Bar */}
+            <div className="card" style={{ padding: '16px 20px', marginBottom: 24, display: 'flex', gap: 16, alignItems: 'center', background: 'var(--bg-panel)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-secondary)', fontSize: 14, fontWeight: 500 }}>
+                    <Filter size={16} /> Filters:
+                </div>
+                <select 
+                    value={statusFilter} 
+                    onChange={e => setStatusFilter(e.target.value)}
+                    style={{ background: 'var(--bg-input)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '6px 12px', fontSize: 13, color: 'var(--text-primary)', outline: 'none' }}
+                >
+                    <option value="All">All Statuses</option>
+                    <option value="Open">Open</option>
+                    <option value="Under Review">Under Review</option>
+                    <option value="Resolved">Resolved</option>
+                    <option value="Dismissed">Dismissed</option>
+                </select>
+                <select 
+                    value={severityFilter} 
+                    onChange={e => setSeverityFilter(e.target.value)}
+                    style={{ background: 'var(--bg-input)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '6px 12px', fontSize: 13, color: 'var(--text-primary)', outline: 'none' }}
+                >
+                    <option value="All">All Severities</option>
+                    <option value="Critical">Critical</option>
+                    <option value="High">High</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Low">Low</option>
+                </select>
+                
+                <span style={{ marginLeft: 'auto', fontSize: 13, color: 'var(--text-tertiary)' }}>
+                    Showing {filteredAnomalies.length} result(s)
+                </span>
+            </div>
+
             <div className="card">
                 <div className="data-table-wrapper" style={{ border: 'none', borderRadius: 0 }}>
                     <table className="data-table">
@@ -121,15 +162,15 @@ export default function AuditorAnomaliesPage() {
                             </tbody>
                         ) : (
                             <tbody>
-                                {anomalies.length === 0 ? (
+                                {filteredAnomalies.length === 0 ? (
                                     <tr>
                                         <td colSpan={6} style={{ textAlign: 'center', padding: '48px' }}>
                                             <CheckCircle2 size={32} color="var(--success)" style={{ opacity: 0.5, marginBottom: 12, display: 'block', margin: '0 auto 12px' }} />
-                                            <p style={{ fontWeight: 600, color: 'var(--text-primary)' }}>No Anomalies Detected</p>
-                                            <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 4 }}>Run a detection scan to check for new patterns.</p>
+                                            <p style={{ fontWeight: 600, color: 'var(--text-primary)' }}>No Anomalies Found</p>
+                                            <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 4 }}>Try adjusting your filters or run a scan.</p>
                                         </td>
                                     </tr>
-                                ) : anomalies.map(anom => {
+                                ) : filteredAnomalies.map(anom => {
                                     const sev = severityColors[anom.severity] || severityColors['Low']
                                     return (
                                         <tr key={anom._id}>
