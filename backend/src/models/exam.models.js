@@ -44,7 +44,11 @@ const examSchema = new mongoose.Schema({
     questions: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Question',
-    }]
+    }],
+    questionMerkleRoot: {
+        type: String,
+        default: null,
+    },
 }, { timestamps: true })
 
 export const Exam = mongoose.model('Exam', examSchema)

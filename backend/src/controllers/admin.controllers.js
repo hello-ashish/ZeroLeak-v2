@@ -6,6 +6,10 @@ import { Student } from "../models/student.models.js";
 import { Exam } from "../models/exam.models.js";
 import { Result } from "../models/result.models.js";
 import { AuditLog } from "../models/auditlog.models.js";
+import {
+    encryptQuestionContent,
+    hashQuestionContent,
+} from "../Services/crypto.service.js";
 
 // ─── Audit Log Helper ────────────────────────────────────────────────────────
 const logAction = async ({ actor, actorRole = "Admin", action, targetType, targetId, targetLabel, details, status = "success" }) => {
@@ -161,11 +165,31 @@ export const reviewBatch = async (req, res) => {
         if (!batch) return res.status(404).json({ message: "Batch not found" });
 
         if (action === 'Accept') {
-            const questionsToInsert = batch.questions.map(q => ({
-                title: q.title, options: q.options, correctAnswer: q.correctAnswer,
-                difficultyLevel: q.difficultyLevel, subject: q.subject, topic: q.topic,
-                correctAnswerIndex: q.correctAnswerIndex, createdBy: batch.createdBy
-            }));
+            const questionsToInsert = batch.questions.map((q) => {
+
+                const sensitiveContent = {
+                    title: q.title,
+                    options: q.options,
+                    correctAnswer: q.correctAnswer,
+                    correctAnswerIndex: q.correctAnswerIndex,
+                };
+
+                const contentHash =
+                    hashQuestionContent(sensitiveContent);
+
+                const encryptedContent =
+                    encryptQuestionContent(sensitiveContent);
+
+                return {
+                    encryptedContent,
+                    contentHash,
+                    difficultyLevel: q.difficultyLevel,
+                    subject: q.subject,
+                    topic: q.topic,
+                    createdBy: batch.createdBy,
+                };
+            });
+
             await Question.insertMany(questionsToInsert);
             batch.status = 'Accepted';
             batch.adminMessage = 'Batch Approved and added to Pool';
@@ -323,10 +347,10 @@ export const deleteExam = async (req, res) => {
         const { id } = req.params;
         const exam = await Exam.findByIdAndDelete(id);
         if (!exam) return res.status(404).json({ message: "Exam not found" });
-        
+
         // Cascade delete results associated with this exam
         await Result.deleteMany({ exam: id });
-        
+
         await logAction({ actor: req.admin?.email, action: "EXAM_DELETED", targetType: "Exam", targetId: exam._id, targetLabel: exam.title });
         return res.status(200).json({ message: "Exam deleted successfully" });
     } catch (error) {

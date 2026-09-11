@@ -1,47 +1,68 @@
-import mongoose from "mongoose"
+import mongoose from "mongoose";
 
-const questionSchema = new mongoose.Schema({
-    title: {
-        type: String,
-        required: true,
-    },
+const encryptedContentSchema = new mongoose.Schema(
+    {
+        ciphertext: {
+            type: String,
+            required: true,
+        },
 
-    options: {
-        type: [String],
-        required: true,
-    },
+        iv: {
+            type: String,
+            required: true,
+        },
 
-    correctAnswer: {
-        type: String,
-        required: true,
+        authTag: {
+            type: String,
+            required: true,
+        },
     },
-    
-    difficultyLevel: {
-        type: String,
-        enum: ["easy", "medium", "hard"],
-        required: true,
-    },
+    {
+        _id: false,
+    }
+);
 
-    subject: {
-        type: String,
-        required: true,
-    },
+const questionSchema = new mongoose.Schema(
+    {
+        encryptedContent: {
+            type: encryptedContentSchema,
+            required: true,
+        },
 
-    topic: {
-        type: String,
-        required: true,
-    },
+        contentHash: {
+            type: String,
+            required: true,
+            index: true,
+        },
 
-    correctAnswerIndex: {
-        type: Number,
-        required: true,
-    },
+        difficultyLevel: {
+            type: String,
+            enum: ["easy", "medium", "hard"],
+            required: true,
+        },
 
-    createdBy: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Professor",
-        required: true,
-    },
-}, {timestamps: true})
+        subject: {
+            type: String,
+            required: true,
+        },
 
-export const Question = mongoose.model("Question", questionSchema)
+        topic: {
+            type: String,
+            required: true,
+        },
+
+        createdBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Professor",
+            required: true,
+        },
+    },
+    {
+        timestamps: true,
+    }
+);
+
+export const Question = mongoose.model(
+    "Question",
+    questionSchema
+);
