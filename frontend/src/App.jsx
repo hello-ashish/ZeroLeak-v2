@@ -37,6 +37,14 @@ import AdminGradebookPage from './pages/admin/AdminGradebookPage.jsx'
 import AdminActivityPage from './pages/admin/AdminActivityPage.jsx'
 import AdminSettingsPage from './pages/admin/AdminSettingsPage.jsx'
 
+// Auditor Console pages
+import AuditorLogin from './pages/auditor/AuditorLogin.jsx'
+import AuditorDashboardPage from './pages/auditor/AuditorDashboardPage.jsx'
+import AuditorAuditExplorerPage from './pages/auditor/AuditorAuditExplorerPage.jsx'
+import AuditorAnomaliesPage from './pages/auditor/AuditorAnomaliesPage.jsx'
+import AuditorExamsPage from './pages/auditor/AuditorExamsPage.jsx'
+import AuditorPeoplePage from './pages/auditor/AuditorPeoplePage.jsx'
+
 function App() {
   return (
     <ToastProvider>
@@ -82,6 +90,15 @@ function App() {
               <Route path="/student/profile" element={<StudentProfile />} />
               <Route path="/student/settings" element={<StudentSettingsPage />} />
           </Route>
+
+          {/* ── Auditor Routes ── */}
+          <Route path="/auditor/login" element={<AuditorLogin />} />
+          <Route path="/auditor/dashboard" element={<AuditorDashboardPage />} />
+          <Route path="/auditor/audit" element={<AuditorAuditExplorerPage />} />
+          <Route path="/auditor/anomalies" element={<AuditorAnomaliesPage />} />
+          <Route path="/auditor/exams" element={<AuditorExamsPage />} />
+          <Route path="/auditor/students" element={<AuditorPeoplePage />} />
+          <Route path="/auditor/professors" element={<AuditorPeoplePage />} />
 
         </Routes>
       </BrowserRouter>

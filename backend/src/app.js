@@ -19,6 +19,7 @@ app.use(express.static("public"))
 
 import adminRouter from "./routes/admin.routes.js"
 import professorRouter from "./routes/professor.routes.js"
+import auditorRouter from "./routes/auditor.routes.js"
 
 // this says: any request starting with /api/admin goes to the adminRouter
 app.use("/api/admin", adminRouter)
@@ -36,5 +37,8 @@ app.use("/api/exams", examRouter)
 
 // Student route
 app.use("/api/students", studentRouter);
+
+// Auditor route
+app.use("/api/auditor", auditorRouter);
 
 export { app }
