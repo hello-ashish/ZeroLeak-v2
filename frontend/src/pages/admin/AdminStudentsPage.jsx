@@ -16,36 +16,63 @@ export default function AdminStudentsPage() {
     const [results, setResults] = useState([])
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
+    const [filterStatus, setFilterStatus] = useState('all')
     const [showAdd, setShowAdd] = useState(false)
     const [deleteTarget, setDeleteTarget] = useState(null)
     const [deleting, setDeleting] = useState(false)
     const [creating, setCreating] = useState(false)
     const [selectedStudent, setSelectedStudent] = useState(null)
+    const [liveStudents, setLiveStudents] = useState([])
     const [form, setForm] = useState({ studentId: '', name: '', email: '', password: '' })
     const [formErrors, setFormErrors] = useState({})
     const [showPass, setShowPass] = useState(false)
+    const [blockingId, setBlockingId] = useState(null)
     const navigate = useNavigate()
     const toast = useToast()
 
-    const fetchData = async () => {
+    const fetchData = async (showLoad = true) => {
         const token = getToken()
         if (!token) { navigate('/admin/login'); return }
         try {
-            setLoading(true)
-            const [stuRes, resRes] = await Promise.all([
+            if (showLoad) setLoading(true)
+            const [stuRes, resRes, liveRes] = await Promise.all([
                 axios.get(`${API}/students`, { headers: { Authorization: `Bearer ${token}` } }),
                 axios.get(`${API}/exams/results`, { headers: { Authorization: `Bearer ${token}` } }),
+                axios.get(`${API}/admin/students/live`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: { liveStudents: [] } }))
             ])
             setStudents(stuRes.data.students || [])
             setResults(resRes.data.results || [])
+            setLiveStudents(liveRes.data.liveStudents || [])
         } catch {
             toast.error('Failed to load students')
         } finally {
-            setLoading(false)
+            if (showLoad) setLoading(false)
         }
     }
 
-    useEffect(() => { fetchData() }, [])
+    useEffect(() => { 
+        fetchData() 
+        const interval = setInterval(() => fetchData(false), 5000);
+        return () => clearInterval(interval);
+    }, [])
+
+    const handleToggleBlock = async (id) => {
+        const token = getToken();
+        if (!token) return;
+        try {
+            setBlockingId(id);
+            await axios.post(`${API}/admin/students/${id}/block`, {}, { headers: { Authorization: `Bearer ${token}` } });
+            toast.success("Student access updated");
+            fetchData(false);
+            if (selectedStudent && selectedStudent._id === id) {
+                setSelectedStudent(prev => ({ ...prev, isBlocked: !prev.isBlocked }));
+            }
+        } catch (err) {
+            toast.error("Failed to update student access");
+        } finally {
+            setBlockingId(null);
+        }
+    }
 
     // Compute per-student stats from results
     const studentStats = useMemo(() => {
@@ -69,12 +96,24 @@ export default function AdminStudentsPage() {
 
     const filtered = useMemo(() => {
         const s = search.toLowerCase()
-        return students.filter(stu =>
-            stu.name?.toLowerCase().includes(s) ||
-            stu.studentId?.toLowerCase().includes(s) ||
-            stu.email?.toLowerCase().includes(s)
-        )
-    }, [students, search])
+        return students.filter(stu => {
+            const matchesSearch = stu.name?.toLowerCase().includes(s) ||
+                                  stu.studentId?.toLowerCase().includes(s) ||
+                                  stu.email?.toLowerCase().includes(s);
+            if (!matchesSearch) return false;
+
+            if (filterStatus === 'live') {
+                return liveStudents.some(l => l._id === stu._id);
+            }
+            if (filterStatus === 'blocked') {
+                return stu.isBlocked === true;
+            }
+            if (filterStatus === 'active') {
+                return stu.isBlocked !== true;
+            }
+            return true;
+        })
+    }, [students, search, filterStatus, liveStudents])
 
     const atRiskCount = useMemo(() => {
         return students.filter(s => {
@@ -152,12 +191,14 @@ export default function AdminStudentsPage() {
             </div>
 
             <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 24 }}>
-                <div className="kpi-card">
+                <div className="kpi-card" style={{ borderColor: 'var(--brand-primary-border)' }}>
                     <div className="kpi-card-header">
-                        <span className="kpi-label">Total Students</span>
-                        <span className="kpi-icon" style={{ background: 'var(--brand-primary-subtle)', color: 'var(--brand-primary)' }}><User size={20} /></span>
+                        <span className="kpi-label">Live Exams</span>
+                        <span className="kpi-icon" style={{ background: 'var(--brand-primary-subtle)', color: 'var(--brand-primary)' }}>
+                            <div style={{ width: 8, height: 8, background: 'var(--brand-primary)', borderRadius: '50%', animation: 'pulse 2s infinite' }}></div>
+                        </span>
                     </div>
-                    <div className="kpi-value">{loading ? '—' : students.length}</div>
+                    <div className="kpi-value">{liveStudents.length}</div>
                 </div>
                 <div className="kpi-card">
                     <div className="kpi-card-header">
@@ -189,6 +230,17 @@ export default function AdminStudentsPage() {
                             <Search size={16} style={{ color: 'var(--text-tertiary)' }} />
                             <input className="search-input" placeholder="Search by name, ID, email..." value={search} onChange={e => setSearch(e.target.value)} />
                         </div>
+                        <select 
+                            className="input" 
+                            style={{ width: 140, padding: '8px 12px', height: '100%' }}
+                            value={filterStatus}
+                            onChange={(e) => setFilterStatus(e.target.value)}
+                        >
+                            <option value="all">All Students</option>
+                            <option value="live">Live Now</option>
+                            <option value="active">Active</option>
+                            <option value="blocked">Blocked</option>
+                        </select>
                         <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-tertiary)' }}>{filtered.length} students</span>
                     </div>
 
@@ -230,10 +282,15 @@ export default function AdminStudentsPage() {
                                             >
                                                 <td>
                                                     <div className="flex items-center gap-3">
-                                                        <div className="avatar avatar-sm" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}>
+                                                        <div className="avatar avatar-sm" style={{ background: stu.isBlocked ? 'var(--danger-subtle)' : 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: stu.isBlocked ? 'var(--danger)' : 'var(--text-secondary)' }}>
                                                             <GraduationCap size={16} />
                                                         </div>
-                                                        <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{stu.name}</span>
+                                                        <span style={{ fontWeight: 600, color: stu.isBlocked ? 'var(--text-tertiary)' : 'var(--text-primary)', textDecoration: stu.isBlocked ? 'line-through' : 'none' }}>{stu.name}</span>
+                                                        {liveStudents.some(l => l._id === stu._id) && !stu.isBlocked && (
+                                                            <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 600, color: 'var(--brand-primary)', background: 'var(--brand-primary-subtle)', padding: '2px 6px', borderRadius: 12 }}>
+                                                                <div style={{ width: 6, height: 6, background: 'var(--brand-primary)', borderRadius: '50%', animation: 'pulse 2s infinite' }} /> LIVE
+                                                            </span>
+                                                        )}
                                                         {avg !== null && avg < 50 && <AlertTriangle size={14} color="var(--warning)" style={{ marginLeft: 4 }} title="At risk" />}
                                                     </div>
                                                 </td>
@@ -276,13 +333,26 @@ export default function AdminStudentsPage() {
                                     {selectedStudent.name?.charAt(0)?.toUpperCase()}
                                 </div>
                                 <div>
-                                    <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)' }}>{selectedStudent.name}</h3>
-                                    <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2, fontFamily: 'var(--font-mono)' }}>{selectedStudent.studentId}</p>
-                                </div>
-                            </div>
-                            <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setSelectedStudent(null)}>
-                                <X size={16} />
-                            </button>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                        <h3 style={{ fontSize: 16, fontWeight: 600, color: selectedStudent.isBlocked ? 'var(--text-tertiary)' : 'var(--text-primary)', textDecoration: selectedStudent.isBlocked ? 'line-through' : 'none' }}>{selectedStudent.name}</h3>
+                                                        {selectedStudent.isBlocked && <span style={{ fontSize: 10, background: 'var(--danger-subtle)', color: 'var(--danger)', padding: '2px 6px', borderRadius: 12, fontWeight: 600 }}>BLOCKED</span>}
+                                                        {liveStudents.some(l => l._id === selectedStudent._id) && !selectedStudent.isBlocked && <span style={{ fontSize: 10, background: 'var(--brand-primary-subtle)', color: 'var(--brand-primary)', padding: '2px 6px', borderRadius: 12, fontWeight: 600 }}>LIVE EXAM</span>}
+                                                    </div>
+                                                    <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2, fontFamily: 'var(--font-mono)' }}>{selectedStudent.studentId}</p>
+                                                </div>
+                                            </div>
+                                            <div style={{ display: 'flex', gap: 8 }}>
+                                                <button 
+                                                    className={`btn btn-sm ${selectedStudent.isBlocked ? 'btn-secondary' : 'btn-danger'}`} 
+                                                    onClick={() => handleToggleBlock(selectedStudent._id)}
+                                                    disabled={blockingId === selectedStudent._id}
+                                                >
+                                                    {blockingId === selectedStudent._id ? '...' : (selectedStudent.isBlocked ? 'Unblock' : 'Block Access')}
+                                                </button>
+                                                <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setSelectedStudent(null)}>
+                                                    <X size={16} />
+                                                </button>
+                                            </div>
                         </div>
 
                         <div style={{ padding: 24, overflowY: 'auto' }}>

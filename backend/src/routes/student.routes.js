@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { registerStudent, loginStudent, getAvailableExams, getAllStudents, getExamById, submitExamResult, getStudentResults, updateStudentProfile, changeStudentPassword } from "../controllers/student.controllers.js";
+import { registerStudent, loginStudent, getAvailableExams, getAllStudents, getExamById, submitExamResult, getStudentResults, updateStudentProfile, changeStudentPassword, pingSession } from "../controllers/student.controllers.js";
 import { verifyStudentJWT, verifyAdminJWT } from "../middlewares/auth.middleware.js";
 
 const router = Router();
@@ -12,6 +12,7 @@ router.route("/register").post(verifyAdminJWT, registerStudent);
 router.route("/").get(verifyAdminJWT, getAllStudents);
 
 // Protected Route: Only logged in students can see the exams
+router.route("/ping").post(verifyStudentJWT, pingSession);
 router.route("/exams").get(verifyStudentJWT, getAvailableExams);
 router.route("/exams/:id").get(verifyStudentJWT, getExamById);
 router.route("/profile").put(verifyStudentJWT, updateStudentProfile)

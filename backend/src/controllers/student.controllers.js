@@ -31,6 +31,8 @@ export const loginStudent = async (req, res) => {
         if (!email || !password) return res.status(400).json({ message: "Email and password required" });
         const student = await Student.findOne({ email });
         if (!student) return res.status(404).json({ message: "Student not found" });
+        if (student.isBlocked) return res.status(403).json({ message: "Your account has been restricted by an administrator." });
+        
         const isPasswordValid = await student.isPasswordCorrect(password);
         if (!isPasswordValid) return res.status(401).json({ message: "Invalid credentials" });
         const token = student.generateAccessToken();
@@ -38,6 +40,23 @@ export const loginStudent = async (req, res) => {
         return res.status(200).json({ message: "Login successful", token, student: loggedInStudent });
     } catch (error) {
         return res.status(500).json({ message: "Error logging in", error: error.message });
+    }
+}
+
+// 2b. Ping Session (Live tracking)
+export const pingSession = async (req, res) => {
+    try {
+        const { currentExamId } = req.body;
+        // The verifyStudentJWT middleware will automatically reject this if the student is blocked.
+        const student = req.student;
+        student.lastActiveAt = new Date();
+        if (currentExamId) {
+            student.currentExamId = currentExamId;
+        }
+        await student.save();
+        return res.status(200).json({ message: "Ping successful" });
+    } catch (error) {
+        return res.status(500).json({ message: "Error pinging session", error: error.message });
     }
 }
 

@@ -71,6 +71,10 @@ export const verifyStudentJWT = async (req, res, next) => {
             return res.status(401).json({ message: "Student not found" })
         }
 
+        if (student.isBlocked) {
+            return res.status(403).json({ message: "BLOCKED" })
+        }
+
         req.student = student
         next()
     } catch (error) {

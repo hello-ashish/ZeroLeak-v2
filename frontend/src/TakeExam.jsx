@@ -32,6 +32,7 @@ const TakeExam = () => {
     const [showPreSubmit, setShowPreSubmit] = useState(false);
     const [saveStatus, setSaveStatus] = useState("Saved");
     const [toolsOpen, setToolsOpen] = useState(false); // Collapsible right drawer
+    const [isRestricted, setIsRestricted] = useState(false);
 
     const timerRef = useRef(null);
     const sessionKey = `zl_exam_session_${id}`;
@@ -113,6 +114,31 @@ const TakeExam = () => {
         }
         return () => { if (timerRef.current) clearInterval(timerRef.current); };
     }, [timeLeft, score, handleAutoSubmit]);
+
+    // Live Tracking / Heartbeat Ping
+    useEffect(() => {
+        if (!isStarted || score !== null || isRestricted) return;
+        
+        const pingServer = async () => {
+            try {
+                const token = localStorage.getItem('studentToken');
+                if (!token) return;
+                await axios.post('http://localhost:4000/api/students/ping', {
+                    currentExamId: id
+                }, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+            } catch (err) {
+                if (err.response && (err.response.status === 403 || err.response.data?.message === "BLOCKED")) {
+                    setIsRestricted(true);
+                }
+            }
+        };
+
+        pingServer(); // initial ping
+        const intervalId = setInterval(pingServer, 5000); // ping every 5 seconds
+        return () => clearInterval(intervalId);
+    }, [isStarted, score, id, isRestricted]);
 
     // Auto-Save UI Logic
     useEffect(() => {
@@ -232,6 +258,24 @@ const TakeExam = () => {
         return (
             <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-base)' }}>
                 <div style={{ width: 40, height: 40, border: '3px solid var(--border-default)', borderTopColor: 'var(--brand-primary)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+            </div>
+        );
+    }
+
+    if (isRestricted) {
+        return (
+            <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-app)', color: 'var(--text-primary)' }}>
+                <AlertCircle size={64} style={{ color: 'var(--danger)', marginBottom: 24 }} />
+                <h1 style={{ fontSize: '24px', fontWeight: 600, marginBottom: 8 }}>Exam Restricted</h1>
+                <p style={{ color: 'var(--text-secondary)', maxWidth: 400, textAlign: 'center' }}>
+                    You are restricted from exam, please connect your admin.
+                </p>
+                <button 
+                    onClick={() => navigate('/student/login')}
+                    style={{ marginTop: 24, padding: '10px 24px', background: 'var(--danger)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 500 }}
+                >
+                    Return to Login
+                </button>
             </div>
         );
     }

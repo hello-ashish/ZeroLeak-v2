@@ -13,7 +13,9 @@ import {
     getAuditLogs,
     updateExamStatus,
     deleteExam,
-    deleteStudent
+    deleteStudent,
+    getLiveStudents,
+    toggleBlockStudent
 } from "../controllers/admin.controllers.js"
 import { verifyAdminJWT } from "../middlewares/auth.middleware.js"
 
@@ -39,7 +41,9 @@ router.route("/professors").post(verifyAdminJWT, createProfessor)
 router.route("/professors").get(verifyAdminJWT, getAllProfessors)
 router.route("/professors/:id").delete(verifyAdminJWT, deleteProfessor)
 
-// Student Management (delete)
+// Student Management
+router.route("/students/live").get(verifyAdminJWT, getLiveStudents)
+router.route("/students/:id/block").post(verifyAdminJWT, toggleBlockStudent)
 router.route("/students/:id").delete(verifyAdminJWT, deleteStudent)
 
 // Batch Management

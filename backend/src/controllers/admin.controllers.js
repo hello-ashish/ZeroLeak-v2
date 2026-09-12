@@ -401,3 +401,51 @@ export const deleteExam = async (req, res) => {
         return res.status(500).json({ message: "Error deleting exam" });
     }
 };
+
+// ─── Get Live Students ────────────────────────────────────────────────────────
+export const getLiveStudents = async (req, res) => {
+    try {
+        // Find students who have pinged within the last 30 seconds
+        const thirtySecondsAgo = new Date(Date.now() - 30 * 1000);
+        const liveStudents = await Student.find({
+            lastActiveAt: { $gte: thirtySecondsAgo },
+            currentExamId: { $ne: null }
+        }).select("-password").populate("currentExamId", "title");
+        
+        return res.status(200).json({ liveStudents });
+    } catch (error) {
+        console.error("Error fetching live students: ", error);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+// ─── Toggle Block Student ─────────────────────────────────────────────────────
+export const toggleBlockStudent = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const student = await Student.findById(id);
+        
+        if (!student) {
+            return res.status(404).json({ message: "Student not found" });
+        }
+        
+        student.isBlocked = !student.isBlocked;
+        await student.save();
+        
+        await logAction({ 
+            actor: req.admin?.email, 
+            action: student.isBlocked ? "STUDENT_BLOCKED" : "STUDENT_UNBLOCKED", 
+            targetType: "Student", 
+            targetId: student._id, 
+            targetLabel: student.name 
+        });
+
+        return res.status(200).json({ 
+            message: `Student successfully ${student.isBlocked ? 'blocked' : 'unblocked'}`,
+            isBlocked: student.isBlocked
+        });
+    } catch (error) {
+        console.error("Error toggling block for student: ", error);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};

@@ -7,7 +7,10 @@ const studentSchema = new Schema(
         studentId: { type: String, required: true, unique: true },
         name: { type: String, required: true, trim: true },
         email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-        password: { type: String, required: true }
+        password: { type: String, required: true },
+        isBlocked: { type: Boolean, default: false },
+        lastActiveAt: { type: Date, default: null },
+        currentExamId: { type: Schema.Types.ObjectId, ref: 'Exam', default: null }
     },
     { timestamps: true }
 );

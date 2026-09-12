@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation, Link, Outlet } from 'react-router-dom'
 import { LayoutDashboard, ClipboardList, BarChart3, Target, User, Settings, Search, Sun, Moon, LogOut, ChevronDown, Bell } from 'lucide-react'
 import { CommandPalette } from '../../components/CommandPalette.jsx'
+import { Modal } from '../../components/Modal.jsx'
+
+import axios from 'axios';
 
 const NAV = [
     {
@@ -31,10 +34,31 @@ export const StudentLayout = () => {
     const [showCommand, setShowCommand] = useState(false)
     const [showProfile, setShowProfile] = useState(false)
     const [showNotifications, setShowNotifications] = useState(false)
+    const [showRestrictedModal, setShowRestrictedModal] = useState(false)
     const navigate = useNavigate()
     const location = useLocation()
 
     const studentData = JSON.parse(localStorage.getItem('studentData') || '{}')
+
+    const handleLogout = () => {
+        localStorage.removeItem('studentToken')
+        localStorage.removeItem('studentData')
+        navigate('/')
+    }
+
+    // Global Axios Interceptor for Blocking
+    useEffect(() => {
+        const interceptor = axios.interceptors.response.use(
+            response => response,
+            error => {
+                if (error.response && (error.response.status === 403 || error.response.data?.message === "BLOCKED")) {
+                    setShowRestrictedModal(true);
+                }
+                return Promise.reject(error);
+            }
+        );
+        return () => axios.interceptors.response.eject(interceptor);
+    }, []);
 
     // Cmd+K
     useEffect(() => {
@@ -47,12 +71,6 @@ export const StudentLayout = () => {
         window.addEventListener('keydown', handler)
         return () => window.removeEventListener('keydown', handler)
     }, [])
-
-    const handleLogout = () => {
-        localStorage.removeItem('studentToken')
-        localStorage.removeItem('studentData')
-        navigate('/')
-    }
 
     const initials = (studentData.name || studentData.email || 'S')
         .substring(0, 2)
@@ -213,6 +231,23 @@ export const StudentLayout = () => {
             </div>
 
             <CommandPalette open={showCommand} onClose={() => setShowCommand(false)} />
+
+            <Modal 
+                open={showRestrictedModal} 
+                onClose={() => {}} // Disallow closing without logging out
+                title="Account Restricted"
+                footer={
+                    <button className="btn btn-danger w-full" onClick={handleLogout}>
+                        Return to Login
+                    </button>
+                }
+            >
+                <div style={{ padding: '8px 0' }}>
+                    <p style={{ color: 'var(--text-secondary)' }}>
+                        Your account has been restricted by an administrator. Please contact support if you believe this is an error.
+                    </p>
+                </div>
+            </Modal>
         </div>
     )
 }
