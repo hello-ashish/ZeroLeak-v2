@@ -32,6 +32,14 @@ const professorSchema = new Schema(
         password: {
             type: String,
             required: [true, "Password is required"],
+        },
+        lastActiveAt: {
+            type: Date,
+            default: null
+        },
+        isBlocked: { 
+            type: Boolean, 
+            default: false 
         }
     }, { timestamps: true }
 )

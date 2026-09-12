@@ -15,7 +15,14 @@ import {
     deleteExam,
     deleteStudent,
     getLiveStudents,
-    toggleBlockStudent
+    toggleBlockStudent,
+    toggleBlockProfessor,
+    bulkDeleteProfessors,
+    bulkBlockProfessors,
+    bulkImportProfessors,
+    bulkDeleteStudents,
+    bulkBlockStudents,
+    bulkImportStudents
 } from "../controllers/admin.controllers.js"
 import { verifyAdminJWT } from "../middlewares/auth.middleware.js"
 
@@ -37,11 +44,18 @@ router.route("/audit-logs").get(verifyAdminJWT, getAuditLogs)
 router.route("/profile").put(verifyAdminJWT, updateAdminProfile)
 
 // Professor Management
+router.route("/professors/bulk-import").post(verifyAdminJWT, bulkImportProfessors)
+router.route("/professors/bulk-delete").post(verifyAdminJWT, bulkDeleteProfessors)
+router.route("/professors/bulk-block").post(verifyAdminJWT, bulkBlockProfessors)
 router.route("/professors").post(verifyAdminJWT, createProfessor)
 router.route("/professors").get(verifyAdminJWT, getAllProfessors)
+router.route("/professors/:id/block").post(verifyAdminJWT, toggleBlockProfessor)
 router.route("/professors/:id").delete(verifyAdminJWT, deleteProfessor)
 
 // Student Management
+router.route("/students/bulk-import").post(verifyAdminJWT, bulkImportStudents)
+router.route("/students/bulk-delete").post(verifyAdminJWT, bulkDeleteStudents)
+router.route("/students/bulk-block").post(verifyAdminJWT, bulkBlockStudents)
 router.route("/students/live").get(verifyAdminJWT, getLiveStudents)
 router.route("/students/:id/block").post(verifyAdminJWT, toggleBlockStudent)
 router.route("/students/:id").delete(verifyAdminJWT, deleteStudent)

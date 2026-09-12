@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { AdminLayout } from './AdminLayout.jsx'
+import { Modal } from '../../components/Modal.jsx'
 import { SkeletonTable, EmptyState } from '../../components/SkeletonLoader.jsx'
 import { useToast } from '../../components/Toast.jsx'
 import { Key, UserPlus, UserMinus, CheckCircle2, XCircle, AlertTriangle, PlayCircle, Trash2, Edit3, MapPin, RefreshCw, ScrollText, Download, ShieldCheck } from 'lucide-react'
@@ -31,6 +32,7 @@ export default function AdminActivityPage() {
     const [total, setTotal] = useState(0)
     const [loading, setLoading] = useState(true)
     const [page, setPage] = useState(1)
+    const [previewModal, setPreviewModal] = useState({ isOpen: false, title: '', content: '', headers: [], rows: [], filename: '' })
     const LIMIT = 20
     const navigate = useNavigate()
     const toast = useToast()
@@ -62,25 +64,41 @@ export default function AdminActivityPage() {
             toast.info('No logs to export')
             return
         }
-        const csvContent = "data:text/csv;charset=utf-8," 
-            + "Timestamp,Event Type,Actor,Target Object,Details\n"
-            + logs.map(l => {
-                const date = new Date(l.createdAt).toLocaleString()
-                const action = getActionDetails(l.action).label
-                const actor = l.actor?.email || 'System'
-                const target = l.targetModel ? `${l.targetModel} (${l.targetId})` : '—'
-                const details = l.details ? JSON.stringify(l.details).replace(/"/g, '""') : '—'
-                return `"${date}","${action}","${actor}","${target}","${details}"`
-            }).join("\n")
+        const headers = ['Timestamp', 'Event Type', 'Actor', 'Target Object', 'Details'];
+        const rows = logs.map(l => {
+            const date = new Date(l.createdAt).toLocaleString()
+            const action = getActionDetails(l.action).label
+            const actor = l.actor?.email || 'System'
+            const target = l.targetModel ? `${l.targetModel} (${l.targetId})` : '—'
+            const details = l.details ? JSON.stringify(l.details) : '—'
+            return [date, action, actor, target, details]
+        });
         
-        const encodedUri = encodeURI(csvContent)
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(','))
+        ].join('\n')
+        
+        setPreviewModal({
+            isOpen: true,
+            title: 'Audit Logs Export Preview',
+            content: csvContent,
+            headers: headers,
+            rows: rows,
+            filename: `audit_logs_${new Date().toISOString().split('T')[0]}.csv`
+        });
+    }
+
+    const handleDownload = (content, filename) => {
+        const encodedUri = encodeURI("data:text/csv;charset=utf-8," + content)
         const link = document.createElement("a")
         link.setAttribute("href", encodedUri)
-        link.setAttribute("download", `audit_logs_${new Date().toISOString().split('T')[0]}.csv`)
+        link.setAttribute("download", filename)
         document.body.appendChild(link)
         link.click()
         document.body.removeChild(link)
         toast.success('Logs exported successfully')
+        setPreviewModal({ ...previewModal, isOpen: false });
     }
 
     return (
@@ -196,6 +214,46 @@ export default function AdminActivityPage() {
                     </div>
                 )}
             </div>
+            <Modal open={previewModal.isOpen} onClose={() => setPreviewModal({ ...previewModal, isOpen: false })} title={previewModal.title} size="full">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <div style={{
+                        background: 'var(--bg-body)',
+                        borderRadius: '8px',
+                        border: '1px solid var(--border-subtle)',
+                        maxHeight: '400px',
+                        overflow: 'auto',
+                    }}>
+                        <table className="table" style={{ width: '100%', minWidth: 600, borderCollapse: 'collapse' }}>
+                            <thead>
+                                <tr>
+                                    {previewModal.headers?.map((h, i) => (
+                                        <th key={i} style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-subtle)', textAlign: 'left', background: 'var(--bg-surface)' }}>{h}</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {previewModal.rows?.length > 0 ? previewModal.rows.map((row, i) => (
+                                    <tr key={i}>
+                                        {row.map((cell, j) => (
+                                            <td key={j} style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-subtle)' }}>{cell}</td>
+                                        ))}
+                                    </tr>
+                                )) : (
+                                    <tr>
+                                        <td colSpan={previewModal.headers?.length || 1} style={{ padding: '24px', textAlign: 'center', color: 'var(--text-tertiary)' }}>No data</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div className="flex gap-3" style={{ justifyContent: 'flex-end', marginTop: 12 }}>
+                        <button className="btn btn-ghost" onClick={() => setPreviewModal({ ...previewModal, isOpen: false })}>Cancel</button>
+                        <button className="btn btn-primary flex items-center gap-2" onClick={() => handleDownload(previewModal.content, previewModal.filename)}>
+                            <Download size={16} /> Download CSV
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </AdminLayout>
     )
 }

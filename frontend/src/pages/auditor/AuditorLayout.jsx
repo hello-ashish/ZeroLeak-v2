@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
-import { LayoutDashboard, FileText, Database, Users, Sun, Moon, LogOut, ChevronDown, Search, Activity, ShieldAlert, GraduationCap, ClipboardList } from 'lucide-react'
+import { LayoutDashboard, FileText, Database, Users, LogOut, ChevronDown, Search, Activity, ShieldAlert, GraduationCap, ClipboardList , RefreshCw } from 'lucide-react'
+import { HeaderThemeSlider } from '../../components/HeaderThemeSlider.jsx'
 
 const NAV = [
     {
@@ -126,14 +127,18 @@ export const AuditorLayout = ({ children, openAnomaliesCount = 0 }) => {
                         <div className="badge" style={{ background: 'var(--brand-primary-subtle)', color: 'var(--brand-primary)', border: '1px solid var(--brand-primary-subtle)', fontWeight: 600, fontSize: 12 }}>
                             VIEW ONLY MODE
                         </div>
+                        <HeaderThemeSlider />
+
+                        {/* Refresh Button */}
                         <button
                             className="topbar-btn"
-                            onClick={() => window.dispatchEvent(new Event('zl-theme-slider-toggle'))}
-                            aria-label="Adjust Brightness"
-                            title="Toggle Brightness Slider"
+                            onClick={() => window.refreshCurrentPage && window.refreshCurrentPage()}
+                            title="Refresh Page"
+                            aria-label="Refresh Page"
                         >
-                            <Sun size={18} />
+                            <RefreshCw size={18} />
                         </button>
+
 
                         {/* Profile */}
                         <div className="dropdown">

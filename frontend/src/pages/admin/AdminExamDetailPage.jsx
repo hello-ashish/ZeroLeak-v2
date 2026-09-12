@@ -112,6 +112,11 @@ export const AdminExamDetailPage = () => {
         return <AdminLayout><div style={{ padding: 40, textAlign: 'center' }}>Loading exam details...</div></AdminLayout>
     }
 
+        React.useEffect(() => {
+        window.refreshCurrentPage = fetchData;
+        return () => { window.refreshCurrentPage = null; };
+    }, []);
+
     return (
         <AdminLayout>
             <div className="page-header" style={{ marginBottom: 24 }}>

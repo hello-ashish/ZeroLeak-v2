@@ -22,5 +22,8 @@
   },
   "devDependencies": {
     "concurrently": "^9.2.1"
+  },
+  "dependencies": {
+    "glob": "^13.0.6"
   }
 }

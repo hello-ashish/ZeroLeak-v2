@@ -28,7 +28,12 @@ const StudentPerformancePage = () => {
     }, [navigate]);
 
     if (loading) {
-        return (
+            React.useEffect(() => {
+        window.refreshCurrentPage = fetchData;
+        return () => { window.refreshCurrentPage = null; };
+    }, []);
+
+    return (
             <div style={{ height: '50vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <div style={{ width: 40, height: 40, border: '3px solid var(--border-default)', borderTopColor: 'var(--brand-primary)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
             </div>

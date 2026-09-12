@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation, Link, Outlet } from 'react-router-dom'
-import { LayoutDashboard, ClipboardList, BarChart3, Target, User, Settings, Search, Sun, Moon, LogOut, ChevronDown, Bell } from 'lucide-react'
+import { LayoutDashboard, ClipboardList, BarChart3, Target, User, Settings, Search, LogOut, ChevronDown, Bell , RefreshCw } from 'lucide-react'
 import { CommandPalette } from '../../components/CommandPalette.jsx'
 import { Modal } from '../../components/Modal.jsx'
+import { HeaderThemeSlider } from '../../components/HeaderThemeSlider.jsx'
 
 import axios from 'axios';
 
@@ -164,14 +165,18 @@ export const StudentLayout = () => {
                     </div>
 
                     <div className="topbar-actions">
+                        <HeaderThemeSlider />
+
+                        {/* Refresh Button */}
                         <button
                             className="topbar-btn"
-                            onClick={() => window.dispatchEvent(new Event('zl-theme-slider-toggle'))}
-                            aria-label="Adjust Brightness"
-                            title="Toggle Brightness Slider"
+                            onClick={() => window.refreshCurrentPage && window.refreshCurrentPage()}
+                            title="Refresh Page"
+                            aria-label="Refresh Page"
                         >
-                            <Sun size={18} />
+                            <RefreshCw size={18} />
                         </button>
+
 
                         {/* Notifications Dropdown */}
                         <div className="dropdown">

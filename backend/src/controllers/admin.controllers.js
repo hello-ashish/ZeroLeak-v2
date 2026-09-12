@@ -89,8 +89,15 @@ export const createProfessor = async (req, res) => {
 // ─── Get All Professors ───────────────────────────────────────────────────────
 export const getAllProfessors = async (req, res) => {
     try {
-        const professors = await Professor.find({}).select("-password");
-        return res.status(200).json({ professors });
+        const professors = await Professor.find({}).select("-password").lean();
+        const professorsWithCounts = await Promise.all(professors.map(async (prof) => {
+            const count = await Batch.countDocuments({ 
+                createdBy: prof._id, 
+                status: { $in: ["Submitted", "Accepted", "Rejected", "MarkForReview"] } 
+            });
+            return { ...prof, submittedBatches: count };
+        }));
+        return res.status(200).json({ professors: professorsWithCounts });
     } catch (error) {
         console.error("Error fetching professors: ", error);
         return res.status(500).json({ message: "Internal server error while fetching professors" });
@@ -240,7 +247,9 @@ export const getDashboardStats = async (req, res) => {
             pendingBatchCount,
             allResults,
             recentLogs,
-            recentExams
+            recentExams,
+            liveExamsCount,
+            studentsLastMonth
         ] = await Promise.all([
             Student.countDocuments(),
             Professor.countDocuments(),
@@ -250,7 +259,9 @@ export const getDashboardStats = async (req, res) => {
             Batch.countDocuments({ status: "Submitted" }),
             Result.find({}).populate("student", "name studentId").populate("exam", "title"),
             AuditLog.find({}).sort({ createdAt: -1 }).limit(15),
-            Exam.find({}).sort({ createdAt: -1 }).limit(5).populate("questions", "_id")
+            Exam.find({}).sort({ createdAt: -1 }).limit(5).populate("questions", "_id"),
+            Exam.countDocuments({ status: "Live" }),
+            Student.countDocuments({ createdAt: { $lt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } })
         ]);
 
         // Compute performance trend over the last 7 days
@@ -281,6 +292,17 @@ export const getDashboardStats = async (req, res) => {
             score: day.count > 0 ? Math.round(day.totalScore / day.count) : 0,
             passRate: day.count > 0 ? Math.round((day.passed / day.count) * 100) : 0
         }));
+
+        let scoreTrajectory = 0;
+        if (performanceData.length === 7) {
+            const recentAvg = (performanceData[4].score + performanceData[5].score + performanceData[6].score) / 3;
+            const pastAvg = (performanceData[1].score + performanceData[2].score + performanceData[3].score) / 3;
+            if (pastAvg > 0) {
+                scoreTrajectory = (((recentAvg - pastAvg) / pastAvg) * 100).toFixed(1);
+            } else if (recentAvg > 0) {
+                scoreTrajectory = 100;
+            }
+        }
 
         // Compute pass rate and average score from Results
         let avgScore = 0;
@@ -341,7 +363,10 @@ export const getDashboardStats = async (req, res) => {
                 totalResults: allResults.length,
                 avgScore,
                 passRate,
-                scoreDistribution
+                scoreDistribution,
+                liveExamsCount,
+                studentsLastMonth,
+                scoreTrajectory
             },
             questionsBySubject,
             topStudents,
@@ -447,5 +472,201 @@ export const toggleBlockStudent = async (req, res) => {
     } catch (error) {
         console.error("Error toggling block for student: ", error);
         return res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+// ─── Toggle Block Professor ─────────────────────────────────────────────────────
+export const toggleBlockProfessor = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const professor = await Professor.findById(id);
+        if (!professor) {
+            return res.status(404).json({ message: "Professor not found" });
+        }
+
+        professor.isBlocked = !professor.isBlocked;
+        await professor.save();
+        
+        await logAction({ 
+            actor: req.admin?.email, 
+            action: professor.isBlocked ? "PROFESSOR_BLOCKED" : "PROFESSOR_UNBLOCKED", 
+            targetType: "Professor", 
+            targetId: professor._id, 
+            targetLabel: professor.name 
+        });
+
+        return res.status(200).json({ 
+            message: `Professor successfully ${professor.isBlocked ? 'blocked' : 'unblocked'}`,
+            isBlocked: professor.isBlocked
+        });
+    } catch (error) {
+        console.error("Error toggling block for professor: ", error);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+// ─── Bulk Delete Professors ───────────────────────────────────────────────────
+export const bulkDeleteProfessors = async (req, res) => {
+    try {
+        const { ids } = req.body;
+        if (!Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ message: "No professor IDs provided" });
+        }
+        await Professor.deleteMany({ _id: { $in: ids } });
+        await logAction({ actor: req.admin?.email, action: "PROFESSORS_BULK_DELETED", targetType: "Professor", targetLabel: `${ids.length} professors` });
+        return res.status(200).json({ message: "Professors deleted successfully" });
+    } catch (error) {
+        console.error("Error bulk deleting professors: ", error);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+// ─── Bulk Block Professors ─────────────────────────────────────────────────────
+export const bulkBlockProfessors = async (req, res) => {
+    try {
+        const { ids, block } = req.body;
+        if (!Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ message: "No professor IDs provided" });
+        }
+        await Professor.updateMany({ _id: { $in: ids } }, { $set: { isBlocked: block } });
+        await logAction({ actor: req.admin?.email, action: "PROFESSORS_BULK_BLOCKED", targetType: "Professor", targetLabel: `${ids.length} professors blocked=${block}` });
+        return res.status(200).json({ message: `Professors ${block ? 'blocked' : 'unblocked'} successfully` });
+    } catch (error) {
+        console.error("Error bulk blocking professors: ", error);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+// ─── Bulk Import Professors ─────────────────────────────────────────────────────
+export const bulkImportProfessors = async (req, res) => {
+    try {
+        const { professors } = req.body;
+        if (!Array.isArray(professors) || professors.length === 0) {
+            return res.status(400).json({ message: "No professor data provided" });
+        }
+
+        let importedCount = 0;
+        let skippedCount = 0;
+
+        for (const profData of professors) {
+            const rawProfessorId = profData.id || profData.professorid || profData['professor id'];
+            const { name, email, password, contact, address } = profData;
+            
+            if (!rawProfessorId || !name || !email) {
+                skippedCount++;
+                continue;
+            }
+
+            const existingProfessor = await Professor.findOne({ $or: [{ id: rawProfessorId }, { email }] });
+            if (existingProfessor) {
+                skippedCount++;
+                continue; // Skip duplicates
+            }
+
+            let finalPassword = password;
+            if (!finalPassword) {
+                const firstName = name.split(' ')[0];
+                finalPassword = `hello${firstName}`;
+            }
+
+            const cleanData = { id: rawProfessorId, name, email, password: finalPassword, contact, address };
+            await Professor.create(cleanData);
+            importedCount++;
+        }
+
+        await logAction({ actor: req.admin?.email, action: "PROFESSORS_BULK_IMPORTED", targetType: "Professor", targetLabel: `${importedCount} professors imported` });
+
+        return res.status(200).json({ 
+            message: "Import complete", 
+            imported: importedCount, 
+            skipped: skippedCount 
+        });
+    } catch (error) {
+        console.error("Error bulk importing professors: ", error);
+        return res.status(500).json({ message: "Internal server error during import" });
+    }
+};
+
+// ─── Bulk Delete Students ─────────────────────────────────────────────────────
+export const bulkDeleteStudents = async (req, res) => {
+    try {
+        const { ids } = req.body;
+        if (!Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ message: "No student IDs provided" });
+        }
+        await Student.deleteMany({ _id: { $in: ids } });
+        await logAction({ actor: req.admin?.email, action: "STUDENTS_BULK_DELETED", targetType: "Student", targetLabel: `${ids.length} students` });
+        return res.status(200).json({ message: "Students deleted successfully" });
+    } catch (error) {
+        console.error("Error bulk deleting students: ", error);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+// ─── Bulk Block Students ─────────────────────────────────────────────────────
+export const bulkBlockStudents = async (req, res) => {
+    try {
+        const { ids, block } = req.body;
+        if (!Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ message: "No student IDs provided" });
+        }
+        await Student.updateMany({ _id: { $in: ids } }, { $set: { isBlocked: block } });
+        await logAction({ actor: req.admin?.email, action: "STUDENTS_BULK_BLOCKED", targetType: "Student", targetLabel: `${ids.length} students blocked=${block}` });
+        return res.status(200).json({ message: `Students ${block ? 'blocked' : 'unblocked'} successfully` });
+    } catch (error) {
+        console.error("Error bulk blocking students: ", error);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+// ─── Bulk Import Students ─────────────────────────────────────────────────────
+export const bulkImportStudents = async (req, res) => {
+    try {
+        const { students } = req.body;
+        if (!Array.isArray(students) || students.length === 0) {
+            return res.status(400).json({ message: "No student data provided" });
+        }
+
+        let importedCount = 0;
+        let skippedCount = 0;
+
+        for (const stuData of students) {
+            const rawStudentId = stuData.studentId || stuData.studentid;
+            const { name, email, password, department, batch, contact, dateOfBirth, address, gender, program } = stuData;
+            
+            if (!rawStudentId || !name || !email) {
+                skippedCount++;
+                continue;
+            }
+
+            const existingStudent = await Student.findOne({ $or: [{ studentId: rawStudentId }, { email }] });
+            if (existingStudent) {
+                skippedCount++;
+                continue; // Skip duplicates
+            }
+
+            let finalPassword = password;
+            if (!finalPassword) {
+                const firstName = name.split(' ')[0];
+                finalPassword = `hello${firstName}`;
+            }
+
+            const cleanData = { studentId: rawStudentId, name, email, password: finalPassword, department, batch, contact, address, gender, program };
+            if (dateOfBirth) cleanData.dateOfBirth = dateOfBirth;
+
+            await Student.create(cleanData);
+            importedCount++;
+        }
+
+        await logAction({ actor: req.admin?.email, action: "STUDENTS_BULK_IMPORTED", targetType: "Student", targetLabel: `${importedCount} students imported` });
+
+        return res.status(200).json({ 
+            message: "Import complete", 
+            imported: importedCount, 
+            skipped: skippedCount 
+        });
+    } catch (error) {
+        console.error("Error bulk importing students: ", error);
+        return res.status(500).json({ message: "Internal server error during import" });
     }
 };

@@ -5,13 +5,14 @@ import { AdminLayout } from './AdminLayout.jsx'
 import { Modal, ConfirmDialog } from '../../components/Modal.jsx'
 import { SkeletonTable, EmptyState } from '../../components/SkeletonLoader.jsx'
 import { useToast } from '../../components/Toast.jsx'
-import { Search, Users, Trash2, AlertTriangle, BookOpen, Clock, Activity, X, Mail } from 'lucide-react'
+import { Search, Users, Trash2, AlertTriangle, BookOpen, Clock, Activity, X, Mail, Upload, Download, CheckSquare } from 'lucide-react'
 
 const API = 'http://localhost:4000/api'
 const getToken = () => localStorage.getItem('adminToken')
 
 export default function AdminProfessorsPage() {
     const [professors, setProfessors] = useState([])
+    const [stats, setStats] = useState(null)
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
     const [showAdd, setShowAdd] = useState(false)
@@ -19,36 +20,77 @@ export default function AdminProfessorsPage() {
     const [deleting, setDeleting] = useState(false)
     const [creating, setCreating] = useState(false)
     const [selectedProf, setSelectedProf] = useState(null)
+    const [selectedIds, setSelectedIds] = useState([])
+    const [isSelectMode, setIsSelectMode] = useState(false)
+    const [filterStatus, setFilterStatus] = useState('all')
+    const [sortConfig, setSortConfig] = useState('default')
+    const [isImporting, setIsImporting] = useState(false)
     const [form, setForm] = useState({ id: '', name: '', email: '', contact: '', address: '', password: '' })
     const [formErrors, setFormErrors] = useState({})
     const [showPass, setShowPass] = useState(false)
+    const [previewModal, setPreviewModal] = useState({ isOpen: false, title: '', content: '', headers: [], rows: [], filename: '' })
     const navigate = useNavigate()
     const toast = useToast()
 
-    const fetchProfessors = async () => {
+    const fetchData = async () => {
         const token = getToken()
         if (!token) { navigate('/admin/login'); return }
         try {
             setLoading(true)
-            const res = await axios.get(`${API}/admin/professors`, { headers: { Authorization: `Bearer ${token}` } })
-            setProfessors(res.data.professors || [])
+            const [profRes, statsRes] = await Promise.all([
+                axios.get(`${API}/admin/professors`, { headers: { Authorization: `Bearer ${token}` } }),
+                axios.get(`${API}/admin/stats`, { headers: { Authorization: `Bearer ${token}` } })
+            ]);
+            setProfessors(profRes.data.professors || [])
+            setStats(statsRes.data.stats || null)
         } catch {
-            toast.error('Failed to load professors')
+            toast.error('Failed to load data')
         } finally {
             setLoading(false)
         }
     }
 
-    useEffect(() => { fetchProfessors() }, [])
+    useEffect(() => { fetchData() }, [])
 
     const filtered = useMemo(() => {
-        const s = search.toLowerCase()
-        return professors.filter(p =>
-            p.name?.toLowerCase().includes(s) ||
-            p.id?.toLowerCase().includes(s) ||
-            p.email?.toLowerCase().includes(s)
-        )
-    }, [professors, search])
+        let result = professors;
+
+        if (filterStatus === 'active') {
+            result = result.filter(p => !p.isBlocked);
+        } else if (filterStatus === 'blocked') {
+            result = result.filter(p => p.isBlocked);
+        }
+
+        if (search) {
+            const s = search.toLowerCase();
+            result = result.filter(p =>
+                p.name?.toLowerCase().includes(s) ||
+                p.id?.toLowerCase().includes(s) ||
+                p.email?.toLowerCase().includes(s)
+            );
+        }
+
+        if (sortConfig !== 'default') {
+            result = [...result].sort((a, b) => {
+                switch (sortConfig) {
+                    case 'name-asc': return (a.name || '').localeCompare(b.name || '');
+                    case 'name-desc': return (b.name || '').localeCompare(a.name || '');
+                    case 'id-asc': return (a.id || '').localeCompare(b.id || '');
+                    case 'id-desc': return (b.id || '').localeCompare(a.id || '');
+                    case 'date-asc': return new Date(a.createdAt) - new Date(b.createdAt);
+                    case 'date-desc': return new Date(b.createdAt) - new Date(a.createdAt);
+                    default: return 0;
+                }
+            });
+        }
+        return result;
+    }, [professors, search, filterStatus, sortConfig])
+
+    const activeCreatorsCount = useMemo(() => {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        return professors.filter(p => p.lastActiveAt && new Date(p.lastActiveAt) > sevenDaysAgo).length;
+    }, [professors]);
 
     const validate = () => {
         const e = {}
@@ -72,7 +114,7 @@ export default function AdminProfessorsPage() {
             setShowAdd(false)
             setForm({ id: '', name: '', email: '', contact: '', address: '', password: '' })
             setFormErrors({})
-            fetchProfessors()
+            fetchData()
         } catch (err) {
             toast.error(err.response?.data?.message || 'Failed to create professor')
         } finally {
@@ -89,13 +131,119 @@ export default function AdminProfessorsPage() {
             toast.success('Professor removed')
             if (selectedProf?._id === deleteTarget._id) setSelectedProf(null)
             setDeleteTarget(null)
-            fetchProfessors()
+            fetchData()
         } catch {
             toast.error('Failed to delete professor')
         } finally {
             setDeleting(false)
         }
     }
+
+    const toggleSelectAll = () => {
+        if (selectedIds.length === filtered.length) {
+            setSelectedIds([])
+        } else {
+            setSelectedIds(filtered.map(p => p._id))
+        }
+    }
+
+    const toggleSelect = (id) => {
+        setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
+    }
+
+    const handleBulkDelete = async () => {
+        if (!window.confirm(`Are you sure you want to delete ${selectedIds.length} professors?`)) return;
+        try {
+            await axios.post(`${API}/admin/professors/bulk-delete`, { ids: selectedIds }, { headers: { Authorization: `Bearer ${getToken()}` } });
+            toast.success('Professors deleted successfully');
+            setSelectedIds([]);
+            fetchData();
+        } catch {
+            toast.error('Failed to delete professors');
+        }
+    }
+    const handleDownload = (content, filename) => {
+        const blob = new Blob([content], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+        setPreviewModal({ ...previewModal, isOpen: false });
+    };
+
+    const handleTemplateDownload = () => {
+        setPreviewModal({
+            isOpen: true,
+            title: 'Download Template',
+            content: 'Professor ID,Name,Email,Contact,Address',
+            headers: ['Professor ID', 'Name', 'Email', 'Contact', 'Address'],
+            filename: 'professor_template.csv'
+        });
+    };
+
+    const handleFileUpload = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        setIsImporting(true);
+        import('papaparse').then((Papa) => {
+            Papa.default.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                complete: async (results) => {
+                    if (results.errors.length > 0) {
+                        toast.error('Error parsing CSV file');
+                        setIsImporting(false);
+                        return;
+                    }
+                    try {
+                        const res = await axios.post(`${API}/admin/professors/bulk-import`, {
+                            professors: results.data
+                        }, { headers: { Authorization: `Bearer ${getToken()}` } });
+                        toast.success(`Imported ${res.data.imported} professors (${res.data.skipped} skipped)`);
+                        fetchData();
+                    } catch (err) {
+                        toast.error(err.response?.data?.message || 'Failed to import professors');
+                    } finally {
+                        setIsImporting(false);
+                    }
+                }
+            });
+        });
+        e.target.value = null;
+    };
+
+    const handleToggleBlock = async (prof) => {
+        try {
+            const res = await axios.post(`${API}/admin/professors/${prof._id}/block`, {}, {
+                headers: { Authorization: `Bearer ${getToken()}` }
+            });
+            toast.success(res.data.message);
+            setSelectedProf(prev => ({ ...prev, isBlocked: res.data.isBlocked }));
+            fetchData();
+        } catch {
+            toast.error('Failed to update block status');
+        }
+    };
+
+    const handleBulkBlock = async (block) => {
+        try {
+            await axios.post(`${API}/admin/professors/bulk-block`, { ids: selectedIds, block }, {
+                headers: { Authorization: `Bearer ${getToken()}` }
+            });
+            toast.success(`Professors ${block ? 'blocked' : 'unblocked'} successfully`);
+            setSelectedIds([]);
+            fetchData();
+        } catch {
+            toast.error('Failed to update professors');
+        }
+    };
+
+        React.useEffect(() => {
+        window.refreshCurrentPage = fetchData;
+        return () => { window.refreshCurrentPage = null; };
+    }, []);
 
     return (
         <AdminLayout>
@@ -105,7 +253,39 @@ export default function AdminProfessorsPage() {
                         <h1 className="page-title">Faculty Overview</h1>
                         <p className="page-subtitle">Manage institutional professors and content contributors</p>
                     </div>
-                    <button className="btn btn-primary" onClick={() => setShowAdd(true)}>+ Add Professor</button>
+                    <div style={{ display: 'flex', gap: 12 }}>
+                        <button className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: 8 }} onClick={handleTemplateDownload}>
+                            <Download size={16} /> Template
+                        </button>
+                        <label className="btn btn-secondary" style={{ cursor: 'pointer', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                            {isImporting ? (
+                                <div className="spinner" style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.2)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                            ) : (
+                                <Upload size={16} />
+                            )}
+                            {isImporting ? 'Importing...' : 'Import'}
+                            <input type="file" accept=".csv" style={{ display: 'none' }} onChange={handleFileUpload} disabled={isImporting} />
+                        </label>
+                        <button className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: 8 }} onClick={() => {
+                            const headers = ['Name', 'Professor ID', 'Email', 'Contact', 'Address', 'Created At', 'Updated At'];
+                            const rows = professors.map(p => [p.name || '', p.id || '', p.email || '', p.contact || '', p.address || '', p.createdAt ? new Date(p.createdAt).toLocaleString() : '', p.updatedAt ? new Date(p.updatedAt).toLocaleString() : '']);
+                            const csv = [
+                                headers.join(','),
+                                ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+                            ].join('\n');
+                            setPreviewModal({
+                                isOpen: true,
+                                title: 'Professors Export Preview',
+                                content: csv,
+                                headers: headers,
+                                rows: rows,
+                                filename: 'professors.csv'
+                            });
+                        }}>
+                            <Download size={16} /> Export
+                        </button>
+                        <button className="btn btn-primary" onClick={() => setShowAdd(true)}>+ Add Professor</button>
+                    </div>
                 </div>
             </div>
 
@@ -122,21 +302,21 @@ export default function AdminProfessorsPage() {
                         <span className="kpi-label">Active Content Creators</span>
                         <span className="kpi-icon" style={{ background: 'var(--success-subtle)', color: 'var(--success)' }}><BookOpen size={20} /></span>
                     </div>
-                    <div className="kpi-value">{loading ? '—' : Math.floor(professors.length * 0.6)}</div>
+                    <div className="kpi-value">{loading ? '—' : activeCreatorsCount}</div>
                 </div>
                 <div className="kpi-card">
                     <div className="kpi-card-header">
                         <span className="kpi-label">Pending Reviews</span>
                         <span className="kpi-icon" style={{ background: 'var(--warning-subtle)', color: 'var(--warning)' }}><Clock size={20} /></span>
                     </div>
-                    <div className="kpi-value">{loading ? '—' : 2}</div>
+                    <div className="kpi-value">{loading ? '—' : (stats?.pendingBatches || 0)}</div>
                 </div>
                 <div className="kpi-card">
                     <div className="kpi-card-header">
                         <span className="kpi-label">Platform Activity</span>
                         <span className="kpi-icon" style={{ background: 'var(--info-subtle)', color: 'var(--info)' }}><Activity size={20} /></span>
                     </div>
-                    <div className="kpi-value">Normal</div>
+                    <div className="kpi-value">{loading ? '—' : `${stats?.batches || 0} Batches`}</div>
                 </div>
             </div>
 
@@ -147,17 +327,73 @@ export default function AdminProfessorsPage() {
                             <Search size={16} style={{ color: 'var(--text-tertiary)' }} />
                             <input className="search-input" placeholder="Search by name, ID, email..." value={search} onChange={e => setSearch(e.target.value)} />
                         </div>
+                        <select
+                            className="form-select"
+                            style={{ width: 140, padding: '8px 12px', height: '100%' }}
+                            value={filterStatus}
+                            onChange={(e) => setFilterStatus(e.target.value)}
+                        >
+                            <option value="all">All Status</option>
+                            <option value="active">Active</option>
+                            <option value="blocked">Blocked</option>
+                        </select>
+                        <select
+                            className="form-select"
+                            style={{ width: 150, padding: '8px 12px', height: '100%' }}
+                            value={sortConfig}
+                            onChange={(e) => setSortConfig(e.target.value)}
+                        >
+                            <option value="default">Sort by</option>
+                            <option value="name-asc">Name (A-Z)</option>
+                            <option value="name-desc">Name (Z-A)</option>
+                            <option value="id-asc">Professor ID (A-Z)</option>
+                            <option value="id-desc">Professor ID (Z-A)</option>
+                            <option value="date-desc">Newest First</option>
+                            <option value="date-asc">Oldest First</option>
+                        </select>
+                        <button
+                            className={`btn ${isSelectMode ? 'btn-primary' : 'btn-secondary'}`}
+                            style={{ padding: '8px 12px', height: '100%' }}
+                            onClick={() => {
+                                setIsSelectMode(!isSelectMode);
+                                if (isSelectMode) setSelectedIds([]);
+                            }}
+                        >
+                            <CheckSquare size={16} style={{ marginRight: 6 }} />
+                            {isSelectMode ? 'Cancel Selection' : 'Select'}
+                        </button>
                         <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-tertiary)' }}>{filtered.length} faculty members</span>
                     </div>
+
+                    {selectedIds.length > 0 && (
+                        <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', padding: '12px 16px', borderRadius: 'var(--radius-sm)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 16, animation: 'fadeIn 0.2s ease' }}>
+                            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{selectedIds.length} selected</span>
+                            <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
+                                <button className="btn btn-secondary btn-sm" onClick={() => handleBulkBlock(false)}>Unblock</button>
+                                <button className="btn btn-secondary btn-sm" onClick={() => handleBulkBlock(true)}>Block</button>
+                                <button className="btn btn-danger btn-sm" onClick={handleBulkDelete}>Delete</button>
+                            </div>
+                        </div>
+                    )}
 
                     <div className="data-table-wrapper">
                         <table className="data-table">
                             <thead>
                                 <tr>
+                                    {isSelectMode && (
+                                        <th style={{ width: 40, paddingLeft: 16 }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={filtered.length > 0 && selectedIds.length === filtered.length}
+                                                onChange={toggleSelectAll}
+                                            />
+                                        </th>
+                                    )}
                                     <th>Professor</th>
                                     <th>ID</th>
                                     <th>Email</th>
                                     <th>Contact</th>
+                                    <th>Batches</th>
                                     <th>Added</th>
                                 </tr>
                             </thead>
@@ -166,7 +402,7 @@ export default function AdminProfessorsPage() {
                             ) : (
                                 <tbody>
                                     {filtered.length === 0 ? (
-                                        <tr><td colSpan={5}>
+                                        <tr><td colSpan={isSelectMode ? 7 : 6}>
                                             <EmptyState
                                                 icon={<Users size={32} color="var(--text-tertiary)" />}
                                                 title="No professors found"
@@ -177,25 +413,39 @@ export default function AdminProfessorsPage() {
                                     ) : filtered.map(prof => {
                                         const isSelected = selectedProf?._id === prof._id
                                         return (
-                                            <tr key={prof._id} 
+                                            <tr key={prof._id}
                                                 onClick={() => setSelectedProf(prof)}
-                                                style={{ 
+                                                style={{
                                                     cursor: 'pointer',
                                                     background: isSelected ? 'var(--bg-active)' : 'transparent',
                                                     borderLeft: isSelected ? '2px solid var(--brand-secondary)' : '2px solid transparent'
                                                 }}
                                             >
+                                                {isSelectMode && (
+                                                    <td onClick={(e) => e.stopPropagation()} style={{ paddingLeft: 16 }}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedIds.includes(prof._id)}
+                                                            onChange={() => toggleSelect(prof._id)}
+                                                        />
+                                                    </td>
+                                                )}
                                                 <td>
                                                     <div className="flex items-center gap-3">
-                                                        <span className="avatar avatar-sm" style={{ background: 'rgba(124,58,237,0.12)', color: 'var(--brand-secondary)' }}>
+                                                        <span className="avatar avatar-sm" style={{ background: prof.isBlocked ? 'var(--danger-subtle)' : 'rgba(124,58,237,0.12)', color: prof.isBlocked ? 'var(--danger)' : 'var(--brand-secondary)' }}>
                                                             {prof.name?.charAt(0)?.toUpperCase()}
                                                         </span>
-                                                        <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{prof.name}</span>
+                                                        <span style={{ fontWeight: 600, color: prof.isBlocked ? 'var(--danger)' : 'var(--text-primary)', textDecoration: prof.isBlocked ? 'line-through' : 'none' }}>{prof.name}</span>
                                                     </div>
                                                 </td>
                                                 <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-secondary)' }}>{prof.id}</td>
                                                 <td style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{prof.email}</td>
                                                 <td style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{prof.contact || '—'}</td>
+                                                <td>
+                                                    <span className="badge" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}>
+                                                        {prof.submittedBatches || 0}
+                                                    </span>
+                                                </td>
                                                 <td style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
                                                     {new Date(prof.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                                                 </td>
@@ -210,13 +460,13 @@ export default function AdminProfessorsPage() {
 
                 {/* Right Side Drawer / Panel */}
                 {selectedProf && (
-                    <div style={{ 
-                        width: 380, 
-                        flexShrink: 0, 
-                        background: 'var(--bg-elevated)', 
-                        border: '1px solid var(--border-default)', 
-                        borderRadius: 'var(--radius-lg)', 
-                        position: 'sticky', 
+                    <div style={{
+                        width: 380,
+                        flexShrink: 0,
+                        background: 'var(--bg-elevated)',
+                        border: '1px solid var(--border-default)',
+                        borderRadius: 'var(--radius-lg)',
+                        position: 'sticky',
                         top: 'var(--topbar-height)',
                         marginTop: 48,
                         animation: 'slideInRight 200ms ease',
@@ -226,12 +476,13 @@ export default function AdminProfessorsPage() {
                     }}>
                         <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border-default)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <div className="flex items-center gap-3">
-                                <div className="avatar" style={{ background: 'var(--brand-secondary)', width: 40, height: 40, fontSize: 16 }}>
+                                <div className="avatar" style={{ background: selectedProf.isBlocked ? 'var(--danger-subtle)' : 'var(--brand-secondary)', color: selectedProf.isBlocked ? 'var(--danger)' : 'var(--text-inverse)', width: 40, height: 40, fontSize: 16 }}>
                                     {selectedProf.name?.charAt(0)?.toUpperCase()}
                                 </div>
                                 <div>
-                                    <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)' }}>{selectedProf.name}</h3>
+                                    <h3 style={{ fontSize: 16, fontWeight: 600, color: selectedProf.isBlocked ? 'var(--danger)' : 'var(--text-primary)', textDecoration: selectedProf.isBlocked ? 'line-through' : 'none' }}>{selectedProf.name}</h3>
                                     <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2, fontFamily: 'var(--font-mono)' }}>{selectedProf.id}</p>
+                                    {selectedProf.isBlocked && <span className="badge badge-danger" style={{ marginTop: 4 }}>BLOCKED</span>}
                                 </div>
                             </div>
                             <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setSelectedProf(null)}>
@@ -249,7 +500,7 @@ export default function AdminProfessorsPage() {
                             </div>
 
                             <div style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', marginBottom: 12 }}>Contributions Snapshot</div>
-                            
+
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
                                 <div style={{ background: 'var(--bg-surface)', padding: 16, borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
                                     <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Batches Submitted</div>
@@ -264,8 +515,11 @@ export default function AdminProfessorsPage() {
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <div style={{ marginTop: 32, display: 'flex', gap: 12 }}>
+                                <button className={`btn ${selectedProf.isBlocked ? 'btn-secondary' : 'btn-danger-subtle'}`} style={{ flex: 1, justifyContent: 'center' }} onClick={() => handleToggleBlock(selectedProf)}>
+                                    {selectedProf.isBlocked ? 'Unblock Access' : 'Block Access'}
+                                </button>
                                 <button className="btn btn-danger" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setDeleteTarget(selectedProf)}>
                                     <Trash2 size={16} /> Remove Professor
                                 </button>
@@ -336,6 +590,46 @@ export default function AdminProfessorsPage() {
                 danger
                 loading={deleting}
             />
+            <Modal open={previewModal.isOpen} onClose={() => setPreviewModal({ ...previewModal, isOpen: false })} title={previewModal.title} size="full">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <div style={{
+                        background: 'var(--bg-body)',
+                        borderRadius: '8px',
+                        border: '1px solid var(--border-subtle)',
+                        maxHeight: '400px',
+                        overflow: 'auto',
+                    }}>
+                        <table className="table" style={{ width: '100%', minWidth: 600, borderCollapse: 'collapse' }}>
+                            <thead>
+                                <tr>
+                                    {previewModal.headers?.map((h, i) => (
+                                        <th key={i} style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-subtle)', textAlign: 'left', background: 'var(--bg-surface)' }}>{h}</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {previewModal.rows?.length > 0 ? previewModal.rows.map((row, i) => (
+                                    <tr key={i}>
+                                        {row.map((cell, j) => (
+                                            <td key={j} style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-subtle)' }}>{cell}</td>
+                                        ))}
+                                    </tr>
+                                )) : (
+                                    <tr>
+                                        <td colSpan={previewModal.headers?.length || 1} style={{ padding: '24px', textAlign: 'center', color: 'var(--text-tertiary)' }}>No data</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div className="flex gap-3" style={{ justifyContent: 'flex-end', marginTop: 12 }}>
+                        <button className="btn btn-ghost" onClick={() => setPreviewModal({ ...previewModal, isOpen: false })}>Cancel</button>
+                        <button className="btn btn-primary flex items-center gap-2" onClick={() => handleDownload(previewModal.content, previewModal.filename)}>
+                            <Download size={16} /> Download CSV
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </AdminLayout>
     )
 }

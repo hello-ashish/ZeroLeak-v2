@@ -185,22 +185,22 @@ export default function AdminDashboardPage() {
                         <div className="kpi-module">
                             <p className="kpi-module-title">Students</p>
                             <p className="kpi-module-value">{s.students?.toLocaleString() || 0}</p>
-                            <p className="kpi-module-sub" style={{ color: 'var(--success)' }}>
-                                <TrendingUp size={16} /> <span>+12.4% vs last month</span>
+                            <p className="kpi-module-sub" style={{ color: (s.students > 0 && s.studentsLastMonth > 0) ? 'var(--success)' : 'var(--text-secondary)' }}>
+                                <TrendingUp size={16} /> <span>{s.studentsLastMonth ? `+${(((s.students - s.studentsLastMonth) / s.studentsLastMonth) * 100).toFixed(1)}%` : '+100%'} vs last month</span>
                             </p>
                         </div>
                         <div className="kpi-module">
                             <p className="kpi-module-title">Exam Activity</p>
                             <p className="kpi-module-value">{s.exams || 0}</p>
                             <p className="kpi-module-sub" style={{ color: 'var(--text-secondary)' }}>
-                                <Clock size={16} /> <span>4 live today</span>
+                                <Clock size={16} /> <span>{s.liveExamsCount || 0} live today</span>
                             </p>
                         </div>
                         <div className="kpi-module">
                             <p className="kpi-module-title">Average Performance</p>
                             <p className="kpi-module-value">{s.avgScore || 0}%</p>
-                            <p className="kpi-module-sub" style={{ color: 'var(--success)' }}>
-                                <TrendingUp size={16} /> <span>+4.2% trajectory</span>
+                            <p className="kpi-module-sub" style={{ color: s.scoreTrajectory >= 0 ? 'var(--success)' : 'var(--danger)' }}>
+                                {s.scoreTrajectory >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />} <span>{s.scoreTrajectory > 0 ? '+' : ''}{s.scoreTrajectory || 0}% trajectory</span>
                             </p>
                         </div>
                         <div className="kpi-module">

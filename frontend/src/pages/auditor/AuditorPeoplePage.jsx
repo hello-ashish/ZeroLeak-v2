@@ -40,6 +40,11 @@ export default function AuditorPeoplePage() {
         fetchData()
     }, [tab, navigate])
 
+        React.useEffect(() => {
+        window.refreshCurrentPage = fetchData;
+        return () => { window.refreshCurrentPage = null; };
+    }, []);
+
     return (
         <AuditorLayout>
             <div className="page-header" style={{ marginBottom: 24 }}>

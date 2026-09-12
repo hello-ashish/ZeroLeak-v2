@@ -84,6 +84,11 @@ export default function AdminExamsPage() {
         }
     }
 
+        React.useEffect(() => {
+        window.refreshCurrentPage = fetchData;
+        return () => { window.refreshCurrentPage = null; };
+    }, []);
+
     return (
         <AdminLayout>
             <div className="page-header">

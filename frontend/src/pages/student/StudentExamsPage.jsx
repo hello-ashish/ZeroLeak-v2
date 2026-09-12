@@ -55,7 +55,12 @@ const StudentExamsPage = () => {
     const filteredExams = getFilteredExams();
 
     if (loading) {
-        return (
+            React.useEffect(() => {
+        window.refreshCurrentPage = fetchData;
+        return () => { window.refreshCurrentPage = null; };
+    }, []);
+
+    return (
             <div style={{ padding: 32 }}>
                 <div style={{ height: 40, width: 200, background: 'var(--bg-card)', borderRadius: 8, marginBottom: 32, animation: 'pulse 2s infinite' }} />
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

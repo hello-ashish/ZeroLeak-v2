@@ -979,6 +979,11 @@ body:has(.glass-container) {
   max-width: 1000px;
 }
 
+.modal-full {
+  max-width: 95vw;
+  width: max-content;
+}
+
 .modal-header {
   display: flex;
   align-items: center;
@@ -2224,4 +2229,11 @@ body:has(.glass-container) {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+.spin {
+    animation: spin 1s linear infinite;
 }

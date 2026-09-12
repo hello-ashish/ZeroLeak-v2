@@ -12,11 +12,15 @@ import { buildMerkleRoot } from "../Services/merkle.service.js"
 // 1. Register Student
 export const registerStudent = async (req, res) => {
     try {
-        const { studentId, name, email, password } = req.body;
+        const { studentId, name, email, password, department, batch, contact, dateOfBirth, address, gender, program } = req.body;
         if (!studentId || !name || !email || !password) return res.status(400).json({ message: "All fields required" });
         const existingStudent = await Student.findOne({ $or: [{ studentId }, { email }] });
         if (existingStudent) return res.status(400).json({ message: "Student already exists" });
-        const student = await Student.create({ studentId, name, email, password });
+        
+        const studentData = { studentId, name, email, password, department, batch, contact, address, gender, program };
+        if (dateOfBirth) studentData.dateOfBirth = dateOfBirth;
+        
+        const student = await Student.create(studentData);
         const createdStudent = await Student.findById(student._id).select("-password");
         return res.status(201).json({ message: "Student registered", student: createdStudent });
     } catch (error) {

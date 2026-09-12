@@ -24,6 +24,10 @@ export const loginProfessor = async (req, res) => {
             return res.status(404).json({ message: "Professor not found" })
         }
 
+        if (professor.isBlocked) {
+            return res.status(403).json({ message: "BLOCKED" })
+        }
+
         // check if password is correct using custom method
         const isPasswordCorrect = await professor.isPasswordCorrect(password)
 
@@ -33,6 +37,9 @@ export const loginProfessor = async (req, res) => {
 
         // generate JWT token for the professor
         const token = professor.generateAccessToken()
+
+        professor.lastActiveAt = new Date();
+        await professor.save({ validateBeforeSave: false });
 
         // if login is successful, remove the password from the data
         const loggedInProfessor = await Professor.findById(professor._id).select("-password")

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
-import { LayoutDashboard, ClipboardList, Database, BarChart3, GraduationCap, Users, PackageOpen, ScrollText, Settings, Search, Sun, Moon, Plus, LogOut, ChevronDown, Command, Bell } from 'lucide-react'
+import { LayoutDashboard, ClipboardList, Database, BarChart3, GraduationCap, Users, PackageOpen, ScrollText, Settings, Search, LogOut, ChevronDown, Command, Bell, Plus , RefreshCw } from 'lucide-react'
 import { CommandPalette } from '../../components/CommandPalette.jsx'
+import { HeaderThemeSlider } from '../../components/HeaderThemeSlider.jsx'
 
 const NAV = [
     {
@@ -168,14 +169,18 @@ export const AdminLayout = ({ children, pendingBatchCount = 0 }) => {
                     </div>
 
                     <div className="topbar-actions">
+                        <HeaderThemeSlider />
+
+                        {/* Refresh Button */}
                         <button
                             className="topbar-btn"
-                            onClick={() => window.dispatchEvent(new Event('zl-theme-slider-toggle'))}
-                            aria-label="Adjust Brightness"
-                            title="Toggle Brightness Slider"
+                            onClick={() => window.refreshCurrentPage && window.refreshCurrentPage()}
+                            title="Refresh Page"
+                            aria-label="Refresh Page"
                         >
-                            <Sun size={18} />
+                            <RefreshCw size={18} />
                         </button>
+
 
                         {/* Notifications Dropdown */}
                         <div className="dropdown">

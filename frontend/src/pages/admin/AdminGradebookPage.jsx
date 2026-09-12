@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import axios from 'axios'
 import { AdminLayout } from './AdminLayout.jsx'
+import { Modal } from '../../components/Modal.jsx'
 import { SkeletonTable, EmptyState } from '../../components/SkeletonLoader.jsx'
 import { ScorePill } from '../../components/StatusBadge.jsx'
 import { useToast } from '../../components/Toast.jsx'
@@ -27,19 +28,14 @@ function getGrade(pct) {
     return 'F'
 }
 
-const exportCSV = (data, filename) => {
+const generateCSVData = (data) => {
     const headers = ['Rank', 'Student', 'Student ID', 'Exam', 'Score', 'Total', 'Percentage', 'Grade', 'Date']
     const rows = data.map((r, i) => {
         const pct = Math.round((r.score / r.totalQuestions) * 100)
         return [i + 1, r.student?.name || 'Unknown', r.student?.studentId || '', r.exam?.title || '', r.score, r.totalQuestions, `${pct}%`, getGrade(pct), new Date(r.createdAt).toLocaleDateString()]
     })
-    const csv = [headers, ...rows].map(r => r.join(',')).join('\n')
-    const blob = new Blob([csv], { type: 'text/csv' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url; a.download = filename
-    a.click()
-    URL.revokeObjectURL(url)
+    const content = [headers, ...rows].map(r => r.join(',')).join('\n')
+    return { headers, rows, content }
 }
 
 export default function AdminGradebookPage() {
@@ -50,8 +46,20 @@ export default function AdminGradebookPage() {
     const [searchParams] = useSearchParams()
     const [search, setSearch] = useState(searchParams.get('student') || '')
     const [sortDir, setSortDir] = useState('desc')
+    const [previewModal, setPreviewModal] = useState({ isOpen: false, title: '', content: '', headers: [], rows: [], filename: '' })
     const navigate = useNavigate()
     const toast = useToast()
+
+    const handleDownload = (content, filename) => {
+        const blob = new Blob([content], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+        setPreviewModal({ ...previewModal, isOpen: false });
+    };
 
     useEffect(() => {
         const token = getToken()
@@ -126,6 +134,11 @@ export default function AdminGradebookPage() {
         }
     }, [filtered])
 
+        React.useEffect(() => {
+        window.refreshCurrentPage = fetchData;
+        return () => { window.refreshCurrentPage = null; };
+    }, []);
+
     return (
         <AdminLayout>
             <div className="page-header">
@@ -135,7 +148,10 @@ export default function AdminGradebookPage() {
                         <p className="page-subtitle">Academic performance records and aggregate analytics</p>
                     </div>
                     <div className="page-actions">
-                        <button className="btn btn-secondary flex items-center gap-2" onClick={() => exportCSV(filtered, 'gradebook.csv')} disabled={!results.length}>
+                        <button className="btn btn-secondary flex items-center gap-2" onClick={() => {
+                            const { headers, rows, content } = generateCSVData(filtered);
+                            setPreviewModal({ isOpen: true, title: 'Gradebook Export Preview', content, headers, rows, filename: 'gradebook.csv' });
+                        }} disabled={!results.length}>
                             <Download size={14} /> Export CSV
                         </button>
                     </div>
@@ -299,6 +315,46 @@ export default function AdminGradebookPage() {
                     )}
                 </table>
             </div>
+            <Modal open={previewModal.isOpen} onClose={() => setPreviewModal({ ...previewModal, isOpen: false })} title={previewModal.title} size="full">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <div style={{
+                        background: 'var(--bg-body)',
+                        borderRadius: '8px',
+                        border: '1px solid var(--border-subtle)',
+                        maxHeight: '400px',
+                        overflow: 'auto',
+                    }}>
+                        <table className="table" style={{ width: '100%', minWidth: 600, borderCollapse: 'collapse' }}>
+                            <thead>
+                                <tr>
+                                    {previewModal.headers?.map((h, i) => (
+                                        <th key={i} style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-subtle)', textAlign: 'left', background: 'var(--bg-surface)' }}>{h}</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {previewModal.rows?.length > 0 ? previewModal.rows.map((row, i) => (
+                                    <tr key={i}>
+                                        {row.map((cell, j) => (
+                                            <td key={j} style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-subtle)' }}>{cell}</td>
+                                        ))}
+                                    </tr>
+                                )) : (
+                                    <tr>
+                                        <td colSpan={previewModal.headers?.length || 1} style={{ padding: '24px', textAlign: 'center', color: 'var(--text-tertiary)' }}>No data</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div className="flex gap-3" style={{ justifyContent: 'flex-end', marginTop: 12 }}>
+                        <button className="btn btn-ghost" onClick={() => setPreviewModal({ ...previewModal, isOpen: false })}>Cancel</button>
+                        <button className="btn btn-primary flex items-center gap-2" onClick={() => handleDownload(previewModal.content, previewModal.filename)}>
+                            <Download size={16} /> Download CSV
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </AdminLayout>
     )
 }

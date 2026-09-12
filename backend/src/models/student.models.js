@@ -8,6 +8,13 @@ const studentSchema = new Schema(
         name: { type: String, required: true, trim: true },
         email: { type: String, required: true, unique: true, lowercase: true, trim: true },
         password: { type: String, required: true },
+        department: { type: String, trim: true },
+        batch: { type: String, trim: true },
+        contact: { type: String, trim: true },
+        dateOfBirth: { type: Date },
+        address: { type: String, trim: true },
+        gender: { type: String, enum: ['Male', 'Female', 'Other'] },
+        program: { type: String, trim: true },
         isBlocked: { type: Boolean, default: false },
         lastActiveAt: { type: Date, default: null },
         currentExamId: { type: Schema.Types.ObjectId, ref: 'Exam', default: null }
