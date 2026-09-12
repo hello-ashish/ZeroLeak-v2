@@ -1,8 +1,8 @@
 import React, { useState } from 'react'
 import axios from 'axios'
 import { useNavigate, Link } from 'react-router-dom'
-import { Mail, Lock, Eye, EyeOff, ShieldCheck } from 'lucide-react'
-import '../../Login.css'
+import { Mail, Lock, Eye, EyeOff, ShieldCheck, Loader2 } from 'lucide-react'
+import AuthShell from '../../components/auth/AuthShell';
 
 const API = 'http://localhost:4000/api'
 
@@ -36,74 +36,79 @@ export default function AuditorLogin() {
     }
 
     return (
-        <div className="login-wrapper">
-            <div className="login-container">
-                <div className="login-header">
-                    <img src="/logo.png" alt="ZeroLeak Logo" style={{ width: 64, height: 64, borderRadius: 16, objectFit: 'cover', margin: '0 auto 1.5rem', display: 'block', boxShadow: '0 8px 24px rgba(88, 101, 242, 0.3)' }} />
-                    <h1 className="login-brand">ZeroLeak</h1>
-                    <p className="login-subtitle">
-                        <ShieldCheck size={14} style={{ display: 'inline', marginRight: 6 }} />
-                        Auditor Console
-                    </p>
-                </div>
-
-                {error && (
-                    <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#ef4444', borderRadius: 8, padding: '10px 14px', marginBottom: 16, fontSize: 13 }}>
-                        {error}
-                    </div>
-                )}
-
-                <form className="login-form" onSubmit={handleLogin}>
-                    <div className="input-group">
-                        <label>Auditor Email</label>
-                        <div className="input-wrapper">
-                            <Mail className="input-icon" size={20} />
-                            <input
-                                type="email"
-                                className="glass-input-modern"
-                                placeholder="auditor@zeroleak.com"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                required
-                            />
-                        </div>
-                    </div>
-
-                    <div className="input-group">
-                        <label>Password</label>
-                        <div className="input-wrapper">
-                            <Lock className="input-icon" size={20} />
-                            <input
-                                type={showPassword ? 'text' : 'password'}
-                                className="glass-input-modern"
-                                placeholder="Enter password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                required
-                                style={{ paddingRight: '45px' }}
-                            />
-                            <button
-                                type="button"
-                                className="password-toggle"
-                                onClick={() => setShowPassword(prev => !prev)}
-                                aria-label={showPassword ? 'Hide password' : 'Show password'}
-                            >
-                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                            </button>
-                        </div>
-                    </div>
-
-                    <button type="submit" className="btn-submit" disabled={loading}>
-                        {loading ? 'Authenticating...' : 'Sign In as Auditor'}
-                    </button>
-                </form>
-
-                <div style={{ marginTop: 24, textAlign: 'center', fontSize: 13 }}>
-                    <Link to="/admin/login" style={{ color: '#a1a1aa', textDecoration: 'none' }}>
-                        Switch to Admin Login →
-                    </Link>
-                </div>
+        <AuthShell 
+          title="Audit & Assurance" 
+          subtitle="Review activity, exam integrity, and platform evidence."
+          badge="AUTHORIZED ACCESS"
+        >
+          <form className="auth-form" onSubmit={handleLogin}>
+            {error && <div className="auth-error" role="alert">{error}</div>}
+            
+            <div className="auth-input-group">
+              <label htmlFor="auditor-email">Auditor Email</label>
+              <div className="auth-input-wrapper">
+                <Mail className="auth-input-icon" size={18} />
+                <input
+                  id="auditor-email"
+                  type="email"
+                  className="auth-input"
+                  placeholder="auditor@zeroleak.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  disabled={loading}
+                  autoComplete="email"
+                />
+              </div>
             </div>
-        </div>
+            
+            <div className="auth-input-group">
+              <label htmlFor="auditor-password">Password</label>
+              <div className="auth-input-wrapper">
+                <Lock className="auth-input-icon" size={18} />
+                <input
+                  id="auditor-password"
+                  type={showPassword ? 'text' : 'password'}
+                  className="auth-input"
+                  placeholder="Enter password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={loading}
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  className="auth-password-toggle"
+                  onClick={() => setShowPassword(prev => !prev)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  disabled={loading}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
+
+            <button type="submit" className="auth-submit-btn" disabled={loading}>
+              {loading ? (
+                <>
+                  <Loader2 size={18} className="spin" />
+                  Authenticating...
+                </>
+              ) : (
+                <>
+                  <ShieldCheck size={18} />
+                  Sign In as Auditor
+                </>
+              )}
+            </button>
+          </form>
+
+          <div style={{ marginTop: 24, textAlign: 'center', fontSize: 13 }}>
+              <Link to="/admin/login" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>
+                  Switch to Admin Login →
+              </Link>
+          </div>
+        </AuthShell>
     )
 }

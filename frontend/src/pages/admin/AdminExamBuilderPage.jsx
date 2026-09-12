@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AdminLayout } from './AdminLayout.jsx'
-import { ArrowLeft, Check, BookOpen, Clock, Settings, Upload, Search, Database } from 'lucide-react'
+import { ArrowLeft, Check, BookOpen, Clock, Settings, Upload, Search, Database, Loader2 } from 'lucide-react'
 import { useToast } from '../../components/Toast.jsx'
 import axios from 'axios'
 
@@ -14,6 +14,7 @@ export const AdminExamBuilderPage = () => {
     const [allQuestions, setAllQuestions] = useState([])
     const [qSearch, setQSearch] = useState('')
     const [creating, setCreating] = useState(false)
+    const [isGenerating, setIsGenerating] = useState(false)
     const navigate = useNavigate()
     const toast = useToast()
 
@@ -128,34 +129,83 @@ export const AdminExamBuilderPage = () => {
 
                     {step === 3 && (
                         <div style={{ animation: 'dialogScale 200ms ease' }}>
-                            <h2 style={{ fontSize: 18, marginBottom: 24 }}>Select Questions</h2>
-                            <p style={{ color: 'var(--text-secondary)', marginBottom: 16 }}>Select the questions you want to include in this exam.</p>
+                            <h2 style={{ fontSize: 18, marginBottom: 24 }}>Generate Questions</h2>
+                            <p style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>
+                                Select a subject and the number of questions. The system will randomly choose them for you.
+                            </p>
                             
-                            <div className="search-input-wrap" style={{ marginBottom: 16 }}>
-                                <Search size={16} style={{ color: 'var(--text-tertiary)' }} />
-                                <input className="search-input" placeholder="Search questions..." value={qSearch} onChange={e => setQSearch(e.target.value)} />
+                            <div className="form-group mb-4">
+                                <label className="form-label">Subject *</label>
+                                <select 
+                                    className="form-select" 
+                                    value={form.subject || ''} 
+                                    onChange={e => setForm(f => ({ ...f, subject: e.target.value, selectedQuestions: [] }))}
+                                >
+                                    <option value="">-- Select Subject --</option>
+                                    {[...new Set(allQuestions.map(q => q.subject))].filter(Boolean).map(subj => (
+                                        <option key={subj} value={subj}>{subj}</option>
+                                    ))}
+                                </select>
                             </div>
 
-                            <div style={{ maxHeight: 300, overflowY: 'auto', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', background: 'var(--bg-surface)' }}>
-                                {allQuestions.filter(q => q.title?.toLowerCase().includes(qSearch.toLowerCase()) || q.subject?.toLowerCase().includes(qSearch.toLowerCase())).map(q => (
-                                    <label key={q._id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--border-subtle)', cursor: 'pointer' }}>
-                                        <input type="checkbox" checked={form.selectedQuestions.includes(q._id)} onChange={(e) => {
-                                            if (e.target.checked) {
-                                                setForm(f => ({ ...f, selectedQuestions: [...f.selectedQuestions, q._id] }))
-                                            } else {
-                                                setForm(f => ({ ...f, selectedQuestions: f.selectedQuestions.filter(id => id !== q._id) }))
-                                            }
-                                        }} />
-                                        <div style={{ flex: 1 }}>
-                                            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{q.title}</div>
-                                            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>{q.subject} • {q.difficultyLevel}</div>
-                                        </div>
-                                    </label>
-                                ))}
+                            <div className="form-group mb-4">
+                                <label className="form-label">Number of Questions *</label>
+                                <div className="search-input-wrap">
+                                    <Database size={16} style={{ color: 'var(--text-tertiary)' }} />
+                                    <input 
+                                        className="search-input" 
+                                        type="number" 
+                                        min="1" 
+                                        placeholder="e.g. 10"
+                                        value={form.questionCount || ''} 
+                                        onChange={e => setForm(f => ({ ...f, questionCount: parseInt(e.target.value) || 0, selectedQuestions: [] }))} 
+                                    />
+                                </div>
                             </div>
-                            <div style={{ marginTop: 12, fontSize: 13, color: 'var(--text-secondary)' }}>
-                                {form.selectedQuestions.length} questions selected
-                            </div>
+
+                            {form.subject && (
+                                <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 16 }}>
+                                    Available questions in {form.subject}: {allQuestions.filter(q => q.subject === form.subject).length}
+                                </div>
+                            )}
+
+                            <button 
+                                className="btn btn-secondary" 
+                                style={{ marginBottom: 24, width: '100%', justifyContent: 'center' }}
+                                disabled={isGenerating || !form.subject || !form.questionCount}
+                                onClick={() => {
+                                    if (!form.subject) return toast.error('Please select a subject')
+                                    if (!form.questionCount || form.questionCount <= 0) return toast.error('Please enter a valid number of questions')
+                                    
+                                    const subjectQuestions = allQuestions.filter(q => q.subject === form.subject)
+                                    if (subjectQuestions.length < form.questionCount) {
+                                        return toast.error(`Only ${subjectQuestions.length} questions available for ${form.subject}.`)
+                                    }
+                                    
+                                    setIsGenerating(true)
+                                    setForm(f => ({ ...f, selectedQuestions: [] }))
+                                    
+                                    setTimeout(() => {
+                                        const shuffled = [...subjectQuestions].sort(() => 0.5 - Math.random())
+                                        const selected = shuffled.slice(0, form.questionCount).map(q => q._id)
+                                        setForm(f => ({ ...f, selectedQuestions: selected }))
+                                        setIsGenerating(false)
+                                    }, 800)
+                                }}
+                            >
+                                {isGenerating ? (
+                                    <><Loader2 size={16} className="spin" /> Generating Questions...</>
+                                ) : (
+                                    <>Generate Random Questions</>
+                                )}
+                            </button>
+
+                            {form.selectedQuestions.length > 0 && (
+                                <div style={{ padding: 12, background: 'var(--success-subtle)', color: 'var(--success)', borderRadius: 'var(--radius-md)', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <Check size={16} />
+                                    {form.selectedQuestions.length} random questions successfully generated!
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -191,7 +241,7 @@ export const AdminExamBuilderPage = () => {
                             {form.selectedQuestions.length === 0 && (
                                 <div style={{ display: 'flex', gap: 12, alignItems: 'center', padding: 16, background: 'var(--warning-subtle)', borderRadius: 'var(--radius-md)', color: 'var(--warning)' }}>
                                     <Upload size={20} />
-                                    <span style={{ fontSize: 13 }}>You haven't selected any questions. You can add them later in the Exam Details page.</span>
+                                    <span style={{ fontSize: 13 }}>You haven't generated any questions. Please go back to step 3.</span>
                                 </div>
                             )}
                         </div>
@@ -208,6 +258,12 @@ export const AdminExamBuilderPage = () => {
                                 if (step === 1 && !form.title.trim()) {
                                     toast.error('Title is required')
                                     return
+                                }
+                                if (step === 3) {
+                                    if (form.selectedQuestions.length === 0 || form.selectedQuestions.length !== form.questionCount) {
+                                        toast.error('Please generate questions before proceeding.')
+                                        return
+                                    }
                                 }
                                 setStep(s => s + 1)
                             }}>Next Step →</button>
