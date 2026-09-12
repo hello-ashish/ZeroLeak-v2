@@ -179,3 +179,30 @@ export const getExamResults = async (req, res) => {
         });
     }
 };
+export const bulkDeleteResults = async (req, res) => {
+    try {
+        const { resultIds } = req.body;
+        
+        if (!resultIds || !Array.isArray(resultIds) || resultIds.length === 0) {
+            return res.status(400).json({
+                message: "No result IDs provided for deletion"
+            });
+        }
+        
+        await Result.deleteMany({ _id: { $in: resultIds } });
+        
+        return res.status(200).json({
+            message: "Results deleted successfully"
+        });
+        
+    } catch (error) {
+        console.error(
+            "Error bulk deleting results: ",
+            error
+        );
+        
+        return res.status(500).json({
+            message: "Something went wrong while deleting results"
+        });
+    }
+};

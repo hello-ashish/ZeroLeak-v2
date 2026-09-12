@@ -6,7 +6,7 @@ import { Modal } from '../../components/Modal.jsx'
 import { SkeletonTable, EmptyState } from '../../components/SkeletonLoader.jsx'
 import { ScorePill } from '../../components/StatusBadge.jsx'
 import { useToast } from '../../components/Toast.jsx'
-import { Download, BarChart3, TrendingUp, Trophy, Search, ChevronRight, GraduationCap } from 'lucide-react'
+import { Download, BarChart3, TrendingUp, Trophy, Search, ChevronRight, GraduationCap, Trash2, CheckSquare } from 'lucide-react'
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar, Cell } from 'recharts'
 
 const API = 'http://localhost:4000/api'
@@ -47,6 +47,9 @@ export default function AdminGradebookPage() {
     const [search, setSearch] = useState(searchParams.get('student') || '')
     const [sortDir, setSortDir] = useState('desc')
     const [previewModal, setPreviewModal] = useState({ isOpen: false, title: '', content: '', headers: [], rows: [], filename: '' })
+    const [selectedRows, setSelectedRows] = useState(new Set())
+    const [isDeleting, setIsDeleting] = useState(false)
+    const [selectionMode, setSelectionMode] = useState(false)
     const navigate = useNavigate()
     const toast = useToast()
 
@@ -61,28 +64,70 @@ export default function AdminGradebookPage() {
         setPreviewModal({ ...previewModal, isOpen: false });
     };
 
-    useEffect(() => {
+    const handleDeleteSelected = async () => {
+        if (selectedRows.size === 0) return;
+        if (!window.confirm(`Are you sure you want to delete ${selectedRows.size} result(s)?`)) return;
+
+        const token = getToken();
+        if (!token) return;
+
+        setIsDeleting(true);
+        try {
+            await axios.post(`${API}/exams/results/bulk-delete`, {
+                resultIds: Array.from(selectedRows)
+            }, { headers: { Authorization: `Bearer ${token}` } });
+            toast.success(`Successfully deleted ${selectedRows.size} results`);
+            setSelectedRows(new Set());
+            setSelectionMode(false);
+            fetchData();
+        } catch (error) {
+            toast.error('Failed to delete results');
+            console.error(error);
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    const handleSelectAll = (e) => {
+        if (e.target.checked) {
+            setSelectedRows(new Set(filtered.map(r => r._id)));
+        } else {
+            setSelectedRows(new Set());
+        }
+    };
+
+    const handleSelectRow = (id) => {
+        const newSet = new Set(selectedRows);
+        if (newSet.has(id)) {
+            newSet.delete(id);
+        } else {
+            newSet.add(id);
+        }
+        setSelectedRows(newSet);
+    };
+
+    const fetchData = React.useCallback(async () => {
         const token = getToken()
         if (!token) { navigate('/admin/login'); return }
 
-        const fetchData = async () => {
-            try {
-                setLoading(true)
-                const [resRes, examRes] = await Promise.all([
-                    axios.get(`${API}/exams/results`, { headers: { Authorization: `Bearer ${token}` } }),
-                    axios.get(`${API}/exams`, { headers: { Authorization: `Bearer ${token}` } }),
-                ])
-                setResults(resRes.data.results || [])
-                setExams(examRes.data.exams || [])
-            } catch {
-                toast.error('Failed to load gradebook')
-            } finally {
-                setLoading(false)
-            }
+        try {
+            setLoading(true)
+            const [resRes, examRes] = await Promise.all([
+                axios.get(`${API}/exams/results`, { headers: { Authorization: `Bearer ${token}` } }),
+                axios.get(`${API}/exams`, { headers: { Authorization: `Bearer ${token}` } }),
+            ])
+            setResults(resRes.data.results || [])
+            setExams(examRes.data.exams || [])
+        } catch {
+            toast.error('Failed to load gradebook')
+        } finally {
+            setLoading(false)
         }
+    }, [navigate, toast])
 
+    useEffect(() => {
         fetchData()
-    }, [navigate])
+    }, [fetchData])
 
     const filtered = useMemo(() => {
         let data = results
@@ -147,7 +192,7 @@ export default function AdminGradebookPage() {
                         <h1 className="page-title">Gradebook</h1>
                         <p className="page-subtitle">Academic performance records and aggregate analytics</p>
                     </div>
-                    <div className="page-actions">
+                    <div className="page-actions" style={{ display: 'flex', gap: '12px' }}>
                         <button className="btn btn-secondary flex items-center gap-2" onClick={() => {
                             const { headers, rows, content } = generateCSVData(filtered);
                             setPreviewModal({ isOpen: true, title: 'Gradebook Export Preview', content, headers, rows, filename: 'gradebook.csv' });
@@ -233,13 +278,45 @@ export default function AdminGradebookPage() {
                 <button className="btn btn-ghost btn-sm" onClick={() => setSortDir(d => d === 'desc' ? 'asc' : 'desc')}>
                     {sortDir === 'desc' ? '↓ Highest first' : '↑ Lowest first'}
                 </button>
-                <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-tertiary)' }}>{filtered.length} submissions</span>
+                <button 
+                    className="btn btn-secondary flex items-center gap-2" 
+                    style={{ padding: '6px 12px', fontSize: 13, background: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}
+                    onClick={() => {
+                        setSelectionMode(!selectionMode)
+                        if (selectionMode) setSelectedRows(new Set())
+                    }}
+                >
+                    <CheckSquare size={14} /> {selectionMode ? 'Cancel' : 'Select'}
+                </button>
+                <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    {selectedRows.size > 0 && (
+                        <button 
+                            className="btn btn-danger btn-sm flex items-center gap-2" 
+                            style={{ background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', border: '1px solid var(--danger)' }}
+                            onClick={handleDeleteSelected}
+                            disabled={isDeleting}
+                        >
+                            <Trash2 size={14} /> Delete Selected ({selectedRows.size})
+                        </button>
+                    )}
+                    <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{filtered.length} submissions</span>
+                </div>
             </div>
 
             <div className="data-table-wrapper">
                 <table className="data-table">
                     <thead>
                         <tr>
+                            {selectionMode && (
+                                <th style={{ width: 40, paddingLeft: 16 }}>
+                                    <input 
+                                        type="checkbox"
+                                        className="form-checkbox"
+                                        checked={filtered.length > 0 && selectedRows.size === filtered.length}
+                                        onChange={handleSelectAll}
+                                    />
+                                </th>
+                            )}
                             <th>Rank</th>
                             <th>Student</th>
                             <th>Exam</th>
@@ -253,13 +330,13 @@ export default function AdminGradebookPage() {
                     {loading ? (
                         <tbody>
                             {[...Array(7)].map((_, i) => (
-                                <tr key={i}><td colSpan={8} style={{ padding: 12 }}><div className="skeleton" style={{ height: 14 }} /></td></tr>
+                                <tr key={i}><td colSpan={selectionMode ? 9 : 8} style={{ padding: 12 }}><div className="skeleton" style={{ height: 14 }} /></td></tr>
                             ))}
                         </tbody>
                     ) : (
                         <tbody>
                             {filtered.length === 0 ? (
-                                <tr><td colSpan={8}>
+                                <tr><td colSpan={selectionMode ? 9 : 8}>
                                     <EmptyState
                                         icon={<BarChart3 size={32} color="var(--text-tertiary)" />}
                                         title="No results found"
@@ -270,7 +347,17 @@ export default function AdminGradebookPage() {
                                 const pct = Math.round((r.score / r.totalQuestions) * 100)
                                 const grade = getGrade(pct)
                                 return (
-                                    <tr key={r._id}>
+                                    <tr key={r._id} style={selectedRows.has(r._id) ? { background: 'var(--bg-hover)' } : {}}>
+                                        {selectionMode && (
+                                            <td style={{ paddingLeft: 16 }}>
+                                                <input 
+                                                    type="checkbox"
+                                                    className="form-checkbox"
+                                                    checked={selectedRows.has(r._id)}
+                                                    onChange={() => handleSelectRow(r._id)}
+                                                />
+                                            </td>
+                                        )}
                                         <td>
                                             <span style={{
                                                 fontSize: 13, fontWeight: 700, color: i === 0 ? '#f59e0b' : i === 1 ? '#94a3b8' : i === 2 ? '#cd7c2f' : 'var(--text-tertiary)'
