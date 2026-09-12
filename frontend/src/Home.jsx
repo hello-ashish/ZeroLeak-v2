@@ -3,173 +3,12 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { ShieldCheck, BrainCircuit, Users, BookOpen, GraduationCap, Settings, ShieldAlert, ChevronRight, Activity, AlertCircle, Sun, Moon } from 'lucide-react';
 import './Home.css';
 
-const HomeContent = ({ selectedRole, handleRoleSelect, isLoading, errorMsg }) => (
-  <div className="home-container">
-    {/* Left Information Section */}
-    <div className="home-info-section">
-      <div className="brand-header">
-        <img src="/logo.png" alt="ZeroLeak Logo" className="brand-logo" />
-        <div>
-          <h1 className="brand-title">ZeroLeak</h1>
-          <span className="brand-subtitle">Academic Intelligence Platform</span>
-        </div>
-      </div>
-      
-      <h2 className="brand-statement">Secure every assessment.<br/>Understand every outcome.</h2>
-
-      <div className="feature-list">
-        <div className="feature-item">
-          <div className="feature-icon-wrapper">
-            <ShieldCheck size={20} />
-          </div>
-          <div className="feature-text">
-            <h3>Secure Assessment</h3>
-            <p>Integrity for every examination session.</p>
-          </div>
-        </div>
-
-        <div className="feature-item">
-          <div className="feature-icon-wrapper">
-            <BrainCircuit size={20} />
-          </div>
-          <div className="feature-text">
-            <h3>Academic Intelligence</h3>
-            <p>Comprehensive reports and insights into student performance.</p>
-          </div>
-        </div>
-
-        <div className="feature-item">
-          <div className="feature-icon-wrapper">
-            <Users size={20} />
-          </div>
-          <div className="feature-text">
-            <h3>Role-Based Access</h3>
-            <p>Dedicated portals for students, professors, and administration.</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="system-status">
-        <div className="status-indicator live"></div>
-        <span className="status-text">All Systems Operational</span>
-      </div>
-    </div>
-
-    {/* Right Role Selection Section */}
-    <div className="home-login-section">
-      <div className="login-panel">
-        <div className="panel-header">
-          <h2>Choose your workspace</h2>
-          <p>Select your role to continue to the authentication gateway.</p>
-        </div>
-
-        {errorMsg && (
-          <div className="gateway-error" role="alert">
-            <AlertCircle size={18} />
-            <span>{errorMsg}</span>
-          </div>
-        )}
-
-        <div className="role-groups" role="navigation" aria-label="Role selection">
-          <div className="role-group">
-            <h3 className="group-title">ACADEMIC</h3>
-            <button 
-              className={`role-card ${selectedRole === 'student' ? 'selected' : ''}`}
-              onClick={() => handleRoleSelect('/student/login', 'student')}
-              disabled={isLoading}
-              aria-label="Login as Student"
-            >
-              <div className="role-card-icon student-icon">
-                <BookOpen size={20} />
-              </div>
-              <div className="role-card-content">
-                <h4>Student</h4>
-                <p>Take exams, view results, track progress</p>
-              </div>
-              <ChevronRight size={18} className="role-card-arrow" />
-            </button>
-
-            <button 
-              className={`role-card ${selectedRole === 'professor' ? 'selected' : ''}`}
-              onClick={() => handleRoleSelect('/professor/login', 'professor')}
-              disabled={isLoading}
-              aria-label="Login as Professor"
-            >
-              <div className="role-card-icon professor-icon">
-                <GraduationCap size={20} />
-              </div>
-              <div className="role-card-content">
-                <h4>Professor</h4>
-                <p>Create and manage academic content</p>
-              </div>
-              <ChevronRight size={18} className="role-card-arrow" />
-            </button>
-          </div>
-
-          <div className="role-group">
-            <h3 className="group-title">OPERATIONS</h3>
-            <button 
-              className={`role-card operations-card ${selectedRole === 'admin' ? 'selected' : ''}`}
-              onClick={() => handleRoleSelect('/admin/login', 'admin')}
-              disabled={isLoading}
-              aria-label="Login as Administrator"
-            >
-              <div className="role-card-icon admin-icon">
-                <Settings size={20} />
-              </div>
-              <div className="role-card-content">
-                <div className="role-card-header">
-                  <h4>Administrator</h4>
-                  <span className="auth-badge">Authorized Access</span>
-                </div>
-                <p>Manage the academic platform</p>
-              </div>
-              <ChevronRight size={18} className="role-card-arrow" />
-            </button>
-
-            <button 
-              className={`role-card operations-card ${selectedRole === 'auditor' ? 'selected' : ''}`}
-              onClick={() => handleRoleSelect('/auditor/login', 'auditor')}
-              disabled={isLoading}
-              aria-label="Login as Auditor"
-            >
-              <div className="role-card-icon auditor-icon">
-                <ShieldAlert size={20} />
-              </div>
-              <div className="role-card-content">
-                <div className="role-card-header">
-                  <h4>Auditor</h4>
-                  <span className="auth-badge">Authorized Access</span>
-                </div>
-                <p>Review activity, integrity, and evidence</p>
-              </div>
-              <ChevronRight size={18} className="role-card-arrow" />
-            </button>
-          </div>
-        </div>
-
-        {isLoading && (
-          <div className="loading-overlay">
-            <div className="spinner">
-              <Activity size={24} className="spin-icon" />
-            </div>
-            <span>Securing connection...</span>
-          </div>
-        )}
-      </div>
-    </div>
-  </div>
-);
-
 const Home = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [selectedRole, setSelectedRole] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  
-  // 0 = Dark mode, 100 = Light mode
-  const [themeProgress, setThemeProgress] = useState(0);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -189,58 +28,164 @@ const Home = () => {
   };
 
   return (
-    <div style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden' }}>
-      
-      {/* Base: Dark Mode Layer */}
+    <div style={{ position: 'relative', width: '100vw', minHeight: '100vh', overflow: 'hidden' }}>
       <div className="home-wrapper" style={{ width: '100%', height: '100%' }}>
-        <HomeContent 
-          selectedRole={selectedRole} 
-          handleRoleSelect={handleRoleSelect} 
-          isLoading={isLoading} 
-          errorMsg={errorMsg} 
-        />
-      </div>
+        <div className="home-container">
+          {/* Left Information Section */}
+          <div className="home-info-section">
+            <div className="brand-header">
+              <img src="/logo.png" alt="ZeroLeak Logo" className="brand-logo" />
+              <div>
+                <h1 className="brand-title">ZeroLeak</h1>
+                <span className="brand-subtitle">Academic Intelligence Platform</span>
+              </div>
+            </div>
+            
+            <h2 className="brand-statement">Secure every assessment.<br/>Understand every outcome.</h2>
 
-      {/* Overlay: Light Mode Layer */}
-      <div 
-        className="home-wrapper" 
-        data-theme="light" 
-        style={{ 
-          position: 'absolute', 
-          top: 0, 
-          left: 0, 
-          width: '100%', 
-          height: '100%',
-          clipPath: `inset(calc(100% - ${themeProgress}%) 0 0 0)`,
-          pointerEvents: 'none',
-          zIndex: 10
-        }}
-      >
-        <HomeContent 
-          selectedRole={selectedRole} 
-          handleRoleSelect={handleRoleSelect} 
-          isLoading={isLoading} 
-          errorMsg={errorMsg} 
-        />
-      </div>
+            <div className="feature-list">
+              <div className="feature-item">
+                <div className="feature-icon-wrapper">
+                  <ShieldCheck size={20} />
+                </div>
+                <div className="feature-text">
+                  <h3>Secure Assessment</h3>
+                  <p>Integrity for every examination session.</p>
+                </div>
+              </div>
 
-      {/* Magic Slider Control */}
-      <div className="theme-slider-container">
-        <Sun size={18} className="slider-icon sun-icon" />
-        <div className="slider-track-wrapper">
-          <input 
-            type="range" 
-            min="0" 
-            max="100" 
-            value={themeProgress} 
-            onChange={(e) => setThemeProgress(e.target.value)}
-            className="theme-vertical-slider"
-            aria-label="Toggle Light/Dark Theme"
-          />
+              <div className="feature-item">
+                <div className="feature-icon-wrapper">
+                  <BrainCircuit size={20} />
+                </div>
+                <div className="feature-text">
+                  <h3>Academic Intelligence</h3>
+                  <p>Comprehensive reports and insights into student performance.</p>
+                </div>
+              </div>
+
+              <div className="feature-item">
+                <div className="feature-icon-wrapper">
+                  <Users size={20} />
+                </div>
+                <div className="feature-text">
+                  <h3>Role-Based Access</h3>
+                  <p>Dedicated portals for students, professors, and administration.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="system-status">
+              <div className="status-indicator live"></div>
+              <span className="status-text">All Systems Operational</span>
+            </div>
+          </div>
+
+          {/* Right Role Selection Section */}
+          <div className="home-login-section">
+            <div className="login-panel">
+              <div className="panel-header">
+                <h2>Choose your workspace</h2>
+                <p>Select your role to continue to the authentication gateway.</p>
+              </div>
+
+              {errorMsg && (
+                <div className="gateway-error" role="alert">
+                  <AlertCircle size={18} />
+                  <span>{errorMsg}</span>
+                </div>
+              )}
+
+              <div className="role-groups" role="navigation" aria-label="Role selection">
+                <div className="role-group">
+                  <h3 className="group-title">ACADEMIC</h3>
+                  <button 
+                    className={`role-card ${selectedRole === 'student' ? 'selected' : ''}`}
+                    onClick={() => handleRoleSelect('/student/login', 'student')}
+                    disabled={isLoading}
+                    aria-label="Login as Student"
+                  >
+                    <div className="role-card-icon student-icon">
+                      <BookOpen size={20} />
+                    </div>
+                    <div className="role-card-content">
+                      <h4>Student</h4>
+                      <p>Take exams, view results, track progress</p>
+                    </div>
+                    <ChevronRight size={18} className="role-card-arrow" />
+                  </button>
+
+                  <button 
+                    className={`role-card ${selectedRole === 'professor' ? 'selected' : ''}`}
+                    onClick={() => handleRoleSelect('/professor/login', 'professor')}
+                    disabled={isLoading}
+                    aria-label="Login as Professor"
+                  >
+                    <div className="role-card-icon professor-icon">
+                      <GraduationCap size={20} />
+                    </div>
+                    <div className="role-card-content">
+                      <h4>Professor</h4>
+                      <p>Create and manage academic content</p>
+                    </div>
+                    <ChevronRight size={18} className="role-card-arrow" />
+                  </button>
+                </div>
+
+                <div className="role-group">
+                  <h3 className="group-title">OPERATIONS</h3>
+                  <button 
+                    className={`role-card operations-card ${selectedRole === 'admin' ? 'selected' : ''}`}
+                    onClick={() => handleRoleSelect('/admin/login', 'admin')}
+                    disabled={isLoading}
+                    aria-label="Login as Administrator"
+                  >
+                    <div className="role-card-icon admin-icon">
+                      <Settings size={20} />
+                    </div>
+                    <div className="role-card-content">
+                      <div className="role-card-header">
+                        <h4>Administrator</h4>
+                        <span className="auth-badge">Authorized Access</span>
+                      </div>
+                      <p>Manage the academic platform</p>
+                    </div>
+                    <ChevronRight size={18} className="role-card-arrow" />
+                  </button>
+
+                  <button 
+                    className={`role-card operations-card ${selectedRole === 'auditor' ? 'selected' : ''}`}
+                    onClick={() => handleRoleSelect('/auditor/login', 'auditor')}
+                    disabled={isLoading}
+                    aria-label="Login as Auditor"
+                  >
+                    <div className="role-card-icon auditor-icon">
+                      <ShieldAlert size={20} />
+                    </div>
+                    <div className="role-card-content">
+                      <div className="role-card-header">
+                        <h4>Auditor</h4>
+                        <span className="auth-badge">Authorized Access</span>
+                      </div>
+                      <p>Review activity, integrity, and evidence</p>
+                    </div>
+                    <ChevronRight size={18} className="role-card-arrow" />
+                  </button>
+                </div>
+              </div>
+
+              {isLoading && (
+                <div className="loading-overlay">
+                  <div className="spinner">
+                    <Activity size={24} className="spin-icon" />
+                  </div>
+                  <span>Securing connection...</span>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-        <Moon size={18} className="slider-icon moon-icon" />
       </div>
-
     </div>
   );
 };

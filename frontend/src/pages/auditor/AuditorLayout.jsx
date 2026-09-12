@@ -30,17 +30,11 @@ export const AuditorLayout = ({ children, openAnomaliesCount = 0 }) => {
     const [collapsed, setCollapsed] = useState(false)
     const [mobileOpen, setMobileOpen] = useState(false)
     const [showProfile, setShowProfile] = useState(false)
-    const [theme, setTheme] = useState(() => localStorage.getItem('zl-theme') || 'dark')
+    const [showNotifications, setShowNotifications] = useState(false)
     const navigate = useNavigate()
     const location = useLocation()
 
     const auditorData = JSON.parse(localStorage.getItem('auditorData') || '{}')
-
-    // Apply theme
-    useEffect(() => {
-        document.documentElement.setAttribute('data-theme', theme)
-        localStorage.setItem('zl-theme', theme)
-    }, [theme])
 
     const handleLogout = () => {
         localStorage.removeItem('auditorToken')
@@ -134,9 +128,11 @@ export const AuditorLayout = ({ children, openAnomaliesCount = 0 }) => {
                         </div>
                         <button
                             className="topbar-btn"
-                            onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
+                            onClick={() => window.dispatchEvent(new Event('zl-theme-slider-toggle'))}
+                            aria-label="Adjust Brightness"
+                            title="Toggle Brightness Slider"
                         >
-                            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+                            <Sun size={18} />
                         </button>
 
                         {/* Profile */}

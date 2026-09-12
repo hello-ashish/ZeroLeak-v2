@@ -16,34 +16,26 @@
   --brand-accent: #8b5cf6;
   /* For special insights / highlights */
 
-  /* Dark Mode Surfaces */
+  /* Base Dark Colors (Default state, JS engine will override) */
   --bg-app: #09090b;
-  /* Pure deep background */
   --bg-surface: #121214;
-  /* Base panel */
   --bg-elevated: #1a1a1d;
-  /* Cards, active areas */
   --bg-card: #121214;
-  /* Default cards */
   --bg-overlay: #222225;
-  /* Modals, popovers */
   --bg-hover: rgba(255, 255, 255, 0.035);
   --bg-active: rgba(255, 255, 255, 0.06);
   --bg-input: #121214;
-  /* Inputs flush with elevated */
-
-  /* Borders (Extremely subtle) */
   --border-subtle: rgba(255, 255, 255, 0.04);
   --border-default: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.15);
-  --border-focus: rgba(59, 130, 246, 0.5);
-
-  /* Typography */
   --text-primary: #f4f4f5;
   --text-secondary: #a1a1aa;
   --text-tertiary: #71717a;
   --text-disabled: #3f3f46;
   --text-inverse: #09090b;
+
+  /* Borders (Extremely subtle) */
+  --border-focus: rgba(59, 130, 246, 0.5);
 
   /* Semantics */
   --success: #10b981;
@@ -113,27 +105,8 @@
   --z-toast: 500;
 }
 
-/* Light Mode (Premium contrast adjustments) */
+/* Light Mode (Shadow adjustments when progress > 50%) */
 [data-theme="light"] {
-  --bg-app: #f4f4f5;
-  --bg-surface: #ffffff;
-  --bg-elevated: #fafafa;
-  --bg-card: #ffffff;
-  --bg-overlay: #ffffff;
-  --bg-hover: rgba(0, 0, 0, 0.04);
-  --bg-active: rgba(0, 0, 0, 0.08);
-  --bg-input: #ffffff;
-
-  --border-subtle: rgba(0, 0, 0, 0.04);
-  --border-default: rgba(0, 0, 0, 0.1);
-  --border-strong: rgba(0, 0, 0, 0.18);
-
-  --text-primary: #09090b;
-  --text-secondary: #52525b;
-  --text-tertiary: #71717a;
-  --text-disabled: #a1a1aa;
-  --text-inverse: #ffffff;
-
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
   --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.1), 0 4px 8px rgba(0, 0, 0, 0.04);

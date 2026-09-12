@@ -1,6 +1,7 @@
 import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom"
 import { ToastProvider } from './components/Toast.jsx'
+import GlobalThemeSlider from './components/GlobalThemeSlider.jsx'
 import './index.css'
 
 // Auth pages (preserved)
@@ -102,6 +103,7 @@ function App() {
 
         </Routes>
       </BrowserRouter>
+      <GlobalThemeSlider />
     </ToastProvider>
   )
 }

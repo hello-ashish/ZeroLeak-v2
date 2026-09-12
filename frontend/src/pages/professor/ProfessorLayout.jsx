@@ -31,17 +31,10 @@ export const ProfessorLayout = () => {
     const [showProfile, setShowProfile] = useState(false)
     const [showCreate, setShowCreate] = useState(false)
     const [showNotifications, setShowNotifications] = useState(false)
-    const [theme, setTheme] = useState(() => localStorage.getItem('zl-theme') || 'dark')
     const navigate = useNavigate()
     const location = useLocation()
 
     const profData = JSON.parse(localStorage.getItem('profData') || '{}')
-
-    // Apply theme
-    useEffect(() => {
-        document.documentElement.setAttribute('data-theme', theme)
-        localStorage.setItem('zl-theme', theme)
-    }, [theme])
 
     // Cmd+K
     useEffect(() => {
@@ -155,11 +148,11 @@ export const ProfessorLayout = () => {
                     <div className="topbar-actions">
                         <button
                             className="topbar-btn"
-                            onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
-                            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-                            title="Toggle theme"
+                            onClick={() => window.dispatchEvent(new Event('zl-theme-slider-toggle'))}
+                            aria-label="Adjust Brightness"
+                            title="Toggle Brightness Slider"
                         >
-                            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+                            <Sun size={18} />
                         </button>
 
                         {/* Notifications Dropdown */}
