@@ -140,7 +140,7 @@ export const deleteStudent = async (req, res) => {
 export const getBatches = async (req, res) => {
     try {
         const { status } = req.query;
-        const query = status ? { status } : {};
+        const query = status ? { status, isDeletedByAdmin: { $ne: true } } : { isDeletedByAdmin: { $ne: true } };
         const batches = await Batch.find(query).populate('createdBy', 'name email');
         res.status(200).json({ batches });
     } catch (error) {
@@ -216,6 +216,39 @@ export const reviewBatch = async (req, res) => {
         res.status(200).json({ message: `Batch ${action}ed`, batch });
     } catch (error) {
         res.status(500).json({ message: error.message });
+    }
+};
+
+// ─── Delete Batch ─────────────────────────────────────────────────────────────
+export const deleteBatch = async (req, res) => {
+    try {
+        const { batchId } = req.params;
+        const batch = await Batch.findById(batchId);
+
+        if (!batch) return res.status(404).json({ message: "Batch not found" });
+
+        if (batch.status === 'Accepted' && batch.questions && batch.questions.length > 0) {
+            const contentHashes = batch.questions.map(q => {
+                const sensitiveContent = {
+                    title: q.title,
+                    options: q.options,
+                    correctAnswer: q.correctAnswer,
+                    correctAnswerIndex: q.correctAnswerIndex,
+                };
+                return hashQuestionContent(sensitiveContent);
+            });
+            await Question.deleteMany({ contentHash: { $in: contentHashes } });
+        }
+
+        batch.isDeletedByAdmin = true;
+        await batch.save();
+        
+        await logAction({ actor: req.admin?.email, action: "BATCH_DELETED", targetType: "Batch", targetId: batch._id, targetLabel: batch.title });
+
+        res.status(200).json({ message: "Batch deleted successfully" });
+    } catch (error) {
+        console.error("Error deleting batch:", error.message);
+        res.status(500).json({ message: "Error deleting batch" });
     }
 };
 

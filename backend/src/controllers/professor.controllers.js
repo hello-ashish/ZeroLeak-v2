@@ -98,6 +98,38 @@ export const addQuestionToBatch = async (req, res) => {
     }
 }
 
+// Bulk Add Questions to a Draft Batch
+export const bulkAddQuestionsToBatch = async (req, res) => {
+    try {
+        const { batchId } = req.params;
+        const { questions } = req.body; // array of questions
+
+        const batch = await Batch.findById(batchId);
+        if (!batch) {
+            return res.status(404).json({ message: "Batch not found." });
+        }
+        if (batch.status !== 'Draft' && batch.status !== 'MarkForReview') {
+            return res.status(400).json({ message: "Can only edit Draft or Review batches." });
+        }
+
+        if (!Array.isArray(questions) || questions.length === 0) {
+            return res.status(400).json({ message: "No questions provided." });
+        }
+
+        const validQuestions = questions.map(q => ({
+            ...q,
+            subject: batch.subject
+        }));
+
+        batch.questions.push(...validQuestions);
+        await batch.save();
+
+        res.status(200).json({ message: `${validQuestions.length} questions added successfully`, batch });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+}
+
 // Edit Question in a Draft Batch
 export const editQuestionInBatch = async (req, res) => {
     try {
@@ -158,11 +190,34 @@ export const submitBatch = async (req, res) => {
 // 4. Get Professor's Batches (For History and Active views)
 export const getMyBatches = async (req, res) => {
     try {
-        const batches = await Batch.find({ createdBy: req.professor._id })
+        const batches = await Batch.find({ createdBy: req.professor._id, isDeletedByProfessor: { $ne: true } })
             .sort({ createdAt: -1 })
         res.status(200).json({batches})
     } catch (error) {
         res.status(500).json({ message: error.message })
+    }
+}
+
+// Delete Batch
+export const deleteBatch = async (req, res) => {
+    try {
+        const { batchId } = req.params;
+        const batch = await Batch.findOne({ _id: batchId, createdBy: req.professor._id });
+
+        if (!batch) {
+            return res.status(404).json({ message: "Batch not found" });
+        }
+
+        if (batch.status === "Submitted") {
+            return res.status(400).json({ message: "Cannot delete a submitted batch" });
+        }
+
+        batch.isDeletedByProfessor = true;
+        await batch.save();
+
+        res.status(200).json({ message: "Batch deleted successfully" });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
     }
 }
 

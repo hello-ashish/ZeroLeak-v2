@@ -5,7 +5,7 @@ import { AdminLayout } from './AdminLayout.jsx'
 import { Modal, ConfirmDialog } from '../../components/Modal.jsx'
 import { SkeletonTable, EmptyState } from '../../components/SkeletonLoader.jsx'
 import { useToast } from '../../components/Toast.jsx'
-import { Search, Users, Trash2, AlertTriangle, BookOpen, Clock, Activity, X, Mail, Upload, Download, CheckSquare } from 'lucide-react'
+import { Search, Users, Trash2, AlertTriangle, BookOpen, Clock, Activity, X, Mail, Upload, Download, CheckSquare, Loader2 } from 'lucide-react'
 
 const API = 'http://localhost:4000/api'
 const getToken = () => localStorage.getItem('adminToken')
@@ -29,6 +29,7 @@ export default function AdminProfessorsPage() {
     const [formErrors, setFormErrors] = useState({})
     const [showPass, setShowPass] = useState(false)
     const [previewModal, setPreviewModal] = useState({ isOpen: false, title: '', content: '', headers: [], rows: [], filename: '' })
+    const [importPreview, setImportPreview] = useState(null)
     const navigate = useNavigate()
     const toast = useToast()
 
@@ -197,21 +198,28 @@ export default function AdminProfessorsPage() {
                         setIsImporting(false);
                         return;
                     }
-                    try {
-                        const res = await axios.post(`${API}/admin/professors/bulk-import`, {
-                            professors: results.data
-                        }, { headers: { Authorization: `Bearer ${getToken()}` } });
-                        toast.success(`Imported ${res.data.imported} professors (${res.data.skipped} skipped)`);
-                        fetchData();
-                    } catch (err) {
-                        toast.error(err.response?.data?.message || 'Failed to import professors');
-                    } finally {
-                        setIsImporting(false);
-                    }
+                    setImportPreview(results.data);
+                    setIsImporting(false);
                 }
             });
         });
         e.target.value = null;
+    };
+
+    const confirmImport = async () => {
+        setIsImporting(true);
+        try {
+            const res = await axios.post(`${API}/admin/professors/bulk-import`, {
+                professors: importPreview
+            }, { headers: { Authorization: `Bearer ${getToken()}` } });
+            toast.success(`Imported ${res.data.imported} professors (${res.data.skipped} skipped)`);
+            fetchData();
+            setImportPreview(null);
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to import professors');
+        } finally {
+            setIsImporting(false);
+        }
     };
 
     const handleToggleBlock = async (prof) => {
@@ -627,6 +635,45 @@ export default function AdminProfessorsPage() {
                         <button className="btn btn-primary flex items-center gap-2" onClick={() => handleDownload(previewModal.content, previewModal.filename)}>
                             <Download size={16} /> Download CSV
                         </button>
+                    </div>
+                </div>
+            </Modal>
+            
+            <Modal 
+                open={!!importPreview} 
+                onClose={() => setImportPreview(null)} 
+                title="Preview Professors Import" 
+                size="full"
+                footer={
+                    <>
+                        <button className="btn btn-ghost" onClick={() => setImportPreview(null)}>Cancel</button>
+                        <button className="btn btn-primary flex items-center gap-2" onClick={confirmImport} disabled={isImporting}>
+                            {isImporting ? <Loader2 size={16} className="spin" /> : <Upload size={16} />} 
+                            {isImporting ? 'Importing...' : 'Confirm Import'}
+                        </button>
+                    </>
+                }
+            >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <div style={{ background: 'var(--bg-body)', borderRadius: '8px', border: '1px solid var(--border-subtle)', maxHeight: '400px', overflow: 'auto' }}>
+                        <table className="table" style={{ width: '100%', minWidth: 600, borderCollapse: 'collapse' }}>
+                            <thead>
+                                <tr>
+                                    {importPreview && importPreview.length > 0 && Object.keys(importPreview[0]).map((h, i) => (
+                                        <th key={i} style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-subtle)', textAlign: 'left', background: 'var(--bg-surface)' }}>{h}</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {importPreview?.map((row, i) => (
+                                    <tr key={i}>
+                                        {Object.values(row).map((val, j) => (
+                                            <td key={j} style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-subtle)' }}>{val}</td>
+                                        ))}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </Modal>

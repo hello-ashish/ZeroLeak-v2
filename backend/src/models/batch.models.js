@@ -63,6 +63,14 @@ const batchSchema = new Schema({
     openedByAdmin: {
         type: Boolean,
         default: false
+    },
+    isDeletedByAdmin: {
+        type: Boolean,
+        default: false
+    },
+    isDeletedByProfessor: {
+        type: Boolean,
+        default: false
     }
 }, { timestamps: true})
 

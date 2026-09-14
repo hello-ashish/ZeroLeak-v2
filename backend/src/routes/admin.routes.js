@@ -9,6 +9,7 @@ import {
     getBatches,
     openBatchDetails,
     reviewBatch,
+    deleteBatch,
     getDashboardStats,
     getAuditLogs,
     updateExamStatus,
@@ -63,6 +64,7 @@ router.route("/students/:id").delete(verifyAdminJWT, deleteStudent)
 // Batch Management
 router.route("/batches").get(verifyAdminJWT, getBatches)
 router.route("/batches/:batchId").get(verifyAdminJWT, openBatchDetails)
+router.route("/batches/:batchId").delete(verifyAdminJWT, deleteBatch)
 router.route("/batches/:batchId/review").post(verifyAdminJWT, reviewBatch)
 
 // Exam Management (status + delete)

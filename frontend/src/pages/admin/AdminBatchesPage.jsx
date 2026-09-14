@@ -5,12 +5,12 @@ import { AdminLayout } from './AdminLayout.jsx'
 import { StatusBadge, DifficultyBadge } from '../../components/StatusBadge.jsx'
 import { SkeletonCard, EmptyState } from '../../components/SkeletonLoader.jsx'
 import { useToast } from '../../components/Toast.jsx'
-import { AlertTriangle, PackageOpen, Check, X, Eye, Clock, MessageSquare, ChevronRight } from 'lucide-react'
+import { AlertTriangle, PackageOpen, Check, X, Eye, Clock, MessageSquare, ChevronRight, Trash2 } from 'lucide-react'
 
 const API = 'http://localhost:4000/api'
 const getToken = () => localStorage.getItem('adminToken')
 
-const TABS = ['Pending', 'Accepted', 'Rejected', 'All']
+const TABS = ['Pending', 'Accepted', 'Rejected', 'Marked', 'All']
 
 export default function AdminBatchesPage() {
     const [batches, setBatches] = useState([])
@@ -21,7 +21,7 @@ export default function AdminBatchesPage() {
     const [reviewing, setReviewing] = useState(false)
     const [rejectReason, setRejectReason] = useState('')
     const [markReason, setMarkReason] = useState('')
-    const [actionState, setActionState] = useState(null) // 'reject' or 'mark'
+    const [actionState, setActionState] = useState(null) // 'reject', 'mark', or 'delete'
     
     const navigate = useNavigate()
     const toast = useToast()
@@ -67,6 +67,7 @@ export default function AdminBatchesPage() {
         if (activeTab === 'Pending') return batches.filter(b => b.status === 'Submitted')
         if (activeTab === 'Accepted') return batches.filter(b => b.status === 'Accepted')
         if (activeTab === 'Rejected') return batches.filter(b => b.status === 'Rejected')
+        if (activeTab === 'Marked') return batches.filter(b => b.status === 'MarkForReview')
         return batches
     }, [batches, activeTab])
 
@@ -74,6 +75,7 @@ export default function AdminBatchesPage() {
         Pending: batches.filter(b => b.status === 'Submitted').length,
         Accepted: batches.filter(b => b.status === 'Accepted').length,
         Rejected: batches.filter(b => b.status === 'Rejected').length,
+        Marked: batches.filter(b => b.status === 'MarkForReview').length,
         All: batches.length,
     }), [batches])
 
@@ -90,6 +92,23 @@ export default function AdminBatchesPage() {
             fetchBatches()
         } catch {
             toast.error('Failed to process batch')
+        } finally {
+            setReviewing(false)
+        }
+    }
+
+    const handleDeleteBatch = async () => {
+        setReviewing(true)
+        try {
+            await axios.delete(`${API}/admin/batches/${activeBatch._id}`, {
+                headers: { Authorization: `Bearer ${getToken()}` }
+            })
+            toast.success('Batch deleted successfully')
+            setActiveBatch(null)
+            setActionState(null)
+            fetchBatches()
+        } catch {
+            toast.error('Failed to delete batch')
         } finally {
             setReviewing(false)
         }
@@ -116,9 +135,9 @@ export default function AdminBatchesPage() {
                 {/* Left Side: Queue List */}
                 <div style={{ width: 340, flexShrink: 0, display: 'flex', flexDirection: 'column', background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
                     <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-default)' }}>
-                        <div className="tabs" style={{ marginBottom: 0, width: '100%' }}>
-                            {TABS.slice(0, 3).map(t => (
-                                <button key={t} className={`tab-item ${activeTab === t ? 'active' : ''}`} style={{ flex: 1, padding: '8px 4px', fontSize: 12 }} onClick={() => { setActiveTab(t); setActiveBatch(null); }}>
+                        <div className="tabs" style={{ marginBottom: 0, width: '100%', display: 'flex' }}>
+                            {TABS.slice(0, 4).map(t => (
+                                <button key={t} className={`tab-item ${activeTab === t ? 'active' : ''}`} style={{ flex: 1, padding: '8px 4px', fontSize: 11, textAlign: 'center', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} onClick={() => { setActiveTab(t); setActiveBatch(null); }}>
                                     {t} <span className="tab-count">{tabCounts[t]}</span>
                                 </button>
                             ))}
@@ -192,12 +211,19 @@ export default function AdminBatchesPage() {
                                     </div>
                                 </div>
                                 
-                                {activeBatch.status === 'Submitted' && !actionState && (
+                                {!actionState && (
                                     <div style={{ display: 'flex', gap: 8 }}>
-                                        <button className="btn btn-secondary" onClick={() => setActionState('mark')}>Mark for Review</button>
-                                        <button className="btn btn-danger" onClick={() => setActionState('reject')}>Reject</button>
-                                        <button className="btn btn-success" onClick={() => doReview('Accept')} disabled={reviewing}>
-                                            <Check size={16} /> Approve
+                                        {activeBatch.status === 'Submitted' && (
+                                            <>
+                                                <button className="btn btn-secondary" onClick={() => setActionState('mark')}>Mark for Review</button>
+                                                <button className="btn btn-danger" onClick={() => setActionState('reject')}>Reject</button>
+                                                <button className="btn btn-success" onClick={() => doReview('Accept')} disabled={reviewing}>
+                                                    <Check size={16} /> Approve
+                                                </button>
+                                            </>
+                                        )}
+                                        <button className="btn btn-danger" style={{ background: 'transparent', color: 'var(--danger)', border: '1px solid var(--danger)' }} onClick={() => setActionState('delete')}>
+                                            <Trash2 size={16} /> Delete
                                         </button>
                                     </div>
                                 )}
@@ -223,6 +249,17 @@ export default function AdminBatchesPage() {
                                     <textarea className="form-textarea" style={{ marginBottom: 12, background: 'var(--bg-surface)' }} placeholder="e.g. Please check formatting on Q3..." value={markReason} onChange={e => setMarkReason(e.target.value)} />
                                     <div style={{ display: 'flex', gap: 8 }}>
                                         <button className="btn btn-sm" style={{ background: 'var(--warning)', color: '#fff', border: 'none' }} onClick={() => doReview('MarkForReview', markReason)} disabled={reviewing}>Send Feedback</button>
+                                        <button className="btn btn-sm btn-ghost" onClick={() => setActionState(null)}>Cancel</button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {actionState === 'delete' && (
+                                <div style={{ padding: '16px 32px', background: 'var(--danger-subtle)', borderBottom: '1px solid var(--danger-border)' }}>
+                                    <h4 style={{ fontSize: 14, fontWeight: 600, color: 'var(--danger)', marginBottom: 8 }}>Delete Batch</h4>
+                                    <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>Are you sure you want to permanently delete this batch and all its questions? This action cannot be undone.</p>
+                                    <div style={{ display: 'flex', gap: 8 }}>
+                                        <button className="btn btn-sm btn-danger" onClick={handleDeleteBatch} disabled={reviewing}>Yes, Delete Batch</button>
                                         <button className="btn btn-sm btn-ghost" onClick={() => setActionState(null)}>Cancel</button>
                                     </div>
                                 </div>
