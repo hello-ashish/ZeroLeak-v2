@@ -248,11 +248,6 @@ export default function AdminProfessorsPage() {
         }
     };
 
-        React.useEffect(() => {
-        window.refreshCurrentPage = fetchData;
-        return () => { window.refreshCurrentPage = null; };
-    }, []);
-
     return (
         <AdminLayout>
             <div className="page-header">
