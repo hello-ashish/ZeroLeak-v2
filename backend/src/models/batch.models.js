@@ -71,6 +71,18 @@ const batchSchema = new Schema({
     isDeletedByProfessor: {
         type: Boolean,
         default: false
+    },
+    merkleRoot: {
+        type: String,
+        default: null
+    },
+    blockchainBlockIndex: {
+        type: Number,
+        default: null
+    },
+    blockchainBlockHash: {
+        type: String,
+        default: null
     }
 }, { timestamps: true})
 

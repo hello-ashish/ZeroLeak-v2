@@ -6,6 +6,8 @@ import { Student } from "../models/student.models.js";
 import { Exam } from "../models/exam.models.js";
 import { Result } from "../models/result.models.js";
 import { AuditLog } from "../models/auditlog.models.js";
+import { buildMerkleRoot } from "../Services/merkle.service.js";
+import { appendCommitment } from "../Services/blockchain.service.js";
 import {
     encryptQuestionContent,
     hashQuestionContent,
@@ -172,6 +174,14 @@ export const reviewBatch = async (req, res) => {
         if (!batch) return res.status(404).json({ message: "Batch not found" });
 
         if (action === 'Accept') {
+            if (batch.status === 'Accepted' && batch.blockchainBlockHash) {
+                return res.status(400).json({ message: 'Batch is already accepted and committed to the blockchain ledger.' });
+            }
+
+            if (!batch.questions || batch.questions.length === 0) {
+                return res.status(400).json({ message: 'Cannot approve an empty batch.' });
+            }
+
             const questionsToInsert = batch.questions.map((q) => {
 
                 const sensitiveContent = {
@@ -197,9 +207,36 @@ export const reviewBatch = async (req, res) => {
                 };
             });
 
-            await Question.insertMany(questionsToInsert);
+            const insertedQuestions = await Question.insertMany(questionsToInsert);
+            const questionHashes = insertedQuestions.map((question) => question.contentHash);
+            const merkleRoot = buildMerkleRoot(questionHashes);
+
+            let blockchainBlock;
+            try {
+                blockchainBlock = await appendCommitment({
+                    blockType: "BATCH_COMMITMENT",
+                    entityId: batch._id,
+                    entityLabel: batch.title,
+                    merkleRoot,
+                    actorId: req.admin?._id,
+                    actorRole: "Admin",
+                    metadata: {
+                        batchId: String(batch._id),
+                        subject: batch.subject,
+                        questionCount: insertedQuestions.length,
+                        status: "Accepted",
+                    },
+                });
+            } catch (blockchainError) {
+                await Question.deleteMany({ _id: { $in: insertedQuestions.map((question) => question._id) } });
+                throw new Error(`Batch approval rolled back: blockchain commitment failed (${blockchainError.message})`);
+            }
+
+            batch.merkleRoot = merkleRoot;
+            batch.blockchainBlockIndex = blockchainBlock.blockIndex;
+            batch.blockchainBlockHash = blockchainBlock.hash;
             batch.status = 'Accepted';
-            batch.adminMessage = 'Batch Approved and added to Pool';
+            batch.adminMessage = 'Batch Approved, integrity committed to blockchain ledger';
             await logAction({ actor: req.admin?.email, action: "BATCH_APPROVED", targetType: "Batch", targetId: batch._id, targetLabel: batch.title });
         } else if (action === 'Reject') {
             batch.status = 'Rejected';

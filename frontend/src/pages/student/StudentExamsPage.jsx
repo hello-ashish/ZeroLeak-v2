@@ -55,10 +55,6 @@ const StudentExamsPage = () => {
     const filteredExams = getFilteredExams();
 
     if (loading) {
-            React.useEffect(() => {
-        window.refreshCurrentPage = fetchData;
-        return () => { window.refreshCurrentPage = null; };
-    }, []);
 
     return (
             <div style={{ padding: 32 }}>

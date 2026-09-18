@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
-import { LayoutDashboard, ClipboardList, Database, BarChart3, GraduationCap, Users, PackageOpen, ScrollText, Settings, Search, LogOut, ChevronDown, Command, Bell, Plus , RefreshCw } from 'lucide-react'
+import { LayoutDashboard, ClipboardList, Database, BarChart3, GraduationCap, Users, PackageOpen, ScrollText, Blocks, Settings, Search, LogOut, ChevronDown, Command, Bell, Plus , RefreshCw } from 'lucide-react'
 import { CommandPalette } from '../../components/CommandPalette.jsx'
 import { HeaderThemeSlider } from '../../components/HeaderThemeSlider.jsx'
 
@@ -31,6 +31,7 @@ const NAV = [
         items: [
             { label: 'Batch Review', icon: <PackageOpen size={18} />, path: '/admin/batches', badgeKey: 'pendingBatches' },
             { label: 'Activity & Audit', icon: <ScrollText size={18} />, path: '/admin/activity' },
+            { label: 'Blockchain Ledger', icon: <Blocks size={18} />, path: '/admin/blockchain' },
         ]
     },
     {

@@ -85,10 +85,6 @@ const StudentDashboardPage = () => {
     };
 
     if (loading) {
-            React.useEffect(() => {
-        window.refreshCurrentPage = fetchData;
-        return () => { window.refreshCurrentPage = null; };
-    }, []);
 
     return (
             <div style={{ height: '50vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

@@ -49,6 +49,14 @@ const examSchema = new mongoose.Schema({
         type: String,
         default: null,
     },
+    blockchainBlockIndex: {
+        type: Number,
+        default: null,
+    },
+    blockchainBlockHash: {
+        type: String,
+        default: null,
+    },
 }, { timestamps: true })
 
 export const Exam = mongoose.model('Exam', examSchema)

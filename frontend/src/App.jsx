@@ -36,6 +36,7 @@ import AdminProfessorsPage from './pages/admin/AdminProfessorsPage.jsx'
 import AdminBatchesPage from './pages/admin/AdminBatchesPage.jsx'
 import AdminGradebookPage from './pages/admin/AdminGradebookPage.jsx'
 import AdminActivityPage from './pages/admin/AdminActivityPage.jsx'
+import AdminBlockchainPage from './pages/admin/AdminBlockchainPage.jsx'
 import AdminSettingsPage from './pages/admin/AdminSettingsPage.jsx'
 
 // Auditor Console pages
@@ -68,6 +69,7 @@ function App() {
           <Route path="/admin/batches" element={<AdminBatchesPage />} />
           <Route path="/admin/gradebook" element={<AdminGradebookPage />} />
           <Route path="/admin/activity" element={<AdminActivityPage />} />
+          <Route path="/admin/blockchain" element={<AdminBlockchainPage />} />
           <Route path="/admin/settings" element={<AdminSettingsPage />} />
 
           {/* Redirect old /admin/dashboard stub if someone navigates there directly */}
