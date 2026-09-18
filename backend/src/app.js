@@ -20,6 +20,7 @@ app.use(express.static("public"))
 import adminRouter from "./routes/admin.routes.js"
 import professorRouter from "./routes/professor.routes.js"
 import auditorRouter from "./routes/auditor.routes.js"
+import cheatingRouter from "./routes/cheating.routes.js"
 import blockchainRouter from "./routes/blockchain.routes.js"
 
 // this says: any request starting with /api/admin goes to the adminRouter
@@ -41,6 +42,5 @@ app.use("/api/students", studentRouter);
 
 // Auditor route
 app.use("/api/auditor", auditorRouter);
-app.use("/api/admin/blockchain", blockchainRouter);
 
 export { app }

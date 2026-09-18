@@ -24,8 +24,7 @@ export const verifyAdminJWT = async (req, res, next) => {
         req.admin = admin
         next()
     } catch (error) {
-        console.error("JWT Verification Error:", error.message)
-        return res.status(401).json({ message: "Invalid or Expired Access Token" })
+        return res.status(401).json({ message: "Invalid or Expired Access Token", code: "TOKEN_EXPIRED" })
     }
 }
 
@@ -45,13 +44,10 @@ export const verifyProfessorJWT = async (req, res, next) => {
             return res.status(401).json({ message: "Unauthorized request: Professor not found" })
         }
 
-        // ATTACHMENT: We attach the professor to the request.
-        // This is crucial because now our Question Controller will know exactly WHO is creating the question!
         req.professor = professor
         next()
     } catch (error) {
-        console.error("JWT Verification Error:", error.message)
-        return res.status(401).json({ message: "Invalid or Expired Access Token" })
+        return res.status(401).json({ message: "Invalid or Expired Access Token", code: "TOKEN_EXPIRED" })
     }
 }
 
@@ -78,8 +74,7 @@ export const verifyStudentJWT = async (req, res, next) => {
         req.student = student
         next()
     } catch (error) {
-        console.error("JWT Verification Error:", error.message)
-        return res.status(401).json({ message: "Invalid or Expired Access Token" })
+        return res.status(401).json({ message: "Invalid or Expired Access Token", code: "TOKEN_EXPIRED" })
     }
 }
 
@@ -102,7 +97,37 @@ export const verifyAuditorJWT = async (req, res, next) => {
         req.auditor = auditor
         next()
     } catch (error) {
-        console.error("JWT Verification Error:", error.message)
-        return res.status(401).json({ message: "Invalid or Expired Access Token" })
+        return res.status(401).json({ message: "Invalid or Expired Access Token", code: "TOKEN_EXPIRED" })
+    }
+}
+
+export const verifyAdminOrAuditorJWT = async (req, res, next) => {
+    try {
+        const authHeader = req.header("Authorization")
+        const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : authHeader
+
+        if (!token) {
+            return res.status(401).json({ message: "Unauthorized request: No token provided" })
+        }
+
+        const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET)
+
+        const admin = await Admin.findById(decodedToken.id).select("-password")
+        if (admin) {
+            req.admin = admin
+            req.userRole = "Admin"
+            return next()
+        }
+
+        const auditor = await Auditor.findById(decodedToken.id).select("-password")
+        if (auditor) {
+            req.auditor = auditor
+            req.userRole = "Auditor"
+            return next()
+        }
+
+        return res.status(401).json({ message: "Unauthorized request: Neither Admin nor Auditor found" })
+    } catch (error) {
+        return res.status(401).json({ message: "Invalid or Expired Access Token", code: "TOKEN_EXPIRED" })
     }
 }

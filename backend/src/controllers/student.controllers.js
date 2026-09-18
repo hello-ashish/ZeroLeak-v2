@@ -108,6 +108,12 @@ export const getExamById = async (req, res) => {
             })
         }
 
+        if (exam.questions.length === 0) {
+            return res.status(400).json({
+                message: "Exam contains no questions."
+            })
+        }
+
         const questionHashes = []
         const safeQuestions = []
 
@@ -227,10 +233,12 @@ export const submitExamResult = async (req, res) => {
             })
         }
 
-        // Prevent duplicate submissions
+        // Prevent duplicate submissions.
+        // Skip results marked resetByAdmin=true — those are audit records for terminated/authorized attempts.
         const existingResult = await Result.findOne({
             student: req.student._id,
-            exam: examId
+            exam: examId,
+            resetByAdmin: { $ne: true }
         })
 
         if (existingResult) {
@@ -255,6 +263,12 @@ export const submitExamResult = async (req, res) => {
             return res.status(403).json({
                 message:
                     "This exam is not protected."
+            })
+        }
+
+        if (exam.questions.length === 0) {
+            return res.status(400).json({
+                message: "Exam contains no questions."
             })
         }
 

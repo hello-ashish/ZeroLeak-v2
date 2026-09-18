@@ -5,6 +5,7 @@ import { Exam } from "../models/exam.models.js";
 import { Student } from "../models/student.models.js";
 import { Professor } from "../models/professor.models.js";
 import { Result } from "../models/result.models.js";
+import { CheatingIncident } from "../models/cheatingIncident.models.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 
@@ -47,7 +48,7 @@ export const loginAuditor = async (req, res) => {
 
         await AuditLog.create({
             actor: email,
-            actorRole: "System", // Or Auditor if we add it to the enum later
+            actorRole: "System",
             action: "AUDITOR_LOGIN",
             targetType: "Auditor",
             targetId: auditor._id,
@@ -63,19 +64,30 @@ export const loginAuditor = async (req, res) => {
 // ─── Get Dashboard Metrics ──────────────────────────────────────────────────
 export const getDashboardMetrics = async (req, res) => {
     try {
-        const [totalLogs, highRiskLogs, activeAnomalies, recentLogs] = await Promise.all([
+        const [totalAuditLogs, totalCheatingIncidents, highRiskLogs, highRiskIncidents, openAnomalies, pendingIncidents, recentLogs, recentIncidents] = await Promise.all([
             AuditLog.countDocuments(),
-            AuditLog.countDocuments({ action: { $in: ["ADMIN_LOGIN", "BATCH_REJECTED", "EXAM_DELETED", "STUDENT_DELETED", "PROFESSOR_DELETED"] } }),
+            CheatingIncident.countDocuments(),
+            AuditLog.countDocuments({ action: { $in: ["ADMIN_LOGIN", "BATCH_REJECTED", "EXAM_DELETED", "STUDENT_DELETED", "PROFESSOR_DELETED", "EXAM_ATTEMPT_TERMINATED"] } }),
+            CheatingIncident.countDocuments({ severity: { $in: ["High", "Critical"] } }),
             Anomaly.countDocuments({ status: { $in: ["Open", "Under Review"] } }),
-            AuditLog.find().sort({ createdAt: -1 }).limit(10)
+            CheatingIncident.countDocuments({ reviewStatus: "Pending" }),
+            AuditLog.find().sort({ createdAt: -1 }).limit(10),
+            CheatingIncident.find().populate("studentId", "name email").populate("examId", "title").sort({ createdAt: -1 }).limit(10)
         ]);
 
         const loggingStatus = mongoose.connection.readyState === 1 ? "Operational" : "Degraded";
 
-        // Compute 7-day activity trend
+        const totalEvents = totalAuditLogs + totalCheatingIncidents;
+        const highRiskEvents = highRiskLogs + highRiskIncidents;
+        const unresolvedAnomalies = openAnomalies + pendingIncidents;
+
+        // Compute 7-day activity trend including both AuditLogs & CheatingIncidents
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        const recentAuditLogs = await AuditLog.find({ createdAt: { $gte: sevenDaysAgo } });
+        const [recentAuditLogs, recentCheatingEvents] = await Promise.all([
+            AuditLog.find({ createdAt: { $gte: sevenDaysAgo } }),
+            CheatingIncident.find({ createdAt: { $gte: sevenDaysAgo } })
+        ]);
 
         const trendMap = {};
         for (let i = 6; i >= 0; i--) {
@@ -92,19 +104,46 @@ export const getDashboardMetrics = async (req, res) => {
             }
         });
 
+        recentCheatingEvents.forEach(inc => {
+            const dateStr = new Date(inc.createdAt || inc.detectedAt).toISOString().split('T')[0];
+            if (trendMap[dateStr]) {
+                trendMap[dateStr].count += 1;
+            }
+        });
+
         const activityTrend = Object.values(trendMap);
+
+        // Format recent combined logs
+        const combinedLogs = [
+            ...recentLogs.map(l => ({
+                _id: l._id,
+                action: l.action,
+                actor: l.actor,
+                createdAt: l.createdAt,
+                type: "AuditLog"
+            })),
+            ...recentIncidents.map(i => ({
+                _id: i._id,
+                action: `CHEATING_${i.violationType}`,
+                actor: i.studentId?.email || "Student",
+                createdAt: i.detectedAt || i.createdAt,
+                type: "CheatingIncident"
+            }))
+        ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 10);
 
         return res.status(200).json({
             metrics: {
-                totalEvents: totalLogs,
-                highRiskEvents: highRiskLogs,
-                openAnomalies: activeAnomalies,
-                loggingStatus
+                totalEvents,
+                highRiskEvents,
+                openAnomalies: unresolvedAnomalies,
+                loggingStatus,
+                cheatingIncidentsCount: totalCheatingIncidents
             },
-            recentLogs,
+            recentLogs: combinedLogs,
             activityTrend
         });
     } catch (error) {
+        console.error("Error fetching auditor metrics:", error);
         return res.status(500).json({ message: "Error fetching dashboard metrics" });
     }
 };

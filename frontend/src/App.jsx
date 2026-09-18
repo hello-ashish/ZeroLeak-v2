@@ -38,6 +38,7 @@ import AdminGradebookPage from './pages/admin/AdminGradebookPage.jsx'
 import AdminActivityPage from './pages/admin/AdminActivityPage.jsx'
 import AdminBlockchainPage from './pages/admin/AdminBlockchainPage.jsx'
 import AdminSettingsPage from './pages/admin/AdminSettingsPage.jsx'
+import AdminCheatingDetection from './pages/admin/AdminCheatingDetection.jsx'
 
 // Auditor Console pages
 import AuditorLogin from './pages/auditor/AuditorLogin.jsx'
@@ -69,6 +70,7 @@ function App() {
           <Route path="/admin/batches" element={<AdminBatchesPage />} />
           <Route path="/admin/gradebook" element={<AdminGradebookPage />} />
           <Route path="/admin/activity" element={<AdminActivityPage />} />
+          <Route path="/admin/cheating" element={<AdminCheatingDetection />} />
           <Route path="/admin/blockchain" element={<AdminBlockchainPage />} />
           <Route path="/admin/settings" element={<AdminSettingsPage />} />
 
@@ -77,21 +79,21 @@ function App() {
           {/* ── Professor Routes ── */}
           <Route path="/professor/login" element={<ProfessorLogin />} />
           <Route element={<ProfessorLayout />}>
-              <Route path="/professor/dashboard" element={<ProfessorDashboardPage />} />
-              <Route path="/professor/batches" element={<ProfessorBatchesPage />} />
-              <Route path="/professor/profile" element={<ProfessorProfile />} />
+            <Route path="/professor/dashboard" element={<ProfessorDashboardPage />} />
+            <Route path="/professor/batches" element={<ProfessorBatchesPage />} />
+            <Route path="/professor/profile" element={<ProfessorProfile />} />
           </Route>
 
           {/* ── Student Routes ── */}
           <Route path="/student/login" element={<StudentLogin />} />
           <Route path="/student/take-exam/:id" element={<TakeExam />} />
           <Route element={<StudentLayout />}>
-              <Route path="/student/dashboard" element={<StudentDashboardPage />} />
-              <Route path="/student/exams" element={<StudentExamsPage />} />
-              <Route path="/student/results" element={<StudentResultsPage />} />
-              <Route path="/student/performance" element={<StudentPerformancePage />} />
-              <Route path="/student/profile" element={<StudentProfile />} />
-              <Route path="/student/settings" element={<StudentSettingsPage />} />
+            <Route path="/student/dashboard" element={<StudentDashboardPage />} />
+            <Route path="/student/exams" element={<StudentExamsPage />} />
+            <Route path="/student/results" element={<StudentResultsPage />} />
+            <Route path="/student/performance" element={<StudentPerformancePage />} />
+            <Route path="/student/profile" element={<StudentProfile />} />
+            <Route path="/student/settings" element={<StudentSettingsPage />} />
           </Route>
 
           {/* ── Auditor Routes ── */}

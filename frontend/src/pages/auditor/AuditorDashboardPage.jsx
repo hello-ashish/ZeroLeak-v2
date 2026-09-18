@@ -86,16 +86,30 @@ export default function AuditorDashboardPage() {
             ) : (
                 <>
                     {/* Audit Health Summary Strip */}
-                    <div className="status-strip" style={{ marginBottom: 24 }}>
+                    <div className="status-strip" style={{ marginBottom: 16 }}>
                         <div className="status-strip-item" style={{ flex: 1 }}>
                             <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--success)', boxShadow: '0 0 0 3px var(--success-subtle)' }} />
-                            <span><strong>Audit Logging Operational</strong> — Events are being recorded successfully.</span>
+                            <span><strong>Audit Logging Operational</strong> — System events and anti-cheating telemetry are being recorded.</span>
                         </div>
                         {recentLogs.length > 0 && (
                             <div className="status-strip-item" style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>
                                 Last event: {format(new Date(recentLogs[0].createdAt), 'MMM d, h:mm:ss a')}
                             </div>
                         )}
+                    </div>
+
+                    {/* Anti-Cheating Telemetry Quick Link */}
+                    <div style={{ background: 'var(--bg-card)', padding: '14px 24px', borderRadius: 12, border: '1px solid var(--border-default)', marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <ShieldAlert size={20} style={{ color: 'var(--danger)' }} />
+                            <div>
+                                <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>Anti-Cheating Security Telemetry</span>
+                                <span style={{ fontSize: 13, color: 'var(--text-tertiary)', marginLeft: 8 }}>— {metrics?.cheatingIncidentsCount || 0} total cheating incidents captured</span>
+                            </div>
+                        </div>
+                        <button className="btn btn-secondary btn-sm" onClick={() => navigate('/admin/cheating')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 6, fontSize: 13 }}>
+                            Cheating Detection <ChevronRight size={14} />
+                        </button>
                     </div>
 
                     {/* High-Level Metrics */}

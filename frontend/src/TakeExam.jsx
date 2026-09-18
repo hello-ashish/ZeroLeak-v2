@@ -4,10 +4,13 @@ import axios from 'axios';
 import { 
     Clock, AlertCircle, CheckCircle2, ChevronLeft, ChevronRight, 
     Flag, Maximize2, Minimize2, Edit3, Bookmark, HelpCircle, 
-    PanelRightClose, PanelRightOpen, X, Activity, LayoutDashboard 
+    PanelRightClose, PanelRightOpen, X, Activity, LayoutDashboard,
+    ShieldAlert, AlertTriangle, Lock
 } from 'lucide-react';
+import { useAntiCheating } from './utils/useAntiCheating';
 
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
+const MAX_WARNINGS = 3;
 
 const TakeExam = () => {
     const { id } = useParams();
@@ -31,37 +34,78 @@ const TakeExam = () => {
     const [focusMode, setFocusMode] = useState(false);
     const [showPreSubmit, setShowPreSubmit] = useState(false);
     const [saveStatus, setSaveStatus] = useState("Saved");
-    const [toolsOpen, setToolsOpen] = useState(false); // Collapsible right drawer
+    const [toolsOpen, setToolsOpen] = useState(false);
     const [isRestricted, setIsRestricted] = useState(false);
 
-    const timerRef = useRef(null);
-    const sessionKey = `zl_exam_session_${id}`;
+    // Anti-Cheating State
+    const [warningCount, setWarningCount] = useState(0);
+    const [warningModal, setWarningModal] = useState({ open: false, reason: '', count: 0 });
+    const [isTerminated, setIsTerminated] = useState(false);
+    const [terminationReason, setTerminationReason] = useState('');
 
-    // Load Exam Data
+    const timerRef = useRef(null);
+    const warningCountRef = useRef(0);
+    const isTerminatedRef = useRef(false);
+    const sessionKey = `zl_exam_session_${id}`;
+    const terminatedKey = `zl_terminated_${id}`;
+
+    // Load Exam Data & Check Status
     useEffect(() => {
         const fetchExam = async () => {
             try {
                 const token = localStorage.getItem('studentToken');
                 if (!token) return navigate('/student/login');
 
+                // ── BACKEND-FIRST CHECK ─────────────────────────────────────────────
+                // Always verify with the backend before trusting localStorage.
+                // An admin may have unblocked the student and authorized a fresh attempt,
+                // which means the stale localStorage terminated flag must be ignored.
+
+                // Fetch the exam data
                 const response = await axios.get(`http://localhost:4000/api/students/exams/${id}`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 const fetchedExam = response.data.exam;
 
-                // Check if already taken
+                // Fetch results from the backend to check attempt status
                 const resultsRes = await axios.get(`http://localhost:4000/api/students/results`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-                const alreadyTaken = resultsRes.data.results?.some(r => (r.exam?._id === id || r.exam === id));
-                
-                if (alreadyTaken) {
-                    alert("You have already completed this exam.");
-                    return navigate('/student/exams');
+
+                const existingResult = resultsRes.data.results?.find(r => (r.exam?._id === id || r.exam === id));
+
+                if (existingResult) {
+                    if (existingResult.isTerminated && !existingResult.resetByAdmin) {
+                        // Attempt was terminated and NOT yet authorized for a reset — block access
+                        // Also write the localStorage flag so it persists across page reloads
+                        // (until admin authorizes a new attempt)
+                        localStorage.setItem(terminatedKey, JSON.stringify({
+                            terminated: true,
+                            reason: existingResult.terminationReason || "Exam attempt was terminated by anti-cheating system."
+                        }));
+                        setIsTerminated(true);
+                        setTerminationReason(existingResult.terminationReason || "Exam attempt was terminated by anti-cheating system.");
+                        setLoading(false);
+                        return;
+                    } else if (existingResult.isTerminated && existingResult.resetByAdmin) {
+                        // Admin authorized a fresh attempt — clear the stale localStorage flag
+                        // so the student can proceed to the exam normally
+                        localStorage.removeItem(terminatedKey);
+                        // Fall through to load the exam below
+                    } else if (!existingResult.isTerminated) {
+                        // Exam was completed normally — redirect
+                        alert("You have already completed this exam.");
+                        return navigate('/student/exams');
+                    }
+                } else {
+                    // No result record at all — also clear any stale terminated flag
+                    // (edge case: student somehow has a stale localStorage key with no DB record)
+                    localStorage.removeItem(terminatedKey);
                 }
 
                 setExam(fetchedExam);
 
+                // Restore in-progress session from localStorage (only for resuming an active attempt)
                 const savedSession = localStorage.getItem(sessionKey);
                 if (savedSession) {
                     try {
@@ -81,12 +125,99 @@ const TakeExam = () => {
                 }
             } catch (error) {
                 console.error("Failed to fetch exam", error);
+                if (error.response && error.response.status === 403) {
+                    setIsRestricted(true);
+                }
             } finally {
                 setLoading(false);
             }
         };
         fetchExam();
-    }, [id, navigate, sessionKey]);
+    }, [id, navigate, sessionKey, terminatedKey]);
+
+    // Force Termination Handler
+    const handleForceTermination = useCallback(async (reason) => {
+        if (isTerminatedRef.current) return;
+        isTerminatedRef.current = true;
+        setIsTerminated(true);
+        setTerminationReason(reason || "Exceeded security policy violation threshold.");
+
+        // Clear timer
+        if (timerRef.current) clearInterval(timerRef.current);
+
+        // Remove local active session cache to prevent resumption
+        localStorage.removeItem(sessionKey);
+        localStorage.setItem(terminatedKey, JSON.stringify({
+            terminated: true,
+            reason: reason || "Exceeded security policy violation limit."
+        }));
+
+        setWarningModal({ open: false, reason: '', count: 0 });
+
+        // Call backend termination API
+        try {
+            const token = localStorage.getItem('studentToken');
+            if (token) {
+                const res = await axios.post('http://localhost:4000/api/anti-cheating/terminate', {
+                    examId: id,
+                    reason: reason || "Exceeded maximum allowed security violations (3 strikes)",
+                    autoBlockStudent: true
+                }, { headers: { Authorization: `Bearer ${token}` } });
+
+                if (res.data?.isBlocked) {
+                    setIsRestricted(true);
+                }
+            }
+        } catch (err) {
+            console.error("Failed to execute termination API:", err);
+        }
+    }, [id, sessionKey, terminatedKey]);
+
+    // Violation Callback from Anti-Cheating Hook
+    const handleViolation = useCallback(async (event) => {
+        if (!isStarted || score !== null || isTerminatedRef.current || isRestricted) return;
+
+        const newCount = warningCountRef.current + 1;
+        warningCountRef.current = newCount;
+        setWarningCount(newCount);
+
+        // Log incident to backend API asynchronously
+        try {
+            const token = localStorage.getItem('studentToken');
+            if (token) {
+                await axios.post('http://localhost:4000/api/anti-cheating/incident', {
+                    examId: id,
+                    violationType: event.type,
+                    severity: event.severity,
+                    description: event.description,
+                    evidenceData: event.details || {},
+                    actionTaken: newCount >= MAX_WARNINGS ? 'EXAM_TERMINATED' : 'WARNING'
+                }, { headers: { Authorization: `Bearer ${token}` } });
+            }
+        } catch (err) {
+            console.error("Failed to log cheating incident to backend:", err);
+        }
+
+        // Check if threshold reached
+        if (newCount >= MAX_WARNINGS) {
+            handleForceTermination(event.description);
+        } else {
+            // Display Warning Modal
+            setWarningModal({
+                open: true,
+                reason: event.description,
+                count: newCount
+            });
+        }
+    }, [isStarted, score, isRestricted, id, handleForceTermination]);
+
+    // Initialize Anti-Cheating Hook
+    const { isFullscreen, requestFullscreen } = useAntiCheating({
+        enabled: isStarted && score === null && !isTerminated && !isRestricted,
+        onViolation: handleViolation,
+        blockCopyPaste: true,
+        blockContextMenu: true
+    });
 
     const handleAutoSubmit = useCallback(() => {
         submitExamData();
@@ -94,13 +225,13 @@ const TakeExam = () => {
 
     // Timer Logic
     useEffect(() => {
-        if (isStarted && score === null && exam && timeLeft === null) {
+        if (isStarted && score === null && !isTerminated && exam && timeLeft === null) {
             setTimeLeft(exam.durationMinutes * 60);
         }
-    }, [isStarted, exam, score, timeLeft]);
+    }, [isStarted, exam, score, isTerminated, timeLeft]);
 
     useEffect(() => {
-        if (timeLeft !== null && timeLeft > 0 && score === null) {
+        if (timeLeft !== null && timeLeft > 0 && score === null && !isTerminated) {
             timerRef.current = setInterval(() => {
                 setTimeLeft(prev => {
                     if (prev <= 1) {
@@ -113,11 +244,11 @@ const TakeExam = () => {
             }, 1000);
         }
         return () => { if (timerRef.current) clearInterval(timerRef.current); };
-    }, [timeLeft, score, handleAutoSubmit]);
+    }, [timeLeft, score, isTerminated, handleAutoSubmit]);
 
     // Live Tracking / Heartbeat Ping
     useEffect(() => {
-        if (!isStarted || score !== null || isRestricted) return;
+        if (!isStarted || score !== null || isRestricted || isTerminated) return;
         
         const pingServer = async () => {
             try {
@@ -136,21 +267,21 @@ const TakeExam = () => {
         };
 
         pingServer(); // initial ping
-        const intervalId = setInterval(pingServer, 5000); // ping every 5 seconds
+        const intervalId = setInterval(pingServer, 5000);
         return () => clearInterval(intervalId);
-    }, [isStarted, score, id, isRestricted]);
+    }, [isStarted, score, id, isRestricted, isTerminated]);
 
     // Auto-Save UI Logic
     useEffect(() => {
-        if (!isStarted || score !== null) return;
+        if (!isStarted || score !== null || isTerminated) return;
         setSaveStatus("Saving...");
         const timeout = setTimeout(() => setSaveStatus("Saved"), 800);
         return () => clearTimeout(timeout);
-    }, [answers, markedForReview, confidenceLevels, scratchpad, currentQuestionIndex, isStarted, score]);
+    }, [answers, markedForReview, confidenceLevels, scratchpad, currentQuestionIndex, isStarted, score, isTerminated]);
 
     // Data Persistence Logic
     useEffect(() => {
-        if (isStarted && score === null) {
+        if (isStarted && score === null && !isTerminated) {
             const sessionData = {
                 answers,
                 markedForReview: Array.from(markedForReview),
@@ -161,31 +292,27 @@ const TakeExam = () => {
             };
             localStorage.setItem(sessionKey, JSON.stringify(sessionData));
         }
-    }, [answers, markedForReview, confidenceLevels, scratchpad, currentQuestionIndex, timeLeft, isStarted, score, sessionKey]);
+    }, [answers, markedForReview, confidenceLevels, scratchpad, currentQuestionIndex, timeLeft, isStarted, score, isTerminated, sessionKey]);
 
     // Keyboard Navigation
     useEffect(() => {
-        if (!isStarted || score !== null || showPreSubmit || !exam) return;
+        if (!isStarted || score !== null || isTerminated || showPreSubmit || !exam || warningModal.open) return;
 
         const handleKeyDown = (e) => {
-            // Don't trigger if user is typing in scratchpad
             if (e.target.tagName.toLowerCase() === 'textarea' || e.target.tagName.toLowerCase() === 'input') return;
 
             const key = e.key.toLowerCase();
             const currentQ = exam.questions[currentQuestionIndex];
 
-            // Next / Prev
             if (key === 'n' && currentQuestionIndex < exam.questions.length - 1) {
                 setCurrentQuestionIndex(prev => prev + 1);
             }
             if (key === 'p' && currentQuestionIndex > 0) {
                 setCurrentQuestionIndex(prev => prev - 1);
             }
-            // Mark for Review
             if (key === 'r') {
                 toggleMarkForReview(currentQ._id);
             }
-            // Options A-F / 1-6
             const optionMap = { 'a': 0, '1': 0, 'b': 1, '2': 1, 'c': 2, '3': 2, 'd': 3, '4': 3, 'e': 4, '5': 4, 'f': 5, '6': 5 };
             if (optionMap[key] !== undefined && optionMap[key] < currentQ.options.length) {
                 handleOptionSelect(currentQ._id, optionMap[key]);
@@ -194,7 +321,7 @@ const TakeExam = () => {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isStarted, score, showPreSubmit, currentQuestionIndex, exam, markedForReview, answers]);
+    }, [isStarted, score, isTerminated, showPreSubmit, warningModal.open, currentQuestionIndex, exam, markedForReview, answers]);
 
     const formatTime = (seconds) => {
         if (seconds === null) return "--:--";
@@ -206,17 +333,19 @@ const TakeExam = () => {
     };
 
     const handleOptionSelect = (questionId, optionIndex) => {
-        if (score !== null) return;
+        if (score !== null || isTerminated || isRestricted) return;
         setAnswers({ ...answers, [questionId]: optionIndex });
     };
 
     const clearAnswer = (questionId) => {
+        if (score !== null || isTerminated || isRestricted) return;
         const newAnswers = { ...answers };
         delete newAnswers[questionId];
         setAnswers(newAnswers);
     };
 
     const toggleMarkForReview = (questionId) => {
+        if (score !== null || isTerminated || isRestricted) return;
         const newSet = new Set(markedForReview);
         if (newSet.has(questionId)) newSet.delete(questionId);
         else newSet.add(questionId);
@@ -224,10 +353,12 @@ const TakeExam = () => {
     };
 
     const setConfidence = (questionId, level) => {
+        if (score !== null || isTerminated || isRestricted) return;
         setConfidenceLevels({ ...confidenceLevels, [questionId]: level });
     };
 
     const submitExamData = async () => {
+        if (isTerminated) return;
         setIsSubmitting(true);
         if (timerRef.current) clearInterval(timerRef.current);
         try {
@@ -262,20 +393,63 @@ const TakeExam = () => {
         );
     }
 
+    // --- SCREEN: RESTRICTED / BLOCKED ---
     if (isRestricted) {
         return (
-            <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-app)', color: 'var(--text-primary)' }}>
+            <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-app)', color: 'var(--text-primary)', padding: 24 }}>
                 <AlertCircle size={64} style={{ color: 'var(--danger)', marginBottom: 24 }} />
                 <h1 style={{ fontSize: '24px', fontWeight: 600, marginBottom: 8 }}>Exam Restricted</h1>
-                <p style={{ color: 'var(--text-secondary)', maxWidth: 400, textAlign: 'center' }}>
-                    You are restricted from exam, please connect your admin.
+                <p style={{ color: 'var(--text-secondary)', maxWidth: 440, textAlign: 'center', lineHeight: 1.6 }}>
+                    Your account has been restricted from taking this exam due to security policy violations. Please contact your administrator for review and unblocking.
                 </p>
+                <div style={{ marginTop: 24, fontSize: 12, color: 'var(--text-tertiary)', textAlign: 'center', maxWidth: 400 }}>
+                    Disclaimer: Browser anti-cheating monitors tab switches, window focus, clipboard, and full-screen state.
+                </div>
                 <button 
                     onClick={() => navigate('/student/login')}
-                    style={{ marginTop: 24, padding: '10px 24px', background: 'var(--danger)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 500 }}
+                    style={{ marginTop: 24, padding: '12px 28px', background: 'var(--danger)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 500 }}
                 >
                     Return to Login
                 </button>
+            </div>
+        );
+    }
+
+    // --- SCREEN: EXAM TERMINATED (Anti-Cheating Threshold Exceeded) ---
+    if (isTerminated) {
+        return (
+            <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-base)', padding: 24 }}>
+                <div style={{ maxWidth: 520, width: '100%', textAlign: 'center', background: 'var(--bg-card)', padding: 48, borderRadius: 24, border: '1px solid var(--border-default)', animation: 'slideIn 0.3s ease-out' }}>
+                    <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+                        <ShieldAlert size={36} />
+                    </div>
+                    <h2 style={{ fontSize: 26, fontWeight: 400, color: 'var(--text-primary)', marginBottom: 12, letterSpacing: '-0.02em' }}>Assessment Terminated</h2>
+                    <p style={{ fontSize: 15, color: 'var(--text-secondary)', marginBottom: 32, lineHeight: 1.6 }}>
+                        This examination attempt has been automatically terminated due to security policy violations.
+                    </p>
+
+                    <div style={{ padding: 20, borderRadius: 12, background: 'var(--bg-body)', border: '1px solid var(--border-default)', marginBottom: 24, textAlign: 'left' }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--danger)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Termination Reason</div>
+                        <div style={{ fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.5 }}>
+                            {terminationReason || "Exceeded maximum allowed security violations (3 strikes)."}
+                        </div>
+                    </div>
+
+                    <div style={{ padding: 16, borderRadius: 12, background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.2)', marginBottom: 32, textAlign: 'left' }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--brand-primary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Next Steps</div>
+                        <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                            Contact your administrator. Once unblocked, an admin can authorize a fresh exam attempt for you. Your previous terminated attempt is kept for records.
+                        </div>
+                    </div>
+
+                    <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 32, lineHeight: 1.5 }}>
+                        Disclaimer: Browser anti-cheating monitors tab switches, window focus, clipboard, and full-screen state.
+                    </div>
+
+                    <button onClick={() => navigate('/student/dashboard')} className="btn btn-secondary" style={{ width: '100%', padding: '16px', fontSize: 15, borderRadius: 12 }}>
+                        Return to Command Center
+                    </button>
+                </div>
             </div>
         );
     }
@@ -319,7 +493,7 @@ const TakeExam = () => {
                         <p style={{ fontSize: 16, color: 'var(--text-secondary)', lineHeight: 1.6 }}>{exam.description}</p>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 40 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 32 }}>
                         <div style={{ background: 'var(--bg-body)', padding: 24, borderRadius: 16, display: 'flex', alignItems: 'center', gap: 16 }}>
                             <div style={{ width: 48, height: 48, borderRadius: 12, background: 'var(--bg-card)', border: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}><Clock size={20} /></div>
                             <div>
@@ -336,9 +510,19 @@ const TakeExam = () => {
                         </div>
                     </div>
 
+                    <div style={{ padding: 16, borderRadius: 12, background: 'rgba(234, 179, 8, 0.08)', border: '1px solid rgba(234, 179, 8, 0.2)', marginBottom: 32, display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                        <ShieldAlert size={20} style={{ color: '#eab308', flexShrink: 0, marginTop: 2 }} />
+                        <div style={{ fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.5 }}>
+                            <strong>Anti-Cheating Policy Active:</strong> Fullscreen mode is enforced. Tab switching, window defocusing, and clipboard operations are monitored. Exceeding {MAX_WARNINGS} security warnings will automatically terminate your attempt.
+                        </div>
+                    </div>
+
                     <div style={{ display: 'flex', gap: 16 }}>
                         <button onClick={() => navigate('/student/dashboard')} className="btn btn-secondary" style={{ flex: 1, padding: '16px', borderRadius: 12 }}>Cancel</button>
-                        <button onClick={() => setIsStarted(true)} className="btn btn-primary" style={{ flex: 2, padding: '16px', fontSize: 16, borderRadius: 12 }}>Begin Assessment</button>
+                        <button onClick={async () => {
+                            setIsStarted(true);
+                            await requestFullscreen();
+                        }} className="btn btn-primary" style={{ flex: 2, padding: '16px', fontSize: 16, borderRadius: 12 }}>Begin Assessment</button>
                     </div>
                 </div>
             </div>
@@ -427,6 +611,79 @@ const TakeExam = () => {
 
     return (
         <div style={{ height: '100vh', background: 'var(--bg-base)', display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: 'Inter, system-ui, sans-serif' }}>
+            
+            {/* --- SECURITY WARNING OVERLAY MODAL --- */}
+            {warningModal.open && (
+                <div style={{
+                    position: 'fixed',
+                    inset: 0,
+                    zIndex: 9999,
+                    background: 'rgba(0, 0, 0, 0.75)',
+                    backdropFilter: 'blur(4px)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: 24,
+                    animation: 'fadeIn 0.2s ease-out'
+                }}>
+                    <div style={{
+                        maxWidth: 480,
+                        width: '100%',
+                        background: 'var(--bg-card)',
+                        borderRadius: 20,
+                        padding: 32,
+                        border: '1px solid var(--danger)',
+                        boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
+                        textAlign: 'center'
+                    }}>
+                        <div style={{
+                            width: 56,
+                            height: 56,
+                            borderRadius: '50%',
+                            background: 'rgba(239, 68, 68, 0.15)',
+                            color: 'var(--danger)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            margin: '0 auto 20px'
+                        }}>
+                            <AlertTriangle size={32} />
+                        </div>
+
+                        <h3 style={{ fontSize: 22, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 8 }}>
+                            Security Policy Warning
+                        </h3>
+
+                        <div style={{ display: 'inline-block', padding: '4px 12px', borderRadius: 12, background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', fontSize: 13, fontWeight: 600, marginBottom: 20 }}>
+                            Warning {warningModal.count} of {MAX_WARNINGS}
+                        </div>
+
+                        <div style={{ padding: 16, borderRadius: 12, background: 'var(--bg-body)', border: '1px solid var(--border-default)', fontSize: 14, color: 'var(--text-primary)', marginBottom: 20, textAlign: 'left', lineHeight: 1.5 }}>
+                            <strong>Detected Violation:</strong> {warningModal.reason}
+                        </div>
+
+                        <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 24, lineHeight: 1.5 }}>
+                            If you reach {MAX_WARNINGS} warnings, your examination attempt will be <strong>automatically terminated</strong> and your student access locked.
+                        </p>
+
+                        <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 24, lineHeight: 1.4 }}>
+                            Disclaimer: Browser anti-cheating monitors tab switches, window focus, clipboard, and full-screen state.
+                        </div>
+
+                        <button
+                            onClick={async () => {
+                                setWarningModal({ open: false, reason: '', count: 0 });
+                                await requestFullscreen();
+                            }}
+                            className="btn btn-primary"
+                            style={{ width: '100%', padding: '14px', fontSize: 14, borderRadius: 10, background: 'var(--danger)', border: 'none' }}
+                        >
+                            I Understand & Resume Assessment
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* Global Progress Line */}
             <div style={{ height: 2, background: 'var(--bg-body)', width: '100%', zIndex: 50 }}>
                 <div style={{ height: '100%', background: 'var(--brand-primary)', width: `${(answeredCount / exam.questions.length) * 100}%`, transition: 'width 0.3s ease' }} />
@@ -450,9 +707,16 @@ const TakeExam = () => {
                     </button>
                 </div>
 
-                {/* Right: State & Tools */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+                {/* Right: Security Status, Timer & Tools */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
                     
+                    {/* Security Warning Badge */}
+                    {warningCount > 0 && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: 'var(--danger)', background: 'rgba(239, 68, 68, 0.1)', padding: '4px 10px', borderRadius: 12 }}>
+                            <AlertTriangle size={14} /> Warnings: {warningCount}/{MAX_WARNINGS}
+                        </div>
+                    )}
+
                     {/* Exam Pulse */}
                     <div style={{ display: 'none', '@media (min-width: 1024px)': { display: 'flex' }, alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 500, color: pulseState.color, background: 'var(--bg-body)', padding: '4px 10px', borderRadius: 12 }}>
                         {pulseState.icon} {pulseState.text}

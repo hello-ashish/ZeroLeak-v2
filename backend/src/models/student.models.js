@@ -16,6 +16,8 @@ const studentSchema = new Schema(
         gender: { type: String, enum: ['Male', 'Female', 'Other'] },
         program: { type: String, trim: true },
         isBlocked: { type: Boolean, default: false },
+        blockedAt: { type: Date, default: null },
+        blockedReason: { type: String, default: null },
         lastActiveAt: { type: Date, default: null },
         currentExamId: { type: Schema.Types.ObjectId, ref: 'Exam', default: null }
     },

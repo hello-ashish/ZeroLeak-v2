@@ -15,6 +15,7 @@ const NAV = [
         items: [
             { label: 'Audit Explorer', icon: <FileText size={18} />, path: '/auditor/audit' },
             { label: 'Anomalies', icon: <ShieldAlert size={18} />, path: '/auditor/anomalies' },
+            { label: 'Cheating Detection', icon: <ShieldAlert size={18} />, path: '/admin/cheating' },
         ]
     },
     {

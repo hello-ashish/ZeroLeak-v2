@@ -20,6 +20,29 @@ const resultSchema = new mongoose.Schema({
         type: Number,
         required: true
     },
+    status: {
+        type: String,
+        enum: ["Completed", "Terminated"],
+        default: "Completed"
+    },
+    isTerminated: {
+        type: Boolean,
+        default: false
+    },
+    terminationReason: {
+        type: String,
+        default: null
+    },
+    // Set by Admin to authorize a fresh exam attempt after unblocking.
+    // The old terminated record is preserved for audit; eligibility checks skip it.
+    resetByAdmin: {
+        type: Boolean,
+        default: false
+    },
+    resetByAdminAt: {
+        type: Date,
+        default: null
+    }
 }, { timestamps: true })
 
 export const Result = mongoose.model("Result", resultSchema)
