@@ -30,6 +30,10 @@ const auditLogSchema = new mongoose.Schema({
         type: String,
         enum: ["success", "failure"],
         default: "success"
+    },
+    isCommitted: {
+        type: Boolean,
+        default: false
     }
 }, { timestamps: true })
 

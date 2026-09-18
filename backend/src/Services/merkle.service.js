@@ -1,9 +1,10 @@
 import crypto from "crypto";
 
 function hashPair(left, right) {
+    const combined = left < right ? left + right : right + left;
     return crypto
         .createHash("sha256")
-        .update(left + right, "utf8")
+        .update(combined, "utf8")
         .digest("hex");
 }
 
@@ -26,7 +27,8 @@ export function buildMerkleRoot(hashes) {
         );
     }
 
-    let level = [...hashes];
+    // Sort the initial hashes lexicographically to make the entire tree order-independent (Lexicographical Merkle Tree)
+    let level = [...hashes].sort();
 
     while (level.length > 1) {
         const nextLevel = [];

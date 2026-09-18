@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Sun, Moon } from 'lucide-react';
 import { applyThemeProgress } from '../utils/themeEngine.js';
 import './GlobalThemeSlider.css';
@@ -9,6 +10,10 @@ const GlobalThemeSlider = () => {
   });
   const [isVisible, setIsVisible] = useState(false);
   const timeoutRef = useRef(null);
+  const location = useLocation();
+
+  // Hide the global slider on landing and login pages (where it looks intrusive)
+  const isAuthPage = location.pathname === '/' || location.pathname.endsWith('/login');
 
   // Apply theme progress globally on load and when it changes
   useEffect(() => {
@@ -58,6 +63,8 @@ const GlobalThemeSlider = () => {
       resetTimeout();
     }
   };
+
+  if (isAuthPage) return null;
 
   return (
     <div 

@@ -5,7 +5,7 @@ const blockchainBlockSchema = new mongoose.Schema(
         blockIndex: { type: Number, required: true, unique: true, index: true },
         blockType: {
             type: String,
-            enum: ["GENESIS", "BATCH_COMMITMENT", "EXAM_COMMITMENT"],
+            enum: ["GENESIS", "BATCH_COMMITMENT", "EXAM_COMMITMENT", "RESULT_COMMITMENT", "INCIDENT_COMMITMENT", "AUDIT_BATCH_COMMITMENT"],
             required: true,
         },
         entityId: { type: String, required: true, index: true },

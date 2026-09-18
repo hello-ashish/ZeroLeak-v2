@@ -25,8 +25,8 @@ export default function AdminBlockchainPage() {
         try {
             setLoading(true)
             const [ledger, state] = await Promise.all([
-                axios.get(`${API}/admin/blockchain/ledger?limit=100`, auth),
-                axios.get(`${API}/admin/blockchain/status`, auth),
+                axios.get(`${API}/blockchain/ledger?limit=100`, auth),
+                axios.get(`${API}/blockchain/status`, auth),
             ])
             setBlocks(ledger.data.blocks || [])
             setStatus(state.data)
@@ -40,7 +40,7 @@ export default function AdminBlockchainPage() {
     const verify = async () => {
         try {
             setVerifying(true)
-            const response = await axios.get(`${API}/admin/blockchain/verify`, auth)
+            const response = await axios.get(`${API}/blockchain/verify`, auth)
             toast.success('Blockchain verified — all blocks are valid')
             setStatus(prev => ({ ...prev, ...response.data.verification, integrity: true }))
         } catch (error) {
@@ -58,7 +58,7 @@ export default function AdminBlockchainPage() {
 
     const openBlock = async (index) => {
         try {
-            const response = await axios.get(`${API}/admin/blockchain/blocks/${index}`, auth)
+            const response = await axios.get(`${API}/blockchain/blocks/${index}`, auth)
             setSelected(response.data.block)
         } catch {
             toast.error('Unable to load block details')

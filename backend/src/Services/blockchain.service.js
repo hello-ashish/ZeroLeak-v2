@@ -1,9 +1,11 @@
 import crypto from "crypto";
 import { BlockchainBlock } from "../models/blockchain.models.js";
+import { AuditLog } from "../models/auditlog.models.js";
+import { buildMerkleRoot } from "./merkle.service.js";
 
 const GENESIS_PREVIOUS_HASH = "0".repeat(64);
 
-function canonicalize(value) {
+export function canonicalize(value) {
     if (Array.isArray(value)) return value.map(canonicalize);
     if (value && typeof value === "object") {
         return Object.keys(value)
@@ -16,7 +18,7 @@ function canonicalize(value) {
     return value;
 }
 
-function sha256(value) {
+export function sha256(value) {
     return crypto.createHash("sha256").update(value, "utf8").digest("hex");
 }
 
@@ -80,8 +82,8 @@ export async function appendCommitment({
     actorRole,
     metadata = {},
 }) {
-    if (!["BATCH_COMMITMENT", "EXAM_COMMITMENT"].includes(blockType)) {
-        throw new Error("Invalid blockchain block type.");
+    if (!["BATCH_COMMITMENT", "EXAM_COMMITMENT", "RESULT_COMMITMENT", "INCIDENT_COMMITMENT", "AUDIT_BATCH_COMMITMENT"].includes(blockType)) {
+        throw new Error("Invalid blockchain block type: " + blockType);
     }
     if (!entityId) throw new Error("Blockchain entityId is required.");
     if (merkleRoot && !/^[a-fA-F0-9]{64}$/.test(merkleRoot)) {
@@ -118,73 +120,129 @@ export async function appendCommitment({
 
     data.hash = blockHash(data);
 
-    try {
-        return await BlockchainBlock.create(data);
-    } catch (error) {
-        // A unique blockIndex collision means another request appended first.
-        // Retry once against the new chain tip rather than creating a fork.
-        if (error?.code === 11000) {
-            const retryLatest = await BlockchainBlock.findOne().sort({ blockIndex: -1 }).lean();
-            data.blockIndex = retryLatest.blockIndex + 1;
-            data.previousHash = retryLatest.hash;
-            data.hash = blockHash(data);
-            return BlockchainBlock.create(data);
+    let retries = 0;
+    const MAX_RETRIES = 5;
+
+    while (retries < MAX_RETRIES) {
+        try {
+            return await BlockchainBlock.create(data);
+        } catch (error) {
+            if (error?.code === 11000) {
+                retries++;
+                if (retries >= MAX_RETRIES) {
+                    throw new Error("Failed to append block after multiple concurrent retries.");
+                }
+                // Fetch the new latest block and adjust data
+                const retryLatest = await BlockchainBlock.findOne().sort({ blockIndex: -1 }).lean();
+                data.blockIndex = retryLatest.blockIndex + 1;
+                data.previousHash = retryLatest.hash;
+                data.hash = blockHash(data);
+                
+                // Add a tiny random delay to avoid exact lockstepping
+                await new Promise(resolve => setTimeout(resolve, Math.random() * 50));
+            } else {
+                throw error;
+            }
         }
-        throw error;
     }
 }
 
+export async function createAuditBatchCommitment() {
+    // Find uncommitted audit logs
+    const logs = await AuditLog.find({ isCommitted: false }).sort({ createdAt: 1 });
+    if (logs.length === 0) return null;
+
+    // Build hashes
+    const hashes = logs.map(log => {
+        const payload = canonicalize({
+            logId: String(log._id),
+            actor: log.actor,
+            action: log.action,
+            targetId: log.targetId,
+            timestamp: log.createdAt
+        });
+        return sha256(JSON.stringify(payload));
+    });
+
+    const merkleRoot = buildMerkleRoot(hashes);
+
+    // Create commitment
+    const block = await appendCommitment({
+        blockType: "AUDIT_BATCH_COMMITMENT",
+        entityId: `AUDIT_BATCH_${Date.now()}`,
+        entityLabel: `Audit Batch (${logs.length} events)`,
+        merkleRoot: merkleRoot,
+        actorId: "SYSTEM",
+        actorRole: "System",
+        metadata: {
+            eventCount: logs.length,
+            firstEventId: String(logs[0]._id),
+            lastEventId: String(logs[logs.length - 1]._id)
+        }
+    });
+
+    // Mark as committed
+    const logIds = logs.map(l => l._id);
+    await AuditLog.updateMany({ _id: { $in: logIds } }, { $set: { isCommitted: true } });
+
+    return block;
+}
+
 export async function verifyBlockchain() {
-    const blocks = await BlockchainBlock.find({}).sort({ blockIndex: 1 }).lean();
+    const cursor = BlockchainBlock.find({}).sort({ blockIndex: 1 }).cursor();
+    
+    let blockCount = 0;
+    let previousBlock = null;
 
-    if (blocks.length === 0) {
-        return { valid: false, blockCount: 0, invalidBlock: null, reason: "Ledger is empty." };
-    }
+    for await (const block of cursor) {
+        if (blockCount === 0) {
+            if (block.blockIndex !== 0 || block.previousHash !== GENESIS_PREVIOUS_HASH) {
+                return { valid: false, blockCount: 1, invalidBlock: block.blockIndex, reason: "Invalid genesis block." };
+            }
+        }
 
-    const genesis = blocks[0];
-    if (genesis.blockIndex !== 0 || genesis.previousHash !== GENESIS_PREVIOUS_HASH) {
-        return { valid: false, blockCount: blocks.length, invalidBlock: genesis.blockIndex, reason: "Invalid genesis block." };
-    }
-
-    for (let i = 0; i < blocks.length; i += 1) {
-        const block = blocks[i];
         const expectedHash = blockHash(block);
-
         if (block.hash !== expectedHash) {
             return {
                 valid: false,
-                blockCount: blocks.length,
+                blockCount: blockCount + 1,
                 invalidBlock: block.blockIndex,
                 reason: "Block hash mismatch.",
             };
         }
 
-        if (i > 0) {
-            const previous = blocks[i - 1];
-            if (block.blockIndex !== previous.blockIndex + 1) {
+        if (previousBlock) {
+            if (block.blockIndex !== previousBlock.blockIndex + 1) {
                 return {
                     valid: false,
-                    blockCount: blocks.length,
+                    blockCount: blockCount + 1,
                     invalidBlock: block.blockIndex,
                     reason: "Block sequence is broken.",
                 };
             }
-            if (block.previousHash !== previous.hash) {
+            if (block.previousHash !== previousBlock.hash) {
                 return {
                     valid: false,
-                    blockCount: blocks.length,
+                    blockCount: blockCount + 1,
                     invalidBlock: block.blockIndex,
                     reason: "Previous-hash link is broken.",
                 };
             }
         }
+
+        previousBlock = block;
+        blockCount++;
+    }
+
+    if (blockCount === 0) {
+        return { valid: false, blockCount: 0, invalidBlock: null, reason: "Ledger is empty." };
     }
 
     return {
         valid: true,
-        blockCount: blocks.length,
-        latestBlock: blocks[blocks.length - 1].blockIndex,
-        latestHash: blocks[blocks.length - 1].hash,
+        blockCount: blockCount,
+        latestBlock: previousBlock.blockIndex,
+        latestHash: previousBlock.hash,
         reason: "All blocks and hash links are valid.",
     };
 }
@@ -192,13 +250,13 @@ export async function verifyBlockchain() {
 export async function getLedger({ limit = 100, skip = 0 } = {}) {
     const safeLimit = Math.min(Math.max(Number(limit) || 100, 1), 500);
     const safeSkip = Math.max(Number(skip) || 0, 0);
-    const [blocks, total, verification] = await Promise.all([
+    const [blocks, total] = await Promise.all([
         BlockchainBlock.find({}).sort({ blockIndex: -1 }).skip(safeSkip).limit(safeLimit).lean(),
         BlockchainBlock.countDocuments(),
-        verifyBlockchain(),
     ]);
 
-    return { blocks, total, verification };
+    // Disconnected verifyBlockchain() to prevent OOM on dashboard load
+    return { blocks, total, verification: { valid: null, reason: "Verification must be triggered manually." } };
 }
 
 export async function getBlockByIndex(blockIndex) {

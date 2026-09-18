@@ -10,6 +10,7 @@ import {
 } from "../Services/crypto.service.js"
 
 import { buildMerkleRoot } from "../Services/merkle.service.js"
+import { appendCommitment, canonicalize, sha256 } from "../Services/blockchain.service.js"
 
 // 1. Register Student
 export const registerStudent = async (req, res) => {
@@ -89,7 +90,7 @@ export const pingSession = async (req, res) => {
                     }
                     
                     // Create an incident record for audit
-                    await CheatingIncident.create({
+                    const incident = await CheatingIncident.create({
                         studentId: student._id,
                         examId: currentExamId,
                         attemptId: result._id,
@@ -99,6 +100,31 @@ export const pingSession = async (req, res) => {
                         detectedAt: new Date(),
                         actionTaken: "STUDENT_BLOCKED",
                         reviewStatus: "Pending"
+                    });
+
+                    // Cryptographic Incident Commitment
+                    const incidentPayload = canonicalize({
+                        incidentId: String(incident._id),
+                        studentId: String(student._id),
+                        examId: String(currentExamId),
+                        violationType: incident.violationType,
+                        severity: incident.severity,
+                        actionTaken: incident.actionTaken,
+                        timestamp: incident.detectedAt
+                    });
+
+                    await appendCommitment({
+                        blockType: "INCIDENT_COMMITMENT",
+                        entityId: incident._id,
+                        entityLabel: `Integrity Violation: ${student.email}`,
+                        actorId: "SYSTEM",
+                        actorRole: "System",
+                        metadata: {
+                            incidentId: String(incident._id),
+                            studentId: String(student._id),
+                            examId: String(currentExamId),
+                            incidentHash: sha256(JSON.stringify(incidentPayload))
+                        }
                     });
                 }
                 
@@ -452,6 +478,32 @@ export const submitExamResult = async (req, res) => {
             score,
             totalQuestions
         })
+
+        // Generate Submission Hash & Result Commitment
+        const submissionPayload = canonicalize({
+            examId: String(examId),
+            studentId: String(req.student._id),
+            answers: answers.map(a => ({ questionId: String(a.questionId), selectedOptionIndex: a.selectedOptionIndex })),
+            timestamp: result.createdAt
+        });
+        const submissionHash = sha256(JSON.stringify(submissionPayload));
+
+        await appendCommitment({
+            blockType: "RESULT_COMMITMENT",
+            entityId: result._id,
+            entityLabel: `Result for Exam: ${exam.title}`,
+            merkleRoot: null,
+            actorId: req.student._id,
+            actorRole: "Student",
+            metadata: {
+                examId: String(examId),
+                studentId: String(req.student._id),
+                resultId: String(result._id),
+                score: score,
+                totalQuestions: totalQuestions,
+                submissionHash: submissionHash // Cryptographically proves the exact answers submitted
+            }
+        });
 
         return res.status(201).json({
             message:

@@ -5,6 +5,7 @@ import { Result } from "../models/result.models.js";
 import { CheatingIncident } from "../models/cheatingIncident.models.js";
 import { AuditLog } from "../models/auditlog.models.js";
 import { Anomaly } from "../models/anomaly.models.js";
+import { appendCommitment, canonicalize, sha256 } from "../Services/blockchain.service.js";
 
 // Helper to check valid ObjectId
 const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
@@ -130,6 +131,31 @@ export const recordIncident = async (req, res) => {
             } catch (auditErr) {
                 console.error("Error creating auto-block audit log:", auditErr.message);
             }
+
+            // Cryptographic Incident Commitment for Auto-Termination
+            const incidentPayload = canonicalize({
+                incidentId: String(incident._id),
+                studentId: String(student._id),
+                examId: String(examId),
+                violationType: incident.violationType,
+                severity: incident.severity,
+                actionTaken: incident.actionTaken,
+                timestamp: incident.detectedAt
+            });
+
+            await appendCommitment({
+                blockType: "INCIDENT_COMMITMENT",
+                entityId: incident._id,
+                entityLabel: `Integrity Violation: ${student.email}`,
+                actorId: "SYSTEM",
+                actorRole: "System",
+                metadata: {
+                    incidentId: String(incident._id),
+                    studentId: String(student._id),
+                    examId: String(examId),
+                    incidentHash: sha256(JSON.stringify(incidentPayload))
+                }
+            });
         }
         // ─────────────────────────────────────────────────────────────────────────
 
@@ -225,7 +251,7 @@ export const terminateAttempt = async (req, res) => {
         }
 
         // Create incident record for this termination
-        await CheatingIncident.create({
+        const incident = await CheatingIncident.create({
             studentId: student._id,
             examId,
             attemptId: result._id,
@@ -235,6 +261,31 @@ export const terminateAttempt = async (req, res) => {
             detectedAt: new Date(),
             actionTaken: autoBlockStudent ? "STUDENT_BLOCKED" : "EXAM_TERMINATED",
             reviewStatus: "Pending"
+        });
+
+        // Cryptographic Incident Commitment
+        const incidentPayload = canonicalize({
+            incidentId: String(incident._id),
+            studentId: String(student._id),
+            examId: String(examId),
+            violationType: incident.violationType,
+            severity: incident.severity,
+            actionTaken: incident.actionTaken,
+            timestamp: incident.detectedAt
+        });
+
+        await appendCommitment({
+            blockType: "INCIDENT_COMMITMENT",
+            entityId: incident._id,
+            entityLabel: `Exam Terminated: ${student.email}`,
+            actorId: "SYSTEM",
+            actorRole: "System",
+            metadata: {
+                incidentId: String(incident._id),
+                studentId: String(student._id),
+                examId: String(examId),
+                incidentHash: sha256(JSON.stringify(incidentPayload))
+            }
         });
 
         // Audit Log

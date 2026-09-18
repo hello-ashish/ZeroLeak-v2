@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
-import { LayoutDashboard, FileText, Database, Users, LogOut, ChevronDown, Search, Activity, ShieldAlert, GraduationCap, ClipboardList , RefreshCw } from 'lucide-react'
+import { LayoutDashboard, FileText, Database, Users, LogOut, ChevronDown, Search, Activity, ShieldAlert, GraduationCap, ClipboardList, RefreshCw, Map } from 'lucide-react'
 import { HeaderThemeSlider } from '../../components/HeaderThemeSlider.jsx'
 
 const NAV = [
@@ -15,7 +15,7 @@ const NAV = [
         items: [
             { label: 'Audit Explorer', icon: <FileText size={18} />, path: '/auditor/audit' },
             { label: 'Anomalies', icon: <ShieldAlert size={18} />, path: '/auditor/anomalies' },
-            { label: 'Cheating Detection', icon: <ShieldAlert size={18} />, path: '/admin/cheating' },
+            { label: 'Ledger Visualizer', icon: <Map size={18} />, path: '/auditor/blockchain-visualizer' },
         ]
     },
     {

@@ -87,8 +87,21 @@ export function decryptQuestionContent(encryptedContent) {
     );
 }
 
+function canonicalize(value) {
+    if (Array.isArray(value)) return value.map(canonicalize);
+    if (value && typeof value === "object") {
+        return Object.keys(value)
+            .sort()
+            .reduce((out, key) => {
+                out[key] = canonicalize(value[key]);
+                return out;
+            }, {});
+    }
+    return value;
+}
+
 export function hashQuestionContent(content) {
-    const plaintext = JSON.stringify(content);
+    const plaintext = JSON.stringify(canonicalize(content));
 
     return crypto
         .createHash("sha256")

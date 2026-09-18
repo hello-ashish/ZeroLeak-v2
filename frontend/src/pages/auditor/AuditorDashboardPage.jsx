@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { AuditorLayout } from './AuditorLayout.jsx'
 import { SkeletonCard } from '../../components/SkeletonLoader.jsx'
-import { AlertTriangle, Activity, CheckCircle2, ShieldAlert, FileText, ChevronRight } from 'lucide-react'
+import { AlertTriangle, Activity, CheckCircle2, ShieldAlert, FileText, ChevronRight, ShieldCheck } from 'lucide-react'
 import { format } from 'date-fns'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 
@@ -23,6 +23,7 @@ export default function AuditorDashboardPage() {
     const [metrics, setMetrics] = useState(null)
     const [recentLogs, setRecentLogs] = useState([])
     const [activityTrend, setActivityTrend] = useState([])
+    const [blockchainStatus, setBlockchainStatus] = useState(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
     const navigate = useNavigate()
@@ -38,9 +39,14 @@ export default function AuditorDashboardPage() {
                 const res = await axios.get(`${API}/auditor/metrics`, {
                     headers: { Authorization: `Bearer ${token}` }
                 })
+                const bcRes = await axios.get(`${API}/blockchain/status`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                }).catch(() => ({ data: null }))
+                
                 setMetrics(res.data.metrics)
                 setRecentLogs(res.data.recentLogs)
                 setActivityTrend(res.data.activityTrend || [])
+                setBlockchainStatus(bcRes.data)
                 setLoading(false)
             } catch (err) {
                 console.error(err)
@@ -59,6 +65,18 @@ export default function AuditorDashboardPage() {
         ...d,
         date: format(new Date(d.date), 'MMM dd')
     }))
+
+    const handleCommitBatch = async () => {
+        try {
+            const token = getToken()
+            const res = await axios.post(`${API}/blockchain/audit-batch`, {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            })
+            alert(res.data.message)
+        } catch (err) {
+            alert("Failed to commit batch.")
+        }
+    }
 
     return (
         <AuditorLayout openAnomaliesCount={metrics?.openAnomalies || 0}>
@@ -156,14 +174,20 @@ export default function AuditorDashboardPage() {
                             style={{ cursor: 'pointer' }}
                             onClick={() => navigate('/auditor/audit')}
                         >
-                            <p className="kpi-module-title">Logging Status</p>
-                            <p className="kpi-module-value" style={{ fontSize: 24, color: 'var(--success)' }}>
-                                {metrics?.loggingStatus || 'Healthy'}
+                            <p className="kpi-module-title">Integrity Ledger</p>
+                            <p className="kpi-module-value" style={{ fontSize: 20, color: blockchainStatus?.integrity ? 'var(--success)' : 'var(--danger)' }}>
+                                {blockchainStatus ? (blockchainStatus.integrity ? "Verified" : "Tampered") : "Unknown"}
                             </p>
-                            <p className="kpi-module-sub" style={{ color: 'var(--success)' }}>
-                                <CheckCircle2 size={16} /> <span>Verified</span>
+                            <p className="kpi-module-sub" style={{ color: blockchainStatus?.integrity ? 'var(--success)' : 'var(--danger)' }}>
+                                <ShieldCheck size={16} /> <span>{blockchainStatus?.blockCount || 0} Blocks</span>
                             </p>
                         </div>
+                    </div>
+
+                    <div style={{ marginBottom: 32, display: 'flex', justifyContent: 'flex-end' }}>
+                        <button className="btn btn-primary" onClick={handleCommitBatch}>
+                            Commit Pending Audit Logs to Ledger
+                        </button>
                     </div>
 
                     {/* Interactive Line Chart for Activity Trend */}
