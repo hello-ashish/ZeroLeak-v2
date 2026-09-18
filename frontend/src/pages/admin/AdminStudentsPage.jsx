@@ -326,11 +326,6 @@ export default function AdminStudentsPage() {
         setPreviewModal({ ...previewModal, isOpen: false });
     };
 
-        React.useEffect(() => {
-        window.refreshCurrentPage = fetchData;
-        return () => { window.refreshCurrentPage = null; };
-    }, []);
-
     return (
         <AdminLayout>
             <div className="page-header">

@@ -179,11 +179,6 @@ export default function AdminGradebookPage() {
         }
     }, [filtered])
 
-        React.useEffect(() => {
-        window.refreshCurrentPage = fetchData;
-        return () => { window.refreshCurrentPage = null; };
-    }, []);
-
     return (
         <AdminLayout>
             <div className="page-header">
