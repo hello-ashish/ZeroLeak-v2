@@ -1,6 +1,8 @@
 import { Student } from "../models/student.models.js"
 import { Exam } from "../models/exam.models.js"
 import { Result } from "../models/result.models.js";
+import { CheatingIncident } from "../models/cheatingIncident.models.js";
+import { AuditLog } from "../models/auditlog.models.js";
 
 import {
     decryptQuestionContent,
@@ -50,14 +52,83 @@ export const loginStudent = async (req, res) => {
 // 2b. Ping Session (Live tracking)
 export const pingSession = async (req, res) => {
     try {
-        const { currentExamId } = req.body;
+        const { currentExamId, warningCount } = req.body;
         // The verifyStudentJWT middleware will automatically reject this if the student is blocked.
         const student = req.student;
         student.lastActiveAt = new Date();
         if (currentExamId) {
             student.currentExamId = currentExamId;
         }
+
+        // Network Interception Bypass Protection
+        // If the client's warning count is >= 3, they might be blocking the /incident endpoint.
+        // We enforce termination here as a fallback.
+        const MAX_VIOLATIONS = 3;
+        if (warningCount >= MAX_VIOLATIONS && currentExamId) {
+            const exam = await Exam.findById(currentExamId);
+            
+            if (exam) {
+                // Terminate attempt if not already terminated
+                let result = await Result.findOne({ student: student._id, exam: currentExamId, resetByAdmin: { $ne: true } });
+                if (!result || !result.isTerminated) {
+                    if (result) {
+                        result.status = "Terminated";
+                        result.isTerminated = true;
+                        result.terminationReason = "Auto-terminated via telemetry ping: exceeded maximum security violations.";
+                        await result.save();
+                    } else {
+                        result = await Result.create({
+                            student: student._id,
+                            exam: currentExamId,
+                            score: 0,
+                            totalQuestions: exam.questions ? exam.questions.length : 0,
+                            status: "Terminated",
+                            isTerminated: true,
+                            terminationReason: "Auto-terminated via telemetry ping: exceeded maximum security violations."
+                        });
+                    }
+                    
+                    // Create an incident record for audit
+                    await CheatingIncident.create({
+                        studentId: student._id,
+                        examId: currentExamId,
+                        attemptId: result._id,
+                        violationType: "EXAM_TERMINATION",
+                        severity: "Critical",
+                        description: "Exam attempt terminated via heartbeat telemetry due to missing incident logs.",
+                        detectedAt: new Date(),
+                        actionTaken: "STUDENT_BLOCKED",
+                        reviewStatus: "Pending"
+                    });
+                }
+                
+                // Block the student
+                if (!student.isBlocked) {
+                    student.isBlocked = true;
+                    student.blockedAt = new Date();
+                    student.blockedReason = `Exam "${exam.title}" — blocked via telemetry after ${MAX_VIOLATIONS} security violations.`;
+                    
+                    try {
+                        await AuditLog.create({
+                            actor: student.email,
+                            actorRole: "System",
+                            action: "STUDENT_AUTO_BLOCKED",
+                            targetType: "Student",
+                            targetId: String(student._id),
+                            targetLabel: student.name,
+                            details: `Student ${student.email} auto-blocked via telemetry on exam "${exam.title}".`,
+                            status: "success"
+                        });
+                    } catch (auditErr) {}
+                }
+            }
+        }
+
         await student.save();
+        
+        if (student.isBlocked) {
+            return res.status(403).json({ message: "BLOCKED" });
+        }
         return res.status(200).json({ message: "Ping successful" });
     } catch (error) {
         return res.status(500).json({ message: "Error pinging session", error: error.message });

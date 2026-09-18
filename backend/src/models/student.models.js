@@ -18,6 +18,7 @@ const studentSchema = new Schema(
         isBlocked: { type: Boolean, default: false },
         blockedAt: { type: Date, default: null },
         blockedReason: { type: String, default: null },
+        unblockedAt: { type: Date, default: null },
         lastActiveAt: { type: Date, default: null },
         currentExamId: { type: Schema.Types.ObjectId, ref: 'Exam', default: null }
     },

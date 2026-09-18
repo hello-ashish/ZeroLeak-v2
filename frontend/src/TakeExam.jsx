@@ -77,8 +77,6 @@ const TakeExam = () => {
                 if (existingResult) {
                     if (existingResult.isTerminated && !existingResult.resetByAdmin) {
                         // Attempt was terminated and NOT yet authorized for a reset — block access
-                        // Also write the localStorage flag so it persists across page reloads
-                        // (until admin authorizes a new attempt)
                         localStorage.setItem(terminatedKey, JSON.stringify({
                             terminated: true,
                             reason: existingResult.terminationReason || "Exam attempt was terminated by anti-cheating system."
@@ -89,7 +87,6 @@ const TakeExam = () => {
                         return;
                     } else if (existingResult.isTerminated && existingResult.resetByAdmin) {
                         // Admin authorized a fresh attempt — clear the stale localStorage flag
-                        // so the student can proceed to the exam normally
                         localStorage.removeItem(terminatedKey);
                         // Fall through to load the exam below
                     } else if (!existingResult.isTerminated) {
@@ -99,9 +96,37 @@ const TakeExam = () => {
                     }
                 } else {
                     // No result record at all — also clear any stale terminated flag
-                    // (edge case: student somehow has a stale localStorage key with no DB record)
                     localStorage.removeItem(terminatedKey);
                 }
+
+                // ── SERVER-SIDE VIOLATION COUNT CHECK ───────────────────────────
+                // Even if no Result record exists, check the cumulative incident count
+                // from the backend. This closes the page-refresh bypass loophole where
+                // the in-memory warningCountRef resets to 0 on every page reload.
+                try {
+                    const countRes = await axios.get(
+                        `http://localhost:4000/api/anti-cheating/my-count/${id}`,
+                        { headers: { Authorization: `Bearer ${token}` } }
+                    );
+                    if (countRes.data?.isBlocked) {
+                        const blockReason = "You have been blocked from this exam due to repeated security violations. Please contact your administrator.";
+                        localStorage.setItem(terminatedKey, JSON.stringify({ terminated: true, reason: blockReason }));
+                        setIsTerminated(true);
+                        setTerminationReason(blockReason);
+                        setLoading(false);
+                        return;
+                    }
+                    // Seed the in-memory counter from the server count so warnings
+                    // continue from where they left off (not from zero).
+                    if (countRes.data?.incidentCount > 0) {
+                        warningCountRef.current = countRes.data.incidentCount;
+                        setWarningCount(countRes.data.incidentCount);
+                    }
+                } catch (countErr) {
+                    // Non-fatal: proceed, the backend incident logging will enforce on next violation
+                    console.warn("Could not fetch incident count from backend:", countErr.message);
+                }
+                // ────────────────────────────────────────────────────────────────
 
                 setExam(fetchedExam);
 
@@ -177,15 +202,25 @@ const TakeExam = () => {
     const handleViolation = useCallback(async (event) => {
         if (!isStarted || score !== null || isTerminatedRef.current || isRestricted) return;
 
+        // If the counter is already at or beyond the limit (e.g. seeded from backend
+        // on page load), terminate immediately without incrementing past MAX_WARNINGS.
+        if (warningCountRef.current >= MAX_WARNINGS) {
+            handleForceTermination(event.description);
+            return;
+        }
+
         const newCount = warningCountRef.current + 1;
         warningCountRef.current = newCount;
-        setWarningCount(newCount);
+        // Clamp display to MAX_WARNINGS so badge never shows e.g. "4/3"
+        setWarningCount(Math.min(newCount, MAX_WARNINGS));
 
         // Log incident to backend API asynchronously
+        // The backend enforces the 3-strike rule server-side and returns shouldTerminate
+        // if the cumulative count (including previous sessions) has reached the limit.
         try {
             const token = localStorage.getItem('studentToken');
             if (token) {
-                await axios.post('http://localhost:4000/api/anti-cheating/incident', {
+                const incidentRes = await axios.post('http://localhost:4000/api/anti-cheating/incident', {
                     examId: id,
                     violationType: event.type,
                     severity: event.severity,
@@ -193,12 +228,36 @@ const TakeExam = () => {
                     evidenceData: event.details || {},
                     actionTaken: newCount >= MAX_WARNINGS ? 'EXAM_TERMINATED' : 'WARNING'
                 }, { headers: { Authorization: `Bearer ${token}` } });
+
+                // Sync frontend counter with the server's authoritative count (clamped to MAX_WARNINGS for display)
+                if (incidentRes.data?.incidentCount > warningCountRef.current) {
+                    warningCountRef.current = incidentRes.data.incidentCount;
+                    setWarningCount(Math.min(incidentRes.data.incidentCount, MAX_WARNINGS));
+                }
+
+                // Backend signals termination (may be triggered by a previous session's violations)
+                if (incidentRes.data?.shouldTerminate && !isTerminatedRef.current) {
+                    handleForceTermination(event.description);
+                    return;
+                }
             }
         } catch (err) {
             console.error("Failed to log cheating incident to backend:", err);
+            // Queue offline incident to retry on next heartbeat
+            const queueKey = `zl_incident_queue_${id}`;
+            const queue = JSON.parse(localStorage.getItem(queueKey) || '[]');
+            queue.push({
+                examId: id,
+                violationType: event.type,
+                severity: event.severity,
+                description: event.description,
+                evidenceData: event.details || {},
+                actionTaken: newCount >= MAX_WARNINGS ? 'EXAM_TERMINATED' : 'WARNING'
+            });
+            localStorage.setItem(queueKey, JSON.stringify(queue));
         }
 
-        // Check if threshold reached
+        // Check if threshold reached (frontend check as fallback)
         if (newCount >= MAX_WARNINGS) {
             handleForceTermination(event.description);
         } else {
@@ -255,10 +314,40 @@ const TakeExam = () => {
                 const token = localStorage.getItem('studentToken');
                 if (!token) return;
                 await axios.post('http://localhost:4000/api/students/ping', {
-                    currentExamId: id
+                    currentExamId: id,
+                    warningCount: warningCountRef.current
                 }, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
+                const queueKey = `zl_incident_queue_${id}`;
+                const queuedIncidents = JSON.parse(localStorage.getItem(queueKey) || '[]');
+                
+                // Flush offline incident queue if any exist
+                if (queuedIncidents.length > 0) {
+                    let allFlushed = true;
+                    for (const incident of queuedIncidents) {
+                        try {
+                            const incidentRes = await axios.post('http://localhost:4000/api/anti-cheating/incident', incident, {
+                                headers: { Authorization: `Bearer ${token}` }
+                            });
+                            
+                            if (incidentRes.data?.incidentCount > warningCountRef.current) {
+                                warningCountRef.current = incidentRes.data.incidentCount;
+                                setWarningCount(Math.min(incidentRes.data.incidentCount, MAX_WARNINGS));
+                            }
+                            
+                            if (incidentRes.data?.shouldTerminate && !isTerminatedRef.current) {
+                                handleForceTermination(incident.description);
+                            }
+                        } catch (e) {
+                            allFlushed = false;
+                            break; // Stop trying if we still have network issues
+                        }
+                    }
+                    if (allFlushed) {
+                        localStorage.removeItem(queueKey);
+                    }
+                }
             } catch (err) {
                 if (err.response && (err.response.status === 403 || err.response.data?.message === "BLOCKED")) {
                     setIsRestricted(true);
@@ -713,12 +802,12 @@ const TakeExam = () => {
                     {/* Security Warning Badge */}
                     {warningCount > 0 && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: 'var(--danger)', background: 'rgba(239, 68, 68, 0.1)', padding: '4px 10px', borderRadius: 12 }}>
-                            <AlertTriangle size={14} /> Warnings: {warningCount}/{MAX_WARNINGS}
+                            <AlertTriangle size={14} /> Warnings: {Math.min(warningCount, MAX_WARNINGS)}/{MAX_WARNINGS}
                         </div>
                     )}
 
                     {/* Exam Pulse */}
-                    <div style={{ display: 'none', '@media (min-width: 1024px)': { display: 'flex' }, alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 500, color: pulseState.color, background: 'var(--bg-body)', padding: '4px 10px', borderRadius: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 500, color: pulseState.color, background: 'var(--bg-body)', padding: '4px 10px', borderRadius: 12 }}>
                         {pulseState.icon} {pulseState.text}
                     </div>
 

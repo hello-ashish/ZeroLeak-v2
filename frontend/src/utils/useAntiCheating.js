@@ -106,9 +106,12 @@ export const useAntiCheating = ({
 
         const targetElement = containerRef?.current || document;
 
+        let blurTimeout;
+
         // 1. Tab Switching (document.visibilityState)
         const handleVisibilityChange = () => {
             if (document.hidden || document.visibilityState === 'hidden') {
+                if (blurTimeout) clearTimeout(blurTimeout);
                 logViolation(
                     'TAB_SWITCH',
                     'High',
@@ -120,15 +123,17 @@ export const useAntiCheating = ({
 
         // 2. Window Blur / Focus
         const handleWindowBlur = () => {
-            // Only trigger window blur if the document isn't already hidden (handled by visibilitychange)
-            if (!document.hidden) {
-                logViolation(
-                    'WINDOW_BLUR',
-                    'Medium',
-                    'Exam window lost focus.',
-                    { activeElement: document.activeElement?.tagName || 'UNKNOWN' }
-                );
-            }
+            // Delay blur violation by 200ms to allow visibilitychange to fire if it's a tab switch
+            blurTimeout = setTimeout(() => {
+                if (!document.hidden) {
+                    logViolation(
+                        'WINDOW_BLUR',
+                        'Medium',
+                        'Exam window lost focus.',
+                        { activeElement: document.activeElement?.tagName || 'UNKNOWN' }
+                    );
+                }
+            }, 200);
         };
 
         // 3. Fullscreen Exit

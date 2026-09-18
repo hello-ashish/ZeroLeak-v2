@@ -9,7 +9,12 @@ import { Anomaly } from "../models/anomaly.models.js";
 // Helper to check valid ObjectId
 const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
 
-// 1. Record a cheating incident for the authenticated student's active exam attempt
+// Max allowed cheating violations before auto-termination (enforced server-side)
+const MAX_VIOLATIONS = 3;
+
+// 1. Record a cheating incident for the authenticated student's active exam attempt.
+//    After recording, checks the cumulative incident count. If >= MAX_VIOLATIONS,
+//    auto-terminates the attempt and blocks the student — closing the page-refresh bypass.
 export const recordIncident = async (req, res) => {
     try {
         const { examId, attemptId, violationType, severity, description, evidenceData, actionTaken } = req.body;
@@ -53,16 +58,80 @@ export const recordIncident = async (req, res) => {
             reviewStatus: "Pending"
         });
 
-        // Auto-block student if action taken is STUDENT_BLOCKED
-        if (finalAction === "STUDENT_BLOCKED") {
+        // ── SERVER-SIDE 3-STRIKE ENFORCEMENT ────────────────────────────────────
+        // Count cumulative incidents for this student+exam that occurred AFTER the most recent reset (if any).
+        // This gives students a clean slate of 0/3 violations for their second chance attempt.
+        const latestResetResult = await Result.findOne({
+            student: student._id,
+            exam: examId,
+            resetByAdmin: true
+        }).sort({ resetByAdminAt: -1 });
+
+        const incidentQuery = { studentId: student._id, examId };
+        if (latestResetResult && latestResetResult.resetByAdminAt) {
+            incidentQuery.createdAt = { $gt: latestResetResult.resetByAdminAt };
+        }
+
+        const incidentCount = await CheatingIncident.countDocuments(incidentQuery);
+
+        let shouldTerminate = false;
+        let isNowBlocked = false;
+
+        if (incidentCount >= MAX_VIOLATIONS) {
+            shouldTerminate = true;
+
+            // Terminate the exam attempt if not already terminated
+            let result = await Result.findOne({ student: student._id, exam: examId, resetByAdmin: { $ne: true } });
+            if (!result || !result.isTerminated) {
+                if (result) {
+                    result.status = "Terminated";
+                    result.isTerminated = true;
+                    result.terminationReason = description || "Auto-terminated: exceeded maximum security violations.";
+                    await result.save();
+                } else {
+                    result = await Result.create({
+                        student: student._id,
+                        exam: examId,
+                        score: 0,
+                        totalQuestions: exam.questions ? exam.questions.length : 0,
+                        status: "Terminated",
+                        isTerminated: true,
+                        terminationReason: description || "Auto-terminated: exceeded maximum security violations."
+                    });
+                }
+
+                // Update the incident we just created to reflect the block action
+                incident.actionTaken = "STUDENT_BLOCKED";
+                await incident.save();
+            }
+
+            // Block student at the account level
             const studentDoc = await Student.findById(student._id);
-            if (studentDoc) {
+            if (studentDoc && !studentDoc.isBlocked) {
                 studentDoc.isBlocked = true;
                 studentDoc.blockedAt = new Date();
-                studentDoc.blockedReason = description || "Blocked due to security policy violations.";
+                studentDoc.blockedReason = `Exam "${exam.title}" — blocked after ${MAX_VIOLATIONS} security violations.`;
                 await studentDoc.save();
             }
+            isNowBlocked = true;
+
+            // Audit log for auto-block
+            try {
+                await AuditLog.create({
+                    actor: student.email,
+                    actorRole: "System",
+                    action: "STUDENT_AUTO_BLOCKED",
+                    targetType: "Student",
+                    targetId: String(student._id),
+                    targetLabel: student.name,
+                    details: `Student ${student.email} auto-blocked after ${incidentCount} violations on exam "${exam.title}".`,
+                    status: "success"
+                });
+            } catch (auditErr) {
+                console.error("Error creating auto-block audit log:", auditErr.message);
+            }
         }
+        // ─────────────────────────────────────────────────────────────────────────
 
         // Log to Anomaly telemetry system as well
         try {
@@ -82,7 +151,10 @@ export const recordIncident = async (req, res) => {
 
         return res.status(201).json({
             message: "Cheating incident recorded successfully",
-            incident
+            incident,
+            incidentCount,
+            shouldTerminate,
+            isBlocked: isNowBlocked
         });
     } catch (error) {
         console.error("Error recording cheating incident:", error);
@@ -222,8 +294,17 @@ export const getIncidents = async (req, res) => {
         const skip = (Number(page) - 1) * Number(limit);
         const total = await CheatingIncident.countDocuments(query);
 
+        // Count total terminated incidents (global, not just filtered)
+        const totalTerminated = await CheatingIncident.countDocuments({
+            $or: [
+                { actionTaken: 'EXAM_TERMINATED' },
+                { actionTaken: 'STUDENT_BLOCKED' },
+                { violationType: 'EXAM_TERMINATION' }
+            ]
+        });
+
         const incidents = await CheatingIncident.find(query)
-            .populate("studentId", "studentId name email department batch")
+            .populate("studentId", "studentId name email department batch isBlocked")
             .populate("examId", "title durationMinutes")
             .populate("reviewedBy", "email")
             .sort({ createdAt: -1 })
@@ -232,6 +313,7 @@ export const getIncidents = async (req, res) => {
 
         return res.status(200).json({
             incidents,
+            terminatedCount: totalTerminated,
             pagination: {
                 total,
                 page: Number(page),
@@ -285,6 +367,47 @@ export const getBlockedStudents = async (req, res) => {
     }
 };
 
+// 4.5. Admin / Auditor: Get unblocked students
+export const getUnblockedStudents = async (req, res) => {
+    try {
+        const { page = 1, limit = 10, search } = req.query;
+
+        // Query for students who are not blocked, but have an unblockedAt date
+        const query = { isBlocked: false, unblockedAt: { $ne: null } };
+
+        if (search) {
+            const regex = new RegExp(search, "i");
+            query.$or = [
+                { name: regex },
+                { email: regex },
+                { studentId: regex }
+            ];
+        }
+
+        const skip = (Number(page) - 1) * Number(limit);
+        const total = await Student.countDocuments(query);
+
+        const unblockedStudents = await Student.find(query)
+            .select("-password")
+            .sort({ unblockedAt: -1 })
+            .skip(skip)
+            .limit(Number(limit));
+
+        return res.status(200).json({
+            unblockedStudents,
+            pagination: {
+                total,
+                page: Number(page),
+                limit: Number(limit),
+                totalPages: Math.ceil(total / Number(limit))
+            }
+        });
+    } catch (error) {
+        console.error("Error fetching unblocked students:", error);
+        return res.status(500).json({ message: "Error fetching unblocked students", error: error.message });
+    }
+};
+
 // 5. Admin: Unblock a student
 export const unblockStudent = async (req, res) => {
     try {
@@ -310,6 +433,7 @@ export const unblockStudent = async (req, res) => {
         student.isBlocked = false;
         student.blockedAt = null;
         student.blockedReason = null;
+        student.unblockedAt = new Date();
         await student.save();
 
         // Update incidents for this student to Dismissed or Reviewed status
@@ -317,6 +441,12 @@ export const unblockStudent = async (req, res) => {
             await CheatingIncident.updateMany(
                 { studentId: student._id, reviewStatus: "Pending" },
                 { $set: { reviewStatus: "Dismissed", reviewedBy: req.admin._id, reviewedAt: new Date() } }
+            );
+
+            // Change actionTaken for blocked incidents to STUDENT_UNBLOCKED
+            await CheatingIncident.updateMany(
+                { studentId: student._id, actionTaken: { $in: ["STUDENT_BLOCKED", "EXAM_TERMINATED"] } },
+                { $set: { actionTaken: "STUDENT_UNBLOCKED" } }
             );
         } catch (incErr) {
             console.error("Error updating incidents on unblock:", incErr.message);
@@ -448,5 +578,54 @@ export const authorizeNewAttempt = async (req, res) => {
     } catch (error) {
         console.error("Error authorizing new attempt:", error);
         return res.status(500).json({ message: "Error authorizing new attempt", error: error.message });
+    }
+};
+
+// 7. Student: Get their own cheating incident count for a specific exam.
+//    Used by TakeExam on page load to enforce the 3-strike block even across page reloads.
+//    Also returns whether the exam attempt has been admin-reset (allowing a fresh start).
+export const getMyExamIncidentCount = async (req, res) => {
+    try {
+        const { examId } = req.params;
+        const student = req.student;
+
+        if (!examId || !isValidObjectId(examId)) {
+            return res.status(400).json({ message: "Valid Exam ID is required." });
+        }
+
+        // Only count incidents that occurred after the most recent admin reset
+        const latestResetResult = await Result.findOne({
+            student: student._id,
+            exam: examId,
+            resetByAdmin: true
+        }).sort({ resetByAdminAt: -1 });
+
+        const incidentQuery = { studentId: student._id, examId };
+        if (latestResetResult && latestResetResult.resetByAdminAt) {
+            incidentQuery.createdAt = { $gt: latestResetResult.resetByAdminAt };
+        }
+
+        const incidentCount = await CheatingIncident.countDocuments(incidentQuery);
+
+        // Check if the terminated result has been reset by admin (allowing a fresh attempt)
+        const terminatedResult = await Result.findOne({
+            student: student._id,
+            exam: examId,
+            isTerminated: true
+        }).sort({ createdAt: -1 });
+
+        const resetByAdmin = terminatedResult ? (terminatedResult.resetByAdmin === true) : false;
+        const isTerminated = terminatedResult ? (!terminatedResult.resetByAdmin) : false;
+
+        return res.status(200).json({
+            incidentCount,
+            maxViolations: MAX_VIOLATIONS,
+            isBlocked: incidentCount >= MAX_VIOLATIONS && !resetByAdmin,
+            isTerminated,
+            resetByAdmin
+        });
+    } catch (error) {
+        console.error("Error fetching exam incident count:", error);
+        return res.status(500).json({ message: "Error fetching exam incident count", error: error.message });
     }
 };

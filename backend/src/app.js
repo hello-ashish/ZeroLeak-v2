@@ -43,4 +43,10 @@ app.use("/api/students", studentRouter);
 // Auditor route
 app.use("/api/auditor", auditorRouter);
 
+// Anti-cheating & security telemetry routes
+app.use("/api/anti-cheating", cheatingRouter);
+
+// Blockchain ledger route
+app.use("/api/blockchain", blockchainRouter);
+
 export { app }

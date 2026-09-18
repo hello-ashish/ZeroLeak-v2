@@ -7,7 +7,7 @@ import { SkeletonTable, EmptyState } from '../../components/SkeletonLoader.jsx';
 import { useToast } from '../../components/Toast.jsx';
 import { 
     ShieldAlert, AlertTriangle, UserX, CheckCircle2, Search, 
-    Filter, RefreshCw, Eye, Unlock, ShieldCheck, ChevronLeft, ChevronRight, FileText
+    Filter, RefreshCw, Eye, Unlock, ShieldCheck, ChevronLeft, ChevronRight, FileText, UserCheck
 } from 'lucide-react';
 
 const API = 'http://localhost:4000/api';
@@ -17,7 +17,7 @@ export default function AdminCheatingDetection() {
     const navigate = useNavigate();
     const toast = useToast();
 
-    // Active View Tab: 'incidents' | 'blocked'
+    // Active View Tab: 'incidents' | 'blocked' | 'unblocked'
     const [activeTab, setActiveTab] = useState('incidents');
 
     // Metrics State
@@ -43,6 +43,14 @@ export default function AdminCheatingDetection() {
     const [blockedTotal, setBlockedTotal] = useState(0);
     const [blockedTotalPages, setBlockedTotalPages] = useState(1);
     const [searchQuery, setSearchQuery] = useState('');
+
+    // Unblocked Students Table State
+    const [unblockedStudents, setUnblockedStudents] = useState([]);
+    const [unblockedLoading, setUnblockedLoading] = useState(true);
+    const [unblockedPage, setUnblockedPage] = useState(1);
+    const [unblockedTotal, setUnblockedTotal] = useState(0);
+    const [unblockedTotalPages, setUnblockedTotalPages] = useState(1);
+    const [unblockedSearchQuery, setUnblockedSearchQuery] = useState('');
 
     // Modal Details State
     const [selectedIncident, setSelectedIncident] = useState(null);
@@ -78,15 +86,10 @@ export default function AdminCheatingDetection() {
             setIncidentsTotalPages(res.data.pagination?.totalPages || 1);
             setIncidentsPage(p);
 
-            // Compute terminated count from incidents list or total
-            const terminatedCount = (res.data.incidents || []).filter(
-                i => i.actionTaken === 'EXAM_TERMINATED' || i.actionTaken === 'STUDENT_BLOCKED' || i.violationType === 'EXAM_TERMINATION'
-            ).length;
-
             setMetrics(prev => ({
                 ...prev,
                 totalIncidents: res.data.pagination?.total || 0,
-                terminatedAttempts: terminatedCount
+                terminatedAttempts: res.data.terminatedCount || 0
             }));
         } catch (err) {
             if (err.response?.status === 401) {
@@ -138,6 +141,39 @@ export default function AdminCheatingDetection() {
         }
     }, [navigate, searchQuery]);
 
+    // 3. Fetch Unblocked Students
+    const fetchUnblockedStudents = useCallback(async (p = 1) => {
+        const token = getToken();
+        if (!token) {
+            navigate('/admin/login');
+            return;
+        }
+
+        try {
+            setUnblockedLoading(true);
+            let url = `${API}/anti-cheating/unblocked-students?page=${p}&limit=${LIMIT}`;
+            if (unblockedSearchQuery) url += `&search=${encodeURIComponent(unblockedSearchQuery)}`;
+
+            const res = await axios.get(url, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            setUnblockedStudents(res.data.unblockedStudents || []);
+            setUnblockedTotal(res.data.pagination?.total || 0);
+            setUnblockedTotalPages(res.data.pagination?.totalPages || 1);
+            setUnblockedPage(p);
+        } catch (err) {
+            if (err.response?.status === 401) {
+                localStorage.removeItem('adminToken');
+                navigate('/admin/login');
+                return;
+            }
+            console.error("Failed to fetch unblocked students:", err);
+        } finally {
+            setUnblockedLoading(false);
+        }
+    }, [navigate, unblockedSearchQuery]);
+
     // Initial Load & Filter Triggers
     useEffect(() => {
         fetchIncidents(1);
@@ -147,9 +183,14 @@ export default function AdminCheatingDetection() {
         fetchBlockedStudents(1);
     }, [fetchBlockedStudents]);
 
+    useEffect(() => {
+        fetchUnblockedStudents(1);
+    }, [fetchUnblockedStudents]);
+
     const handleRefreshAll = () => {
         fetchIncidents(incidentsPage);
         fetchBlockedStudents(blockedPage);
+        fetchUnblockedStudents(unblockedPage);
         toast.success("Telemetry re-synced");
     };
 
@@ -171,6 +212,7 @@ export default function AdminCheatingDetection() {
             toast.success(res.data?.message || "Student unblocked successfully");
             setSelectedStudent(null);
             fetchBlockedStudents(blockedPage);
+            fetchUnblockedStudents(unblockedPage);
             fetchIncidents(incidentsPage);
 
             // If the student had terminated exam attempts, prompt admin to authorize new attempts
@@ -358,6 +400,24 @@ export default function AdminCheatingDetection() {
                     >
                         <UserX size={16} /> Blocked Students ({metrics.blockedStudentsCount})
                     </button>
+                    <button
+                        onClick={() => setActiveTab('unblocked')}
+                        style={{
+                            padding: '12px 20px',
+                            background: 'none',
+                            border: 'none',
+                            borderBottom: activeTab === 'unblocked' ? '2px solid var(--brand-primary)' : '2px solid transparent',
+                            color: activeTab === 'unblocked' ? 'var(--brand-primary)' : 'var(--text-secondary)',
+                            fontWeight: activeTab === 'unblocked' ? 500 : 400,
+                            fontSize: 14,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8
+                        }}
+                    >
+                        <UserCheck size={16} /> Unblocked History ({unblockedTotal})
+                    </button>
                 </div>
 
                 {/* TAB 1: INCIDENTS TABLE */}
@@ -446,7 +506,7 @@ export default function AdminCheatingDetection() {
                                                         {new Date(inc.detectedAt || inc.createdAt).toLocaleString()}
                                                     </td>
                                                     <td style={{ padding: '14px 16px' }}>
-                                                        <span style={{ fontSize: 11, fontWeight: 600, color: inc.actionTaken === 'STUDENT_BLOCKED' || inc.actionTaken === 'EXAM_TERMINATED' ? 'var(--danger)' : 'var(--text-secondary)' }}>
+                                                        <span style={{ fontSize: 11, fontWeight: 600, color: inc.actionTaken === 'STUDENT_BLOCKED' || inc.actionTaken === 'EXAM_TERMINATED' ? 'var(--danger)' : inc.actionTaken === 'STUDENT_UNBLOCKED' ? 'var(--success)' : 'var(--text-secondary)' }}>
                                                             {inc.actionTaken}
                                                         </span>
                                                     </td>
@@ -617,6 +677,110 @@ export default function AdminCheatingDetection() {
                     </div>
                 )}
 
+                {/* TAB 3: UNBLOCKED STUDENTS TABLE */}
+                {activeTab === 'unblocked' && (
+                    <div style={{ background: 'var(--bg-card)', borderRadius: 16, border: '1px solid var(--border-default)', padding: 24 }}>
+                        
+                        {/* Search */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                            <div style={{ position: 'relative', width: 320 }}>
+                                <Search size={16} style={{ position: 'absolute', left: 12, top: 12, color: 'var(--text-tertiary)' }} />
+                                <input
+                                    type="text"
+                                    placeholder="Search student by name, ID or email..."
+                                    value={unblockedSearchQuery}
+                                    onChange={(e) => setUnblockedSearchQuery(e.target.value)}
+                                    style={{
+                                        width: '100%',
+                                        background: 'var(--bg-body)',
+                                        border: '1px solid var(--border-default)',
+                                        borderRadius: 8,
+                                        padding: '8px 12px 8px 36px',
+                                        color: 'var(--text-primary)',
+                                        fontSize: 13
+                                    }}
+                                />
+                            </div>
+
+                            <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>
+                                {unblockedTotal} Unblocked Student(s)
+                            </span>
+                        </div>
+
+                        {/* Table */}
+                        {unblockedLoading ? (
+                            <SkeletonTable rows={5} cols={5} />
+                        ) : unblockedStudents.length === 0 ? (
+                            <EmptyState
+                                icon={<UserCheck size={48} style={{ color: 'var(--success)' }} />}
+                                title="No Unblocked Students"
+                                description="There are currently no students who have had their blocked status lifted."
+                            />
+                        ) : (
+                            <>
+                                <div style={{ overflowX: 'auto' }}>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, textAlign: 'left' }}>
+                                        <thead>
+                                            <tr style={{ borderBottom: '1px solid var(--border-default)', color: 'var(--text-tertiary)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                                <th style={{ padding: '12px 16px' }}>Student ID</th>
+                                                <th style={{ padding: '12px 16px' }}>Name & Email</th>
+                                                <th style={{ padding: '12px 16px' }}>Department</th>
+                                                <th style={{ padding: '12px 16px' }}>Unblocked At</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {unblockedStudents.map(student => (
+                                                <tr key={student._id} style={{ borderBottom: '1px solid var(--border-default)' }} className="table-row-hover">
+                                                    <td style={{ padding: '14px 16px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                                                        {student.studentId || 'N/A'}
+                                                    </td>
+                                                    <td style={{ padding: '14px 16px' }}>
+                                                        <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{student.name}</div>
+                                                        <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{student.email}</div>
+                                                    </td>
+                                                    <td style={{ padding: '14px 16px', color: 'var(--text-secondary)' }}>
+                                                        {student.department || '—'}
+                                                    </td>
+                                                    <td style={{ padding: '14px 16px', color: 'var(--text-secondary)' }}>
+                                                        {student.unblockedAt ? new Date(student.unblockedAt).toLocaleString() : 'N/A'}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                {/* Pagination */}
+                                {unblockedTotalPages > 1 && (
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border-default)' }}>
+                                        <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+                                            Page {unblockedPage} of {unblockedTotalPages}
+                                        </span>
+                                        <div style={{ display: 'flex', gap: 8 }}>
+                                            <button
+                                                disabled={unblockedPage <= 1}
+                                                onClick={() => fetchUnblockedStudents(unblockedPage - 1)}
+                                                className="btn btn-secondary"
+                                                style={{ padding: '6px 12px', fontSize: 12, borderRadius: 6 }}
+                                            >
+                                                <ChevronLeft size={14} /> Previous
+                                            </button>
+                                            <button
+                                                disabled={unblockedPage >= unblockedTotalPages}
+                                                onClick={() => fetchUnblockedStudents(unblockedPage + 1)}
+                                                className="btn btn-secondary"
+                                                style={{ padding: '6px 12px', fontSize: 12, borderRadius: 6 }}
+                                            >
+                                                Next <ChevronRight size={14} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        )}
+                    </div>
+                )}
+
                 {/* MODAL 1: INCIDENT EVIDENCE DETAILS */}
                 {selectedIncident && (
                     <Modal
@@ -669,7 +833,7 @@ export default function AdminCheatingDetection() {
                                 >
                                     Close
                                 </button>
-                                {selectedIncident.studentId?._id && (
+                                {selectedIncident.studentId?._id && selectedIncident.studentId?.isBlocked && (
                                     <button
                                         onClick={() => {
                                             const idToUnblock = selectedIncident.studentId._id;
