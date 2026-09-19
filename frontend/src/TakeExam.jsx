@@ -151,7 +151,13 @@ const TakeExam = () => {
             } catch (error) {
                 console.error("Failed to fetch exam", error);
                 if (error.response && error.response.status === 403) {
-                    setIsRestricted(true);
+                    const msg = error.response.data?.message;
+                    if (msg === "BLOCKED") {
+                        setIsRestricted(true);
+                    } else {
+                        alert(msg || "Access denied. You cannot take this exam.");
+                        navigate('/student/exams');
+                    }
                 }
             } finally {
                 setLoading(false);

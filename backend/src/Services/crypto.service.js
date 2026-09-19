@@ -120,7 +120,12 @@ export function verifyQuestionIntegrity(
         const calculatedHash =
             hashQuestionContent(decryptedContent);
 
-        return calculatedHash === expectedHash;
+        // Backwards compatibility for older questions that were hashed without canonicalization
+        const oldHash = crypto.createHash("sha256")
+            .update(JSON.stringify(decryptedContent), "utf8")
+            .digest("hex");
+
+        return calculatedHash === expectedHash || oldHash === expectedHash;
     } catch (error) {
         console.error(
             "Question integrity verification failed:",
