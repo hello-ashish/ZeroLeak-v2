@@ -2,7 +2,7 @@ import { Exam } from "../models/exam.models.js";
 import { Result } from "../models/result.models.js";
 import { Question } from "../models/question.models.js";
 import { buildMerkleRoot } from "../Services/merkle.service.js";
-import { appendCommitment } from "../Services/blockchain.service.js";
+import { createCommitment } from "../blockchain/commitment.service.js";
 
 export const createExam = async (req, res) => {
     try {
@@ -107,22 +107,21 @@ export const createExam = async (req, res) => {
         });
 
         try {
-            const blockchainBlock = await appendCommitment({
-                blockType: "EXAM_COMMITMENT",
-                entityId: exam._id,
-                entityLabel: title,
-                merkleRoot: questionMerkleRoot,
-                actorId: req.admin?._id,
-                actorRole: "Admin",
-                metadata: {
-                    examId: String(exam._id),
-                    questionCount: questions.length,
+            const commitment = await createCommitment({
+                objectType: "Exam",
+                objectId: exam._id,
+                commitmentType: "EXAM_VERSION",
+                payload: {
+                    title,
+                    description,
                     durationMinutes: duration || 60,
-                    status: "Draft",
-                },
+                    questionCount: questions.length,
+                    questionMerkleRoot,
+                    actorId: req.admin?._id,
+                }
             });
-            exam.blockchainBlockIndex = blockchainBlock.blockIndex;
-            exam.blockchainBlockHash = blockchainBlock.hash;
+            exam.commitmentId = commitment.eventId;
+            exam.commitmentHash = commitment.canonicalHash;
             await exam.save();
         } catch (blockchainError) {
             await Exam.deleteOne({ _id: exam._id });

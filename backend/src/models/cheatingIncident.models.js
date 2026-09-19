@@ -58,6 +58,14 @@ const cheatingIncidentSchema = new Schema(
         reviewedAt: {
             type: Date,
             default: null,
+        },
+        commitmentId: {
+            type: String,
+            default: null,
+        },
+        commitmentHash: {
+            type: String,
+            default: null,
         }
     },
     { timestamps: true }

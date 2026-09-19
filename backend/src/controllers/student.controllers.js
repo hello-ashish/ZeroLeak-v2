@@ -10,7 +10,8 @@ import {
 } from "../Services/crypto.service.js"
 
 import { buildMerkleRoot } from "../Services/merkle.service.js"
-import { appendCommitment, canonicalize, sha256 } from "../Services/blockchain.service.js"
+import { canonicalize, sha256 } from "../blockchain/commitment.service.js"
+import { createCommitment } from "../blockchain/commitment.service.js"
 
 // 1. Register Student
 export const registerStudent = async (req, res) => {
@@ -113,14 +114,11 @@ export const pingSession = async (req, res) => {
                         timestamp: incident.detectedAt
                     });
 
-                    await appendCommitment({
-                        blockType: "INCIDENT_COMMITMENT",
-                        entityId: incident._id,
-                        entityLabel: `Integrity Violation: ${student.email}`,
-                        actorId: "SYSTEM",
-                        actorRole: "System",
-                        metadata: {
-                            incidentId: String(incident._id),
+                    await createCommitment({
+                        objectType: "CheatingIncident",
+                        objectId: incident._id,
+                        commitmentType: "CRITICAL_INTEGRITY_INCIDENT",
+                        payload: {
                             studentId: String(student._id),
                             examId: String(currentExamId),
                             incidentHash: sha256(JSON.stringify(incidentPayload))
@@ -488,22 +486,21 @@ export const submitExamResult = async (req, res) => {
         });
         const submissionHash = sha256(JSON.stringify(submissionPayload));
 
-        await appendCommitment({
-            blockType: "RESULT_COMMITMENT",
-            entityId: result._id,
-            entityLabel: `Result for Exam: ${exam.title}`,
-            merkleRoot: null,
-            actorId: req.student._id,
-            actorRole: "Student",
-            metadata: {
+        const commitment = await createCommitment({
+            objectType: "Result",
+            objectId: result._id,
+            commitmentType: "RESULT",
+            payload: {
                 examId: String(examId),
                 studentId: String(req.student._id),
-                resultId: String(result._id),
                 score: score,
                 totalQuestions: totalQuestions,
                 submissionHash: submissionHash // Cryptographically proves the exact answers submitted
             }
         });
+        result.commitmentId = commitment.eventId;
+        result.commitmentHash = commitment.canonicalHash;
+        await result.save();
 
         return res.status(201).json({
             message:

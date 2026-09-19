@@ -7,7 +7,7 @@ import { Exam } from "../models/exam.models.js";
 import { Result } from "../models/result.models.js";
 import { AuditLog } from "../models/auditlog.models.js";
 import { buildMerkleRoot } from "../Services/merkle.service.js";
-import { appendCommitment } from "../Services/blockchain.service.js";
+import { createCommitment } from "../blockchain/commitment.service.js";
 import {
     encryptQuestionContent,
     hashQuestionContent,
@@ -211,21 +211,18 @@ export const reviewBatch = async (req, res) => {
             const questionHashes = insertedQuestions.map((question) => question.contentHash);
             const merkleRoot = buildMerkleRoot(questionHashes);
 
-            let blockchainBlock;
+            let commitment;
             try {
-                blockchainBlock = await appendCommitment({
-                    blockType: "BATCH_COMMITMENT",
-                    entityId: batch._id,
-                    entityLabel: batch.title,
-                    merkleRoot,
-                    actorId: req.admin?._id,
-                    actorRole: "Admin",
-                    metadata: {
-                        batchId: String(batch._id),
+                commitment = await createCommitment({
+                    objectType: "Batch",
+                    objectId: batch._id,
+                    commitmentType: "QUESTION_BATCH",
+                    payload: {
                         subject: batch.subject,
                         questionCount: insertedQuestions.length,
-                        status: "Accepted",
-                    },
+                        merkleRoot,
+                        actorId: req.admin?._id,
+                    }
                 });
             } catch (blockchainError) {
                 await Question.deleteMany({ _id: { $in: insertedQuestions.map((question) => question._id) } });
@@ -233,8 +230,8 @@ export const reviewBatch = async (req, res) => {
             }
 
             batch.merkleRoot = merkleRoot;
-            batch.blockchainBlockIndex = blockchainBlock.blockIndex;
-            batch.blockchainBlockHash = blockchainBlock.hash;
+            batch.commitmentId = commitment.eventId;
+            batch.commitmentHash = commitment.canonicalHash;
             batch.status = 'Accepted';
             batch.adminMessage = 'Batch Approved, integrity committed to blockchain ledger';
             await logAction({ actor: req.admin?.email, action: "BATCH_APPROVED", targetType: "Batch", targetId: batch._id, targetLabel: batch.title });

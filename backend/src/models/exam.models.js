@@ -49,11 +49,11 @@ const examSchema = new mongoose.Schema({
         type: String,
         default: null,
     },
-    blockchainBlockIndex: {
-        type: Number,
+    commitmentId: {
+        type: String,
         default: null,
     },
-    blockchainBlockHash: {
+    commitmentHash: {
         type: String,
         default: null,
     },

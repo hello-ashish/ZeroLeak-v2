@@ -28,19 +28,19 @@ export default function BlockchainVisualizer({ blocks, loading, onVerify }) {
     const [verifyIndex, setVerifyIndex] = useState(-1);
     const [verifyResults, setVerifyResults] = useState({}); // blockIndex -> 'valid' | 'invalid'
 
-    // Sort blocks sequentially (genesis -> latest)
+    // Sort blocks sequentially
     const sortedBlocks = useMemo(() => {
-        return [...(blocks || [])].sort((a, b) => a.blockIndex - b.blockIndex);
+        return [...(blocks || [])].sort((a, b) => a.height - b.height);
     }, [blocks]);
 
     const filteredBlocks = useMemo(() => {
         const q = search.trim().toLowerCase();
         if (!q) return sortedBlocks;
         return sortedBlocks.filter(b =>
-            String(b.blockIndex).includes(q) ||
-            b.blockType.toLowerCase().includes(q) ||
-            String(b.entityId).toLowerCase().includes(q) ||
-            String(b.hash).toLowerCase().includes(q)
+            String(b.height).includes(q) ||
+            b.commitmentType?.toLowerCase().includes(q) ||
+            String(b.eventId)?.toLowerCase().includes(q) ||
+            String(b.txId)?.toLowerCase().includes(q)
         );
     }, [sortedBlocks, search]);
 
@@ -116,7 +116,7 @@ export default function BlockchainVisualizer({ blocks, loading, onVerify }) {
             // Wait for visual effect
             await new Promise(resolve => setTimeout(resolve, 600));
 
-            setVerifyResults(prev => ({ ...prev, [sortedBlocks[i].blockIndex]: 'valid' }));
+            setVerifyResults(prev => ({ ...prev, [sortedBlocks[i].height]: 'valid' }));
         }
 
         setVerifyIndex(-1);
@@ -221,11 +221,11 @@ export default function BlockchainVisualizer({ blocks, loading, onVerify }) {
 
                     {filteredBlocks.map((block, index) => {
                         const isVerifying = verifyIndex === index;
-                        const isSelected = selectedBlock?.blockIndex === block.blockIndex;
-                        const status = verifyResults[block.blockIndex]; // 'valid' | 'invalid'
+                        const isSelected = selectedBlock?.height === block.height;
+                        const status = verifyResults[block.height]; // 'valid' | 'invalid'
 
                         return (
-                            <div key={block.blockIndex} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                            <div key={block.height} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
 
                                 {/* Connector Line to next block (except last) */}
                                 {index < filteredBlocks.length - 1 && (
@@ -277,24 +277,29 @@ export default function BlockchainVisualizer({ blocks, loading, onVerify }) {
                                     }}
                                 >
                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-                                        <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>BLOCK #{block.blockIndex}</div>
+                                        <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>BLOCK #{block.height}</div>
                                         {status === 'valid' && <CheckCircle2 size={16} color="#10b981" />}
                                         {status === 'invalid' && <XCircle size={16} color="#ef4444" />}
                                     </div>
 
                                     <div style={{ marginBottom: 16 }}>
                                         <div style={{ fontSize: 10, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Commitment</div>
-                                        <div style={{ fontSize: 14, fontWeight: 500, color: '#60a5fa' }}>{block.blockType.replace('_', ' ')}</div>
+                                        <div style={{ fontSize: 14, fontWeight: 500, color: '#60a5fa' }}>{block.commitmentType?.replace('_', ' ')}</div>
                                     </div>
 
                                     <div style={{ marginBottom: 16 }}>
-                                        <div style={{ fontSize: 10, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Entity</div>
-                                        <div style={{ fontSize: 13, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{block.entityLabel || block.entityId}</div>
+                                        <div style={{ fontSize: 10, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Event ID</div>
+                                        <div style={{ fontSize: 13, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{block.eventId}</div>
                                     </div>
 
                                     <div style={{ background: 'var(--bg-input)', borderRadius: 6, padding: 10, marginBottom: 12 }}>
-                                        <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginBottom: 4 }}>Block Hash</div>
-                                        <div style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--text-primary)' }}>{shortHash(block.hash)}</div>
+                                        <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginBottom: 4 }}>Canonical Hash</div>
+                                        <div style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--text-primary)' }}>{shortHash(block.canonicalHash)}</div>
+                                    </div>
+                                    
+                                    <div style={{ background: 'var(--bg-input)', borderRadius: 6, padding: 10, marginBottom: 12 }}>
+                                        <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginBottom: 4 }}>Fabric Tx ID</div>
+                                        <div style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--text-primary)' }}>{shortHash(block.txId)}</div>
                                     </div>
 
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-secondary)' }}>
@@ -325,7 +330,7 @@ export default function BlockchainVisualizer({ blocks, loading, onVerify }) {
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                                 <div>
                                     <div style={{ fontSize: 12, color: 'var(--text-secondary)', letterSpacing: 1 }}>INSPECTOR</div>
-                                    <h2 style={{ margin: '4px 0 0 0', fontSize: 24, fontWeight: 600 }}>Block #{selectedBlock.blockIndex}</h2>
+                                    <h2 style={{ margin: '4px 0 0 0', fontSize: 24, fontWeight: 600 }}>Block #{selectedBlock.height}</h2>
                                 </div>
                                 <button
                                     onClick={() => setSelectedBlock(null)}
@@ -342,19 +347,17 @@ export default function BlockchainVisualizer({ blocks, loading, onVerify }) {
                             </div>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                                <InspectorItem label="Commitment Type" value={selectedBlock.blockType.replace('_', ' ')} highlight />
-                                <InspectorItem label="Object Reference" value={selectedBlock.entityLabel || '—'} subvalue={selectedBlock.entityId} />
+                                <InspectorItem label="Commitment Type" value={selectedBlock.commitmentType?.replace('_', ' ')} highlight />
+                                <InspectorItem label="Event Reference" value={selectedBlock.eventId} />
 
                                 <div>
                                     <div style={{ fontSize: 11, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 6 }}>Cryptographic Chain</div>
                                     <div style={{ background: 'var(--bg-input)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: 12 }}>
-                                        <HashItem label="Previous Hash" hash={selectedBlock.previousHash} desc="Links to previous state" />
+                                        <HashItem label="Canonical Hash" hash={selectedBlock.canonicalHash} desc="Deterministic representation" />
                                         <div style={{ width: 2, height: 16, background: 'var(--border-default)', margin: '4px 0 4px 12px' }} />
-                                        <HashItem label="Block Hash" hash={selectedBlock.hash} desc="Current block signature" active />
+                                        <HashItem label="Fabric Tx ID" hash={selectedBlock.txId} desc="Private ledger transaction" active />
                                     </div>
                                 </div>
-
-                                <InspectorItem label="Merkle Root" value={selectedBlock.merkleRoot ? shortHash(selectedBlock.merkleRoot) : '—'} isCode />
 
                                 <div>
                                     <div style={{ fontSize: 11, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 6 }}>Canonical Metadata</div>
@@ -362,7 +365,7 @@ export default function BlockchainVisualizer({ blocks, loading, onVerify }) {
                                         margin: 0, padding: 12, background: 'var(--bg-input)', border: '1px solid var(--border-subtle)',
                                         borderRadius: 8, fontSize: 11, color: 'var(--text-secondary)', overflowX: 'auto', whiteSpace: 'pre-wrap'
                                     }}>
-                                        {JSON.stringify(selectedBlock.metadata, null, 2)}
+                                        {selectedBlock.payloadString ? JSON.stringify(JSON.parse(selectedBlock.payloadString), null, 2) : "—"}
                                     </pre>
                                 </div>
 

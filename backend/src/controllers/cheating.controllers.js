@@ -5,7 +5,8 @@ import { Result } from "../models/result.models.js";
 import { CheatingIncident } from "../models/cheatingIncident.models.js";
 import { AuditLog } from "../models/auditlog.models.js";
 import { Anomaly } from "../models/anomaly.models.js";
-import { appendCommitment, canonicalize, sha256 } from "../Services/blockchain.service.js";
+import { canonicalize, sha256 } from "../blockchain/commitment.service.js";
+import { createCommitment } from "../blockchain/commitment.service.js";
 
 // Helper to check valid ObjectId
 const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
@@ -143,14 +144,11 @@ export const recordIncident = async (req, res) => {
                 timestamp: incident.detectedAt
             });
 
-            await appendCommitment({
-                blockType: "INCIDENT_COMMITMENT",
-                entityId: incident._id,
-                entityLabel: `Integrity Violation: ${student.email}`,
-                actorId: "SYSTEM",
-                actorRole: "System",
-                metadata: {
-                    incidentId: String(incident._id),
+            await createCommitment({
+                objectType: "CheatingIncident",
+                objectId: incident._id,
+                commitmentType: "CRITICAL_INTEGRITY_INCIDENT",
+                payload: {
                     studentId: String(student._id),
                     examId: String(examId),
                     incidentHash: sha256(JSON.stringify(incidentPayload))
