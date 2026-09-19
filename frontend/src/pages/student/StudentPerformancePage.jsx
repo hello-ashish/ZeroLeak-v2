@@ -61,7 +61,11 @@ const StudentPerformancePage = () => {
     }
 
     // --- Core Data Arrays ---
-    const sortedResults = [...results].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)); // Oldest to newest
+    const sortedAllResults = [...results].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)); // Oldest to newest
+    const reverseAllResults = [...sortedAllResults].reverse(); // Newest to oldest
+
+    const releasedResults = results.filter(r => r.exam?.isResultReleased === true);
+    const sortedResults = [...releasedResults].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)); // Oldest to newest
     const reverseResults = [...sortedResults].reverse(); // Newest to oldest
 
     // --- Helper: Grade Mapping ---
@@ -389,14 +393,15 @@ const StudentPerformancePage = () => {
                     </div>
 
                     <div style={{ flex: 1, background: 'var(--bg-card)', border: '1px solid var(--border-default)', borderRadius: 16, overflow: 'hidden' }}>
-                        {reverseResults.length === 0 ? (
+                        {reverseAllResults.length === 0 ? (
                             <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>No past assessments available.</div>
                         ) : (
-                            reverseResults.slice(0, 6).map((r, i) => {
+                            reverseAllResults.slice(0, 6).map((r, i) => {
                                 const pct = Math.round((r.score / r.totalQuestions) * 100);
                                 const grade = getGrade(pct);
+                                const isReleased = r.exam?.isResultReleased === true;
                                 return (
-                                    <div key={r._id} style={{ display: 'flex', alignItems: 'center', padding: '20px 32px', borderBottom: i !== Math.min(reverseResults.length, 6) - 1 ? '1px solid var(--border-default)' : 'none', cursor: 'pointer', transition: 'background 0.2s' }} className="table-row-hover" onClick={() => navigate('/student/results')}>
+                                    <div key={r._id} style={{ display: 'flex', alignItems: 'center', padding: '20px 32px', borderBottom: i !== Math.min(reverseAllResults.length, 6) - 1 ? '1px solid var(--border-default)' : 'none', cursor: 'pointer', transition: 'background 0.2s' }} className="table-row-hover" onClick={() => navigate('/student/results')}>
                                         <div style={{ flex: 1 }}>
                                             <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 6 }}>{r.exam?.title || 'Deleted Exam'}</div>
                                             <div style={{ display: 'flex', gap: 16, fontSize: 13, color: 'var(--text-tertiary)' }}>
@@ -405,13 +410,19 @@ const StudentPerformancePage = () => {
                                             </div>
                                         </div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
-                                            <div style={{ textAlign: 'right' }}>
-                                                <div style={{ fontSize: 18, fontWeight: 400, color: 'var(--text-primary)' }}>{pct}%</div>
-                                                <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Score</div>
-                                            </div>
-                                            <div style={{ width: 40, height: 40, borderRadius: '50%', background: grade.color + '15', color: grade.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 16 }}>
-                                                {grade.letter}
-                                            </div>
+                                            {isReleased ? (
+                                                <>
+                                                    <div style={{ textAlign: 'right' }}>
+                                                        <div style={{ fontSize: 18, fontWeight: 400, color: 'var(--text-primary)' }}>{pct}%</div>
+                                                        <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Score</div>
+                                                    </div>
+                                                    <div style={{ width: 40, height: 40, borderRadius: '50%', background: grade.color + '15', color: grade.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 16 }}>
+                                                        {grade.letter}
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <div style={{ fontSize: 13, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>Pending Release</div>
+                                            )}
                                         </div>
                                     </div>
                                 )

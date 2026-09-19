@@ -36,24 +36,25 @@ const StudentDashboardPage = () => {
     }, [navigate]);
 
     // --- DATA CALCULATIONS ---
-    const completedExams = results.length;
+    const releasedResults = results.filter(r => r.exam?.isResultReleased === true);
+    const completedExams = releasedResults.length;
     
     // Overall Average
     const averageScore = completedExams > 0
-        ? Math.round(results.reduce((acc, curr) => acc + (curr.score / curr.totalQuestions) * 100, 0) / completedExams)
+        ? Math.round(releasedResults.reduce((acc, curr) => acc + (curr.score / curr.totalQuestions) * 100, 0) / completedExams)
         : 0;
 
     // Recent Trend (Last 3 vs Lifetime)
     let recentTrend = 0;
     if (completedExams >= 3) {
-        const recent3 = results.slice(0, 3);
+        const recent3 = releasedResults.slice(0, 3);
         const recentAvg = Math.round(recent3.reduce((acc, curr) => acc + (curr.score / curr.totalQuestions) * 100, 0) / 3);
         recentTrend = recentAvg - averageScore;
     }
 
     // Subject Intelligence (Derived from first word of Exam Title)
     const subjects = {};
-    results.forEach(r => {
+    releasedResults.forEach(r => {
         if (!r.exam) return;
         const subjectName = r.exam.title.split(' ')[0];
         if (!subjects[subjectName]) subjects[subjectName] = { totalPct: 0, count: 0 };
@@ -223,6 +224,7 @@ const StudentDashboardPage = () => {
                             results.slice(0, 5).map((r, i) => {
                                 const pct = Math.round((r.score / r.totalQuestions) * 100);
                                 const grade = getGrade(pct);
+                                const isReleased = r.exam?.isResultReleased === true;
                                 return (
                                     <div key={r._id} style={{ display: 'flex', alignItems: 'center', padding: '16px 24px', borderBottom: i !== Math.min(results.length, 5) - 1 ? '1px solid var(--border-default)' : 'none', cursor: 'pointer', transition: 'background 0.2s' }} className="table-row-hover" onClick={() => navigate('/student/results')}>
                                         <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--bg-body)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', marginRight: 16 }}>
@@ -233,13 +235,19 @@ const StudentDashboardPage = () => {
                                             <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{new Date(r.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</div>
                                         </div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-                                            <div style={{ textAlign: 'right' }}>
-                                                <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-primary)' }}>{pct}%</div>
-                                                <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{r.score}/{r.totalQuestions}</div>
-                                            </div>
-                                            <div style={{ width: 32, height: 32, borderRadius: '50%', background: grade.color + '20', color: grade.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 14 }}>
-                                                {grade.letter}
-                                            </div>
+                                            {isReleased ? (
+                                                <>
+                                                    <div style={{ textAlign: 'right' }}>
+                                                        <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-primary)' }}>{pct}%</div>
+                                                        <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{r.score}/{r.totalQuestions}</div>
+                                                    </div>
+                                                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: grade.color + '20', color: grade.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 14 }}>
+                                                        {grade.letter}
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <div style={{ fontSize: 13, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>Pending Release</div>
+                                            )}
                                         </div>
                                     </div>
                                 )

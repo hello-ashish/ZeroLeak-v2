@@ -57,6 +57,10 @@ const examSchema = new mongoose.Schema({
         type: String,
         default: null,
     },
+    isResultReleased: {
+        type: Boolean,
+        default: false,
+    },
 }, { timestamps: true })
 
 export const Exam = mongoose.model('Exam', examSchema)

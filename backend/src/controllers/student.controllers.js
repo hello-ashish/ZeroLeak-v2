@@ -528,7 +528,7 @@ export const submitExamResult = async (req, res) => {
 export const getStudentResults = async (req, res) => {
     try {
         const results = await Result.find({ student: req.student._id })
-            .populate("exam", "title")
+            .populate("exam", "title isResultReleased")
             .sort({ createdAt: -1 })
         return res.status(200).json({ results })
     } catch (error) {

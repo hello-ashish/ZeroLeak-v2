@@ -6,7 +6,7 @@ import { StatusBadge } from '../../components/StatusBadge.jsx'
 import { ConfirmDialog } from '../../components/Modal.jsx'
 import { SkeletonTable, EmptyState } from '../../components/SkeletonLoader.jsx'
 import { useToast } from '../../components/Toast.jsx'
-import { Search, ClipboardList, Play, Square, Trash2, Plus, Clock, Users, ArrowRight } from 'lucide-react'
+import { Search, ClipboardList, Play, Square, Trash2, Plus, Clock, Users, ArrowRight, Calendar } from 'lucide-react'
 
 const API = 'http://localhost:4000/api'
 const getToken = () => localStorage.getItem('adminToken')
@@ -84,6 +84,20 @@ export default function AdminExamsPage() {
         }
     }
 
+    const handleToggleResultsRelease = async (exam) => {
+        try {
+            const newReleaseStatus = !exam.isResultReleased;
+            await axios.patch(`${API}/admin/exams/${exam._id}/release-results`, { isResultReleased: newReleaseStatus }, {
+                headers: { Authorization: `Bearer ${getToken()}` }
+            })
+            toast.success(`Results ${newReleaseStatus ? 'released' : 'hidden'} successfully`)
+            fetchData()
+            if (selectedExam?._id === exam._id) setSelectedExam({ ...selectedExam, isResultReleased: newReleaseStatus })
+        } catch {
+            toast.error('Failed to toggle results release')
+        }
+    }
+
     return (
         <AdminLayout>
             <div className="page-header">
@@ -105,9 +119,9 @@ export default function AdminExamsPage() {
                     <div className="flex gap-3 mb-4 flex-wrap" style={{ alignItems: 'center', borderBottom: '1px solid var(--border-default)' }}>
                         <div className="tabs" style={{ marginBottom: -1 }}>
                             {TABS.map(t => (
-                                <button 
-                                    key={t} 
-                                    className={`tab-item ${activeTab === t ? 'active' : ''}`} 
+                                <button
+                                    key={t}
+                                    className={`tab-item ${activeTab === t ? 'active' : ''}`}
                                     onClick={() => { setActiveTab(t); setSelectedExam(null); }}
                                 >
                                     {t}
@@ -151,10 +165,10 @@ export default function AdminExamsPage() {
                                     ) : filtered.map(exam => {
                                         const isSelected = selectedExam?._id === exam._id
                                         return (
-                                            <tr key={exam._id} 
+                                            <tr key={exam._id}
                                                 onClick={() => setSelectedExam(exam)}
-                                                style={{ 
-                                                    cursor: 'pointer', 
+                                                style={{
+                                                    cursor: 'pointer',
                                                     background: isSelected ? 'var(--bg-active)' : 'transparent',
                                                     borderLeft: isSelected ? '2px solid var(--brand-primary)' : '2px solid transparent'
                                                 }}
@@ -200,13 +214,13 @@ export default function AdminExamsPage() {
 
                 {/* Insights Side Panel */}
                 {selectedExam && (
-                    <div style={{ 
-                        width: 320, 
-                        flexShrink: 0, 
-                        background: 'var(--bg-elevated)', 
-                        border: '1px solid var(--border-default)', 
-                        borderRadius: 'var(--radius-lg)', 
-                        position: 'sticky', 
+                    <div style={{
+                        width: 320,
+                        flexShrink: 0,
+                        background: 'var(--bg-elevated)',
+                        border: '1px solid var(--border-default)',
+                        borderRadius: 'var(--radius-lg)',
+                        position: 'sticky',
                         top: 'var(--topbar-height)',
                         marginTop: 48,
                         animation: 'slideInRight 200ms ease'
@@ -231,18 +245,59 @@ export default function AdminExamsPage() {
                                     <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{selectedExam.questions?.length || 0}</div>
                                 </div>
                             </div>
-                            
+
+                            <div style={{ marginBottom: 16 }}>
+                                <div style={{ background: 'var(--bg-surface)', padding: 12, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', marginBottom: 8 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                                        <Calendar size={16} color="var(--text-tertiary)" />
+                                        <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Exam Date</div>
+                                    </div>
+                                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
+                                        {selectedExam.scheduledAt
+                                            ? new Date(selectedExam.scheduledAt).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+                                            : 'Not Scheduled'}
+                                    </div>
+                                </div>
+                                <div className="flex gap-2">
+                                    <div style={{ flex: 1, background: 'var(--bg-surface)', padding: 12, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
+                                        <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>Start Time</div>
+                                        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
+                                            {selectedExam.scheduledAt
+                                                ? new Date(selectedExam.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                                : '-'}
+                                        </div>
+                                    </div>
+                                    <div style={{ flex: 1, background: 'var(--bg-surface)', padding: 12, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
+                                        <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>End Time</div>
+                                        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
+                                            {selectedExam.endsAt
+                                                ? new Date(selectedExam.endsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                                : '-'}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             {/* Actions */}
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 24 }}>
-                                <button 
-                                    className="btn btn-primary" 
+                                {selectedExam.status === 'Completed' && (
+                                    <button
+                                        className={`btn ${selectedExam.isResultReleased ? 'btn-secondary' : 'btn-success'}`}
+                                        style={{ width: '100%' }}
+                                        onClick={() => handleToggleResultsRelease(selectedExam)}
+                                    >
+                                        {selectedExam.isResultReleased ? 'Hide Results' : 'Release Results'}
+                                    </button>
+                                )}
+                                <button
+                                    className="btn btn-primary"
                                     style={{ width: '100%', justifyContent: 'space-between' }}
                                     onClick={() => navigate(`/admin/exams/${selectedExam._id}`)}
                                 >
                                     Open Exam Workspace <ArrowRight size={16} />
                                 </button>
-                                <button 
-                                    className="btn btn-danger" 
+                                <button
+                                    className="btn btn-danger"
                                     style={{ width: '100%' }}
                                     onClick={() => setDeleteTarget(selectedExam)}
                                 >

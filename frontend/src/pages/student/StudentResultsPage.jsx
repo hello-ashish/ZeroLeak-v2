@@ -111,6 +111,7 @@ const StudentResultsPage = () => {
                                 {filteredResults.map(result => {
                                     const pct = Math.round((result.score / result.totalQuestions) * 100);
                                     const grade = getGrade(pct);
+                                    const isReleased = result.exam?.isResultReleased === true;
                                     
                                     return (
                                         <tr key={result._id} style={{ borderBottom: '1px solid var(--border-default)', transition: 'background 0.2s ease' }} className="table-row-hover">
@@ -126,32 +127,43 @@ const StudentResultsPage = () => {
                                                 {new Date(result.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
                                             </td>
                                             <td style={{ padding: '16px 24px', textAlign: 'right' }}>
-                                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                                                    <span style={{ fontSize: 15, fontWeight: 600, color: pct >= 80 ? 'var(--success)' : pct >= 50 ? 'var(--warning)' : 'var(--danger)' }}>{pct}%</span>
-                                                    <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{result.score} / {result.totalQuestions} pts</span>
-                                                </div>
+                                                {isReleased ? (
+                                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                                                        <span style={{ fontSize: 15, fontWeight: 600, color: pct >= 80 ? 'var(--success)' : pct >= 50 ? 'var(--warning)' : 'var(--danger)' }}>{pct}%</span>
+                                                        <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{result.score} / {result.totalQuestions} pts</span>
+                                                    </div>
+                                                ) : (
+                                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                                                        <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontStyle: 'italic' }}>Result Not Released Yet</span>
+                                                    </div>
+                                                )}
                                             </td>
                                             <td style={{ padding: '16px 24px', textAlign: 'center' }}>
-                                                <span style={{ 
-                                                    display: 'inline-flex', 
-                                                    alignItems: 'center', 
-                                                    justifyContent: 'center',
-                                                    width: 28,
-                                                    height: 28,
-                                                    borderRadius: '50%',
-                                                    fontSize: 13, 
-                                                    fontWeight: 700, 
-                                                    background: pct >= 70 ? 'var(--success-subtle)' : pct >= 50 ? 'var(--warning-subtle)' : 'var(--danger-subtle)',
-                                                    color: pct >= 70 ? 'var(--success)' : pct >= 50 ? 'var(--warning)' : 'var(--danger)'
-                                                }}>
-                                                    {grade}
-                                                </span>
+                                                {isReleased ? (
+                                                    <span style={{ 
+                                                        display: 'inline-flex', 
+                                                        alignItems: 'center', 
+                                                        justifyContent: 'center',
+                                                        width: 28,
+                                                        height: 28,
+                                                        borderRadius: '50%',
+                                                        fontSize: 13, 
+                                                        fontWeight: 700, 
+                                                        background: pct >= 70 ? 'var(--success-subtle)' : pct >= 50 ? 'var(--warning-subtle)' : 'var(--danger-subtle)',
+                                                        color: pct >= 70 ? 'var(--success)' : pct >= 50 ? 'var(--warning)' : 'var(--danger)'
+                                                    }}>
+                                                        {grade}
+                                                    </span>
+                                                ) : (
+                                                    <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>-</span>
+                                                )}
                                             </td>
                                             <td style={{ padding: '16px 24px', textAlign: 'right' }}>
                                                 <button 
                                                     className="btn btn-secondary"
-                                                    style={{ padding: '6px 12px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                                                    onClick={() => setSelectedResult(result)}
+                                                    style={{ padding: '6px 12px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4, opacity: isReleased ? 1 : 0.5, cursor: isReleased ? 'pointer' : 'not-allowed' }}
+                                                    onClick={() => isReleased && setSelectedResult(result)}
+                                                    disabled={!isReleased}
                                                 >
                                                     Details <ChevronRight size={14} />
                                                 </button>

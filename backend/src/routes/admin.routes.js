@@ -13,6 +13,7 @@ import {
     getDashboardStats,
     getAuditLogs,
     updateExamStatus,
+    toggleExamResultsRelease,
     deleteExam,
     deleteStudent,
     getLiveStudents,
@@ -69,6 +70,7 @@ router.route("/batches/:batchId/review").post(verifyAdminJWT, reviewBatch)
 
 // Exam Management (status + delete)
 router.route("/exams/:id/status").patch(verifyAdminJWT, updateExamStatus)
+router.route("/exams/:id/release-results").patch(verifyAdminJWT, toggleExamResultsRelease)
 router.route("/exams/:id").delete(verifyAdminJWT, deleteExam)
 
 export default router

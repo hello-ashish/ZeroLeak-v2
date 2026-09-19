@@ -480,6 +480,20 @@ export const updateExamStatus = async (req, res) => {
     }
 };
 
+// ─── Toggle Exam Results Release ──────────────────────────────────────────────
+export const toggleExamResultsRelease = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { isResultReleased } = req.body;
+        const exam = await Exam.findByIdAndUpdate(id, { isResultReleased }, { new: true });
+        if (!exam) return res.status(404).json({ message: "Exam not found" });
+        await logAction({ actor: req.admin?.email, action: `EXAM_RESULTS_${isResultReleased ? 'RELEASED' : 'HIDDEN'}`, targetType: "Exam", targetId: exam._id, targetLabel: exam.title });
+        return res.status(200).json({ message: `Exam results ${isResultReleased ? 'released' : 'hidden'}`, exam });
+    } catch (error) {
+        return res.status(500).json({ message: "Error toggling exam result release status" });
+    }
+};
+
 // ─── Delete Exam ──────────────────────────────────────────────────────────────
 export const deleteExam = async (req, res) => {
     try {

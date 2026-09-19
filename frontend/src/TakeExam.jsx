@@ -561,13 +561,7 @@ const TakeExam = () => {
                         <CheckCircle2 size={32} />
                     </div>
                     <h2 style={{ fontSize: 28, fontWeight: 300, color: 'var(--text-primary)', marginBottom: 8, letterSpacing: '-0.02em' }}>Submission Successful</h2>
-                    <p style={{ fontSize: 15, color: 'var(--text-secondary)', marginBottom: 40 }}>Your examination has been recorded and finalized.</p>
-                    
-                    <div style={{ padding: 32, borderRadius: 16, border: '1px solid var(--border-default)', marginBottom: 40, background: 'var(--bg-card)' }}>
-                        <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Final Performance</p>
-                        <div style={{ fontSize: 56, fontWeight: 300, color: 'var(--text-primary)', letterSpacing: '-0.03em', lineHeight: 1 }}>{pct}%</div>
-                        <div style={{ fontSize: 14, color: 'var(--text-tertiary)', marginTop: 16 }}>{score} correct out of {exam.questions.length}</div>
-                    </div>
+                    <p style={{ fontSize: 15, color: 'var(--text-secondary)', marginBottom: 40 }}>Exam Completed Successfully. Your result will be released soon.</p>
 
                     <button onClick={() => navigate('/student/dashboard')} className="btn btn-secondary" style={{ width: '100%', padding: '16px', fontSize: 15, borderRadius: 12 }}>
                         Return to Command Center
