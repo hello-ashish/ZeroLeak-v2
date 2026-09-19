@@ -7,7 +7,8 @@ import {
     getUnblockedStudents,
     unblockStudent,
     authorizeNewAttempt,
-    getMyExamIncidentCount
+    getMyExamIncidentCount,
+    getPendingTerminatedExams
 } from "../controllers/cheating.controllers.js";
 import {
     verifyStudentJWT,
@@ -30,6 +31,8 @@ router.route("/unblocked-students").get(verifyAdminOrAuditorJWT, getUnblockedStu
 
 // Admin Only Routes
 router.route("/unblock/:studentId").post(verifyAdminJWT, unblockStudent);
+// Fetches pending terminated exams for a specific student
+router.route("/terminated-exams/:studentId").get(verifyAdminJWT, getPendingTerminatedExams);
 // Authorizes a fresh exam attempt for a student whose terminated attempt is blocking them.
 // This does NOT delete the old terminated record — it marks it resetByAdmin=true for audit.
 router.route("/authorize-attempt/:studentId/:examId").post(verifyAdminJWT, authorizeNewAttempt);

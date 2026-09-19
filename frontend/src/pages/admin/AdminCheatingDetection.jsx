@@ -60,6 +60,7 @@ export default function AdminCheatingDetection() {
     // Post-Unblock: Authorize New Attempt State
     const [terminatedExamsModal, setTerminatedExamsModal] = useState(null); // { studentId, studentName, exams: [] }
     const [authorizingAttemptId, setAuthorizingAttemptId] = useState(null); // examId being authorized
+    const [fullyAuthorizedStudents, setFullyAuthorizedStudents] = useState(new Set()); // students with no pending exams
 
     const LIMIT = 10;
 
@@ -257,7 +258,10 @@ export default function AdminCheatingDetection() {
             setTerminatedExamsModal(prev => {
                 if (!prev) return null;
                 const remaining = prev.exams.filter(e => String(e.examId) !== String(examId));
-                if (remaining.length === 0) return null; // close modal when all done
+                if (remaining.length === 0) {
+                    setFullyAuthorizedStudents(s => new Set(s).add(studentId));
+                    return null; // close modal when all done
+                }
                 return { ...prev, exams: remaining };
             });
         } catch (err) {
@@ -270,6 +274,41 @@ export default function AdminCheatingDetection() {
             toast.error(err.response?.data?.message || "Failed to authorize new attempt");
         } finally {
             setAuthorizingAttemptId(null);
+        }
+    };
+
+    // Check for pending terminated exams for a previously unblocked student
+    const handleCheckPendingExams = async (studentId, studentName) => {
+        const token = getToken();
+        if (!token) {
+            navigate('/admin/login');
+            return;
+        }
+
+        try {
+            const res = await axios.get(`${API}/anti-cheating/terminated-exams/${studentId}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            const terminatedExams = res.data?.terminatedExams || [];
+            if (terminatedExams.length > 0) {
+                setTerminatedExamsModal({
+                    studentId,
+                    studentName: res.data?.studentName || studentName,
+                    exams: terminatedExams
+                });
+            } else {
+                setFullyAuthorizedStudents(s => new Set(s).add(studentId));
+                toast.success("No pending terminated exams for this student.");
+            }
+        } catch (err) {
+            if (err.response?.status === 401) {
+                localStorage.removeItem('adminToken');
+                navigate('/admin/login');
+                return;
+            }
+            console.error("Failed to fetch pending exams:", err);
+            toast.error(err.response?.data?.message || "Failed to fetch pending exams.");
         }
     };
 
@@ -726,6 +765,7 @@ export default function AdminCheatingDetection() {
                                                 <th style={{ padding: '12px 16px' }}>Name & Email</th>
                                                 <th style={{ padding: '12px 16px' }}>Department</th>
                                                 <th style={{ padding: '12px 16px' }}>Unblocked At</th>
+                                                <th style={{ padding: '12px 16px', textAlign: 'right' }}>Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -743,6 +783,21 @@ export default function AdminCheatingDetection() {
                                                     </td>
                                                     <td style={{ padding: '14px 16px', color: 'var(--text-secondary)' }}>
                                                         {student.unblockedAt ? new Date(student.unblockedAt).toLocaleString() : 'N/A'}
+                                                    </td>
+                                                    <td style={{ padding: '14px 16px', textAlign: 'right' }}>
+                                                        {fullyAuthorizedStudents.has(student._id) ? (
+                                                            <span style={{ padding: '6px 12px', fontSize: 12, borderRadius: 6, color: 'var(--success)', background: 'rgba(34,197,94,0.1)', display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 500 }}>
+                                                                <CheckCircle2 size={14} /> Authorized
+                                                            </span>
+                                                        ) : (
+                                                            <button
+                                                                onClick={() => handleCheckPendingExams(student._id, student.name)}
+                                                                className="btn btn-secondary"
+                                                                style={{ padding: '6px 12px', fontSize: 12, borderRadius: 6, color: 'var(--brand-primary)', borderColor: 'rgba(59,130,246,0.3)', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                                                            >
+                                                                <ShieldCheck size={14} /> Authorize Exams
+                                                            </button>
+                                                        )}
                                                     </td>
                                                 </tr>
                                             ))}

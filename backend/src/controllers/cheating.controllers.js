@@ -100,11 +100,11 @@ export const recordIncident = async (req, res) => {
                         terminationReason: description || "Auto-terminated: exceeded maximum security violations."
                     });
                 }
-
-                // Update the incident we just created to reflect the block action
-                incident.actionTaken = "STUDENT_BLOCKED";
-                await incident.save();
             }
+
+            // Update the incident we just created to reflect the block action
+            incident.actionTaken = "STUDENT_BLOCKED";
+            await incident.save();
 
             // Block student at the account level
             const studentDoc = await Student.findById(student._id);
@@ -250,43 +250,6 @@ export const terminateAttempt = async (req, res) => {
             }
         }
 
-        // Create incident record for this termination
-        const incident = await CheatingIncident.create({
-            studentId: student._id,
-            examId,
-            attemptId: result._id,
-            violationType: "EXAM_TERMINATION",
-            severity: "Critical",
-            description: reason || "Exam attempt was terminated due to anti-cheating policy violation.",
-            detectedAt: new Date(),
-            actionTaken: autoBlockStudent ? "STUDENT_BLOCKED" : "EXAM_TERMINATED",
-            reviewStatus: "Pending"
-        });
-
-        // Cryptographic Incident Commitment
-        const incidentPayload = canonicalize({
-            incidentId: String(incident._id),
-            studentId: String(student._id),
-            examId: String(examId),
-            violationType: incident.violationType,
-            severity: incident.severity,
-            actionTaken: incident.actionTaken,
-            timestamp: incident.detectedAt
-        });
-
-        await appendCommitment({
-            blockType: "INCIDENT_COMMITMENT",
-            entityId: incident._id,
-            entityLabel: `Exam Terminated: ${student.email}`,
-            actorId: "SYSTEM",
-            actorRole: "System",
-            metadata: {
-                incidentId: String(incident._id),
-                studentId: String(student._id),
-                examId: String(examId),
-                incidentHash: sha256(JSON.stringify(incidentPayload))
-            }
-        });
 
         // Audit Log
         try {
@@ -678,5 +641,41 @@ export const getMyExamIncidentCount = async (req, res) => {
     } catch (error) {
         console.error("Error fetching exam incident count:", error);
         return res.status(500).json({ message: "Error fetching exam incident count", error: error.message });
+    }
+};
+
+// 8. Admin: Get pending terminated exams for a student
+export const getPendingTerminatedExams = async (req, res) => {
+    try {
+        const { studentId } = req.params;
+        if (!studentId) {
+            return res.status(400).json({ message: "Student ID parameter is required." });
+        }
+        if (!isValidObjectId(studentId)) {
+            return res.status(400).json({ message: "Invalid Student ID format." });
+        }
+
+        const student = await Student.findById(studentId);
+        if (!student) {
+            return res.status(404).json({ message: "Student not found." });
+        }
+
+        const terminatedResults = await Result.find({
+            student: student._id,
+            isTerminated: true,
+            resetByAdmin: { $ne: true }
+        }).populate("exam", "title _id");
+
+        const terminatedExams = terminatedResults.map(r => ({
+            resultId: r._id,
+            examId: r.exam?._id || r.exam,
+            examTitle: r.exam?.title || "Unknown Exam",
+            terminationReason: r.terminationReason
+        }));
+
+        return res.status(200).json({ terminatedExams, studentName: student.name });
+    } catch (error) {
+        console.error("Error fetching pending terminated exams:", error);
+        return res.status(500).json({ message: "Error fetching pending terminated exams", error: error.message });
     }
 };

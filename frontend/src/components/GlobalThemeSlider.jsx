@@ -67,27 +67,19 @@ const GlobalThemeSlider = () => {
   if (isAuthPage) return null;
 
   return (
-    <div 
+    <div
       className={`global-theme-controller ${isVisible ? 'slider-visible' : ''}`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <button 
-        className="theme-toggle-btn" 
-        onClick={handleToggleClick}
-        aria-label="Toggle Brightness Slider"
-      >
-        {themeProgress > 50 ? <Sun size={20} className="active-icon sun" /> : <Moon size={20} className="active-icon moon" />}
-      </button>
-
       <div className="theme-slider-container">
         <Sun size={18} className="slider-icon sun-icon" />
         <div className="slider-track-wrapper">
-          <input 
-            type="range" 
-            min="0" 
-            max="100" 
-            value={themeProgress} 
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={themeProgress}
             onChange={handleChange}
             className="theme-vertical-slider"
             aria-label="Adjust App Brightness"
