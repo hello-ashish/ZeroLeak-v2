@@ -36,8 +36,7 @@ import AdminProfessorsPage from './pages/admin/AdminProfessorsPage.jsx'
 import AdminBatchesPage from './pages/admin/AdminBatchesPage.jsx'
 import AdminGradebookPage from './pages/admin/AdminGradebookPage.jsx'
 import AdminActivityPage from './pages/admin/AdminActivityPage.jsx'
-import AdminBlockchainPage from './pages/admin/AdminBlockchainPage.jsx'
-import AdminBlockchainVisualizerPage from './pages/admin/AdminBlockchainVisualizerPage.jsx'
+import AdminBlockchainCenter from './pages/admin/AdminBlockchainCenter.jsx'
 import AdminSettingsPage from './pages/admin/AdminSettingsPage.jsx'
 import AdminCheatingDetection from './pages/admin/AdminCheatingDetection.jsx'
 
@@ -48,7 +47,7 @@ import AuditorAuditExplorerPage from './pages/auditor/AuditorAuditExplorerPage.j
 import AuditorAnomaliesPage from './pages/auditor/AuditorAnomaliesPage.jsx'
 import AuditorExamsPage from './pages/auditor/AuditorExamsPage.jsx'
 import AuditorPeoplePage from './pages/auditor/AuditorPeoplePage.jsx'
-import AuditorBlockchainVisualizerPage from './pages/auditor/AuditorBlockchainVisualizerPage.jsx'
+import AuditorBlockchainCenter from './pages/auditor/AuditorBlockchainCenter.jsx'
 
 function App() {
   return (
@@ -73,8 +72,7 @@ function App() {
           <Route path="/admin/gradebook" element={<AdminGradebookPage />} />
           <Route path="/admin/activity" element={<AdminActivityPage />} />
           <Route path="/admin/cheating" element={<AdminCheatingDetection />} />
-          <Route path="/admin/blockchain" element={<AdminBlockchainPage />} />
-          <Route path="/admin/blockchain-visualizer" element={<AdminBlockchainVisualizerPage />} />
+          <Route path="/admin/blockchain" element={<AdminBlockchainCenter />} />
           <Route path="/admin/settings" element={<AdminSettingsPage />} />
 
           {/* Redirect old /admin/dashboard stub if someone navigates there directly */}
@@ -107,7 +105,7 @@ function App() {
           <Route path="/auditor/exams" element={<AuditorExamsPage />} />
           <Route path="/auditor/students" element={<AuditorPeoplePage />} />
           <Route path="/auditor/professors" element={<AuditorPeoplePage />} />
-          <Route path="/auditor/blockchain-visualizer" element={<AuditorBlockchainVisualizerPage />} />
+          <Route path="/auditor/blockchain" element={<AuditorBlockchainCenter />} />
 
         </Routes>
         <GlobalThemeSlider />

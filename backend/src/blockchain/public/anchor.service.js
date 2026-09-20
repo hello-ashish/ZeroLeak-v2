@@ -79,3 +79,7 @@ export async function getPolygonAnchor() {
         return null;
     }
 }
+
+export function isAnchorConnected() {
+    return CONTRACT_ADDRESS !== "0x0000000000000000000000000000000000000000";
+}

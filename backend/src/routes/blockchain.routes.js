@@ -5,7 +5,8 @@ import {
     verifyBlockchainLedger,
     getBlockchainBlock,
     commitAuditBatch,
-    verifyEntityCommitment
+    verifyEntityCommitment,
+    getPublicAnchorStatus
 } from "../controllers/blockchain.controllers.js";
 import { verifyAdminOrAuditorJWT } from "../middlewares/auth.middleware.js";
 
@@ -17,5 +18,6 @@ router.get("/verify", verifyAdminOrAuditorJWT, verifyBlockchainLedger);
 router.get("/blocks/:blockIndex", verifyAdminOrAuditorJWT, getBlockchainBlock);
 router.post("/audit-batch", verifyAdminOrAuditorJWT, commitAuditBatch);
 router.get("/verify-entity/:entityId", verifyAdminOrAuditorJWT, verifyEntityCommitment);
+router.get("/anchor", verifyAdminOrAuditorJWT, getPublicAnchorStatus);
 
 export default router;

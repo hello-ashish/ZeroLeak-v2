@@ -32,8 +32,7 @@ const NAV = [
             { label: 'Cheating Detection', icon: <ShieldAlert size={18} />, path: '/admin/cheating' },
             { label: 'Batch Review', icon: <PackageOpen size={18} />, path: '/admin/batches', badgeKey: 'pendingBatches' },
             { label: 'Activity & Audit', icon: <ScrollText size={18} />, path: '/admin/activity' },
-            { label: 'Blockchain Ledger', icon: <Blocks size={18} />, path: '/admin/blockchain' },
-            { label: 'Ledger Visualizer', icon: <Map size={18} />, path: '/admin/blockchain-visualizer' },
+            { label: 'Blockchain Center', icon: <Blocks size={18} />, path: '/admin/blockchain' },
         ]
     },
     {

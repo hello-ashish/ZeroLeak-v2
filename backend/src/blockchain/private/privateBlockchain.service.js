@@ -64,3 +64,8 @@ export async function getLedgerHeight() {
         return MOCK_LEDGER.length;
     }
 }
+
+export async function isFabricConnected() {
+    const contract = await getFabricContract();
+    return contract !== null;
+}

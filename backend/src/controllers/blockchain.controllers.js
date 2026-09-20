@@ -1,8 +1,9 @@
-import { getLedgerHistory, getLedgerHeight, getIntegrityRecord } from "../blockchain/private/privateBlockchain.service.js";
+import { getLedgerHistory, getLedgerHeight, getIntegrityRecord, isFabricConnected } from "../blockchain/private/privateBlockchain.service.js";
 import { IntegrityOutbox } from "../models/integrityOutbox.models.js";
 import { AuditLog } from "../models/auditlog.models.js";
 import { buildMerkleRoot } from "../Services/merkle.service.js";
 import { createCommitment, canonicalize, sha256 } from "../blockchain/commitment.service.js";
+import { getPolygonAnchor, isAnchorConnected } from "../blockchain/public/anchor.service.js";
 
 export const getBlockchainLedger = async (req, res) => {
     try {
@@ -17,15 +18,16 @@ export const getBlockchainLedger = async (req, res) => {
 
 export const getBlockchainStatus = async (req, res) => {
     try {
+        const connected = await isFabricConnected();
         const blockCount = await getLedgerHeight();
         return res.status(200).json({
-            connected: true,
+            connected: connected,
             network: "ZEROLEAK-PERMISSIONED-FABRIC-V1",
             blockCount: blockCount,
             latestBlock: blockCount,
             latestHash: "Fabric Managed",
-            integrity: true,
-            verification: { valid: true, reason: "Fabric manages cryptographic integrity via consensus." },
+            integrity: connected,
+            verification: { valid: connected, reason: connected ? "Fabric manages cryptographic integrity via consensus." : "Not connected to Fabric ledger." },
         });
     } catch (error) {
         console.error("Blockchain status error:", error);
@@ -35,6 +37,14 @@ export const getBlockchainStatus = async (req, res) => {
 
 export const verifyBlockchainLedger = async (req, res) => {
     try {
+        const connected = await isFabricConnected();
+        if (!connected) {
+            return res.status(200).json({ 
+                message: "Ledger is unavailable.", 
+                verification: { valid: false, reason: "Not connected to Fabric ledger." } 
+            });
+        }
+        
         // In Fabric, the ledger is inherently verified by peer consensus.
         // For the visualizer, we just confirm connectivity.
         const blockCount = await getLedgerHeight();
@@ -130,5 +140,22 @@ export const verifyEntityCommitment = async (req, res) => {
     } catch (error) {
         console.error("Entity verification error:", error);
         return res.status(500).json({ message: "Error verifying entity commitment." });
+    }
+};
+
+export const getPublicAnchorStatus = async (req, res) => {
+    try {
+        if (!isAnchorConnected()) {
+            return res.status(404).json({ message: "Public anchor not configured or unavailable." });
+        }
+        
+        const anchor = await getPolygonAnchor();
+        if (!anchor) {
+            return res.status(404).json({ message: "Public anchor not found or unavailable." });
+        }
+        return res.status(200).json({ anchor });
+    } catch (error) {
+        console.error("Public anchor fetch error:", error);
+        return res.status(500).json({ message: "Unable to fetch public anchor status." });
     }
 };
