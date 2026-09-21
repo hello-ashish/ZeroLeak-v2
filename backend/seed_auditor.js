@@ -14,6 +14,12 @@ import { AuditLog } from './src/models/auditlog.models.js'
 
 dotenv.config()
 
+if (process.env.NODE_ENV === 'production') {
+    console.error('✗ REFUSED: Seed scripts must not run in production (NODE_ENV=production).');
+    process.exit(1);
+}
+
+
 const DEMO_AUDITOR = {
     auditorId: 'AUD-001',
     name: 'Platform Auditor',

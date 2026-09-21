@@ -5,6 +5,11 @@ import { Student } from './src/models/student.models.js';
 
 dotenv.config();
 
+if (process.env.NODE_ENV === 'production') {
+    console.error('✗ REFUSED: Seed scripts must not run in production (NODE_ENV=production).');
+    process.exit(1);
+}
+
 async function seed() {
     try {
         await mongoose.connect(process.env.MONGODB_URI);

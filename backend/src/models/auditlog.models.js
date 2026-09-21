@@ -46,4 +46,6 @@ const auditLogSchema = new mongoose.Schema({
     }
 }, { timestamps: true })
 
+auditLogSchema.index({ outboxEventId: 1 });
+
 export const AuditLog = mongoose.model("AuditLog", auditLogSchema)

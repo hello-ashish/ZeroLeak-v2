@@ -59,4 +59,8 @@ app.use("/api/anti-cheating", cheatingRouter);
 // Blockchain ledger route
 app.use("/api/blockchain", blockchainRouter);
 
+// ── Global Error Handler (must be LAST middleware) ──────────────────
+import { globalErrorHandler } from "./middlewares/errorHandler.middleware.js"
+app.use(globalErrorHandler);
+
 export { app }
