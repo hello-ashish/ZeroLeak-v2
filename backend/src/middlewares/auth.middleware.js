@@ -7,7 +7,7 @@ import { Auditor } from "../models/auditor.models.js"
 export const verifyAdminJWT = async (req, res, next) => {
     try {
         const authHeader = req.header("Authorization")
-        const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : authHeader
+        let token = req.cookies?.adminToken || (authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : authHeader)
 
         if (!token) {
             return res.status(401).json({ message: "Unauthorized request: No token provided" })
@@ -31,7 +31,7 @@ export const verifyAdminJWT = async (req, res, next) => {
 export const verifyProfessorJWT = async (req, res, next) => {
     try {
         const authHeader = req.header("Authorization")
-        const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : authHeader
+        let token = req.cookies?.profToken || (authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : authHeader)
 
         if (!token) {
             return res.status(401).json({ message: "Unauthorized request: No token provided" })
@@ -44,6 +44,10 @@ export const verifyProfessorJWT = async (req, res, next) => {
             return res.status(401).json({ message: "Unauthorized request: Professor not found" })
         }
 
+        if (professor.isBlocked) {
+            return res.status(403).json({ message: "BLOCKED" })
+        }
+
         req.professor = professor
         next()
     } catch (error) {
@@ -54,7 +58,7 @@ export const verifyProfessorJWT = async (req, res, next) => {
 export const verifyStudentJWT = async (req, res, next) => {
     try {
         const authHeader = req.header("Authorization")
-        const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : authHeader
+        let token = req.cookies?.studentToken || (authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : authHeader)
 
         if (!token) {
             return res.status(401).json({ message: "Unauthorized request: No token provided" })
@@ -81,7 +85,7 @@ export const verifyStudentJWT = async (req, res, next) => {
 export const verifyAuditorJWT = async (req, res, next) => {
     try {
         const authHeader = req.header("Authorization")
-        const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : authHeader
+        let token = req.cookies?.auditorToken || (authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : authHeader)
 
         if (!token) {
             return res.status(401).json({ message: "Unauthorized request: No token provided" })
@@ -104,7 +108,7 @@ export const verifyAuditorJWT = async (req, res, next) => {
 export const verifyAdminOrAuditorJWT = async (req, res, next) => {
     try {
         const authHeader = req.header("Authorization")
-        const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : authHeader
+        let token = req.cookies?.adminToken || req.cookies?.auditorToken || (authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : authHeader)
 
         if (!token) {
             return res.status(401).json({ message: "Unauthorized request: No token provided" })

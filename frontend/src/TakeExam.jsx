@@ -1,3 +1,5 @@
+import { API_BASE_URL } from './api.js';
+import api from './api.js';
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -53,7 +55,7 @@ const TakeExam = () => {
     useEffect(() => {
         const fetchExam = async () => {
             try {
-                const token = localStorage.getItem('studentToken');
+                
                 if (!token) return navigate('/student/login');
 
                 // ── BACKEND-FIRST CHECK ─────────────────────────────────────────────
@@ -62,14 +64,14 @@ const TakeExam = () => {
                 // which means the stale localStorage terminated flag must be ignored.
 
                 // Fetch the exam data
-                const response = await axios.get(`http://localhost:4000/api/students/exams/${id}`, {
-                    headers: { Authorization: `Bearer ${token}` }
+                const response = await api.get(`/students/exams/${id}`, {
+                    
                 });
                 const fetchedExam = response.data.exam;
 
                 // Fetch results from the backend to check attempt status
-                const resultsRes = await axios.get(`http://localhost:4000/api/students/results`, {
-                    headers: { Authorization: `Bearer ${token}` }
+                const resultsRes = await api.get(`/students/results`, {
+                    
                 });
 
                 const existingResult = resultsRes.data.results?.find(r => (r.exam?._id === id || r.exam === id));
@@ -105,8 +107,8 @@ const TakeExam = () => {
                 // the in-memory warningCountRef resets to 0 on every page reload.
                 try {
                     const countRes = await axios.get(
-                        `http://localhost:4000/api/anti-cheating/my-count/${id}`,
-                        { headers: { Authorization: `Bearer ${token}` } }
+                        `${API_BASE_URL}/anti-cheating/my-count/${id}`,
+                        {  }
                     );
                     if (countRes.data?.isBlocked) {
                         const blockReason = "You have been blocked from this exam due to repeated security violations. Please contact your administrator.";
@@ -187,13 +189,13 @@ const TakeExam = () => {
 
         // Call backend termination API
         try {
-            const token = localStorage.getItem('studentToken');
+            
             if (token) {
-                const res = await axios.post('http://localhost:4000/api/anti-cheating/terminate', {
+                const res = await api.post('/anti-cheating/terminate', {
                     examId: id,
                     reason: reason || "Exceeded maximum allowed security violations (3 strikes)",
                     autoBlockStudent: true
-                }, { headers: { Authorization: `Bearer ${token}` } });
+                }, {  });
 
                 if (res.data?.isBlocked) {
                     setIsRestricted(true);
@@ -224,16 +226,16 @@ const TakeExam = () => {
         // The backend enforces the 3-strike rule server-side and returns shouldTerminate
         // if the cumulative count (including previous sessions) has reached the limit.
         try {
-            const token = localStorage.getItem('studentToken');
+            
             if (token) {
-                const incidentRes = await axios.post('http://localhost:4000/api/anti-cheating/incident', {
+                const incidentRes = await api.post('/anti-cheating/incident', {
                     examId: id,
                     violationType: event.type,
                     severity: event.severity,
                     description: event.description,
                     evidenceData: event.details || {},
                     actionTaken: newCount >= MAX_WARNINGS ? 'EXAM_TERMINATED' : 'WARNING'
-                }, { headers: { Authorization: `Bearer ${token}` } });
+                }, {  });
 
                 // Sync frontend counter with the server's authoritative count (clamped to MAX_WARNINGS for display)
                 if (incidentRes.data?.incidentCount > warningCountRef.current) {
@@ -317,13 +319,13 @@ const TakeExam = () => {
         
         const pingServer = async () => {
             try {
-                const token = localStorage.getItem('studentToken');
+                
                 if (!token) return;
-                await axios.post('http://localhost:4000/api/students/ping', {
+                await api.post('/students/ping', {
                     currentExamId: id,
                     warningCount: warningCountRef.current
                 }, {
-                    headers: { Authorization: `Bearer ${token}` }
+                    
                 });
                 const queueKey = `zl_incident_queue_${id}`;
                 const queuedIncidents = JSON.parse(localStorage.getItem(queueKey) || '[]');
@@ -333,8 +335,8 @@ const TakeExam = () => {
                     let allFlushed = true;
                     for (const incident of queuedIncidents) {
                         try {
-                            const incidentRes = await axios.post('http://localhost:4000/api/anti-cheating/incident', incident, {
-                                headers: { Authorization: `Bearer ${token}` }
+                            const incidentRes = await api.post('/anti-cheating/incident', incident, {
+                                
                             });
                             
                             if (incidentRes.data?.incidentCount > warningCountRef.current) {
@@ -457,14 +459,14 @@ const TakeExam = () => {
         setIsSubmitting(true);
         if (timerRef.current) clearInterval(timerRef.current);
         try {
-            const token = localStorage.getItem('studentToken');
-            const response = await axios.post('http://localhost:4000/api/students/results', {
+            
+            const response = await api.post('/students/results', {
                 examId: exam._id,
                 answers: Object.entries(answers).map(([questionId, selectedOptionIndex]) => ({
                     questionId,
                     selectedOptionIndex
                 }))
-            }, { headers: { Authorization: `Bearer ${token}` } });
+            }, {  });
             
             setScore(response.data.result.score);
             localStorage.removeItem(sessionKey);
@@ -609,8 +611,19 @@ const TakeExam = () => {
                     <div style={{ display: 'flex', gap: 16 }}>
                         <button onClick={() => navigate('/student/dashboard')} className="btn btn-secondary" style={{ flex: 1, padding: '16px', borderRadius: 12 }}>Cancel</button>
                         <button onClick={async () => {
-                            setIsStarted(true);
-                            await requestFullscreen();
+                            try {
+                                
+                                await api.post(`/students/exams/${id}/start`, {}, {
+                                    
+                                });
+                                setIsStarted(true);
+                                await requestFullscreen();
+                            } catch (err) {
+                                alert(err.response?.data?.message || "Failed to start exam. Check time limits.");
+                                if (err.response?.status === 403 || err.response?.status === 400) {
+                                    navigate('/student/exams');
+                                }
+                            }
                         }} className="btn btn-primary" style={{ flex: 2, padding: '16px', fontSize: 16, borderRadius: 12 }}>Begin Assessment</button>
                     </div>
                 </div>

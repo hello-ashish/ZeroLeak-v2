@@ -11,8 +11,44 @@ import bcrypt from "bcrypt";
 
 import mongoose from "mongoose";
 
-// ─── Register Auditor (For setup) ─────────────────────────────────────────────
-export const registerAuditor = async (req, res) => {
+// ─── Bootstrap Auditor ────────────────────────────────────────────────────────
+export const bootstrapAuditor = async (req, res) => {
+    try {
+        const { auditorId, email, password, name, bootstrapSecret } = req.body;
+        
+        if (!bootstrapSecret || bootstrapSecret !== process.env.AUDITOR_BOOTSTRAP_SECRET) {
+            return res.status(401).json({ message: "Invalid or missing bootstrap secret" });
+        }
+
+        const auditorCount = await Auditor.countDocuments();
+        if (auditorCount > 0) {
+            return res.status(403).json({ message: "Bootstrap endpoint disabled: Auditor already exists" });
+        }
+
+        if (!auditorId || !email || !password || !name) {
+            return res.status(400).json({ message: "auditorId, name, email, and password are required" });
+        }
+        
+        const auditor = await Auditor.create({ auditorId, email, password, name });
+        const created = await Auditor.findById(auditor._id).select("-password");
+        
+        await AuditLog.create({
+            actor: email,
+            actorRole: "System",
+            action: "AUDITOR_BOOTSTRAPPED",
+            targetType: "Auditor",
+            targetId: auditor._id,
+            targetLabel: email
+        });
+
+        return res.status(201).json({ message: "Auditor bootstrapped successfully", auditor: created });
+    } catch (error) {
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+// ─── Create Auditor ───────────────────────────────────────────────────────────
+export const createAuditor = async (req, res) => {
     try {
         const { auditorId, email, password, name } = req.body;
         if (!auditorId || !email || !password || !name) {
@@ -24,7 +60,17 @@ export const registerAuditor = async (req, res) => {
         }
         const auditor = await Auditor.create({ auditorId, email, password, name });
         const created = await Auditor.findById(auditor._id).select("-password");
-        return res.status(201).json({ message: "Auditor registered successfully", auditor: created });
+        
+        await AuditLog.create({
+            actor: req.admin ? req.admin.email : req.auditor.email,
+            actorRole: req.userRole || "Admin",
+            action: "AUDITOR_CREATED",
+            targetType: "Auditor",
+            targetId: auditor._id,
+            targetLabel: email
+        });
+
+        return res.status(201).json({ message: "Auditor created successfully", auditor: created });
     } catch (error) {
         return res.status(500).json({ message: "Internal server error" });
     }
@@ -41,7 +87,7 @@ export const loginAuditor = async (req, res) => {
         if (!auditor) return res.status(401).json({ message: "Invalid email or password" });
 
         const isPasswordCorrect = await auditor.isPasswordCorrect(password);
-        if (!isPasswordCorrect) return res.status(401).json({ message: "Invalid credentials" });
+        if (!isPasswordCorrect) return res.status(401).json({ message: "Invalid email or password" });
 
         const token = auditor.generateAccessToken();
         const loggedIn = await Auditor.findById(auditor._id).select("-password");
@@ -55,7 +101,8 @@ export const loginAuditor = async (req, res) => {
             targetLabel: email
         });
 
-        return res.status(200).json({ message: "Login successful", token, auditor: loggedIn });
+        const cookieOptions = { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "strict", maxAge: 24 * 60 * 60 * 1000 };
+        return res.status(200).cookie("auditorToken", token, cookieOptions).json({ message: "Login successful", token, auditor: loggedIn });
     } catch (error) {
         return res.status(500).json({ message: "Internal server error" });
     }
@@ -397,4 +444,8 @@ export const getProfessors = async (req, res) => {
     } catch (error) {
         return res.status(500).json({ message: "Error fetching professors" });
     }
+};
+
+export const logoutAuditor = async (req, res) => {
+    return res.status(200).clearCookie("auditorToken", { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "strict" }).json({ message: "Logout successful" });
 };

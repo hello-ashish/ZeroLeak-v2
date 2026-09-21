@@ -1,3 +1,4 @@
+import api from '../../api.js';
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
@@ -12,7 +13,7 @@ const ProfessorDashboardPage = () => {
     const navigate = useNavigate()
 
     useEffect(() => {
-        const token = localStorage.getItem('profToken')
+        
         const profDataString = localStorage.getItem('profData')
 
         if (!token || !profDataString) {
@@ -26,8 +27,8 @@ const ProfessorDashboardPage = () => {
 
     const fetchMyBatches = async (token) => {
         try {
-            const response = await axios.get('http://localhost:4000/api/professor/batches', {
-                headers: { Authorization: `Bearer ${token}` }
+            const response = await api.get('/professor/batches', {
+                
             })
             setBatches(response.data.batches || [])
         } catch (error) {

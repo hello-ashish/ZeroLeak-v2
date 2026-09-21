@@ -1,7 +1,11 @@
 import mongoose from "mongoose"
 
 const resultSchema = new mongoose.Schema({
-
+    attemptId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "ExamAttempt",
+        required: true
+    },
     student: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Student",
@@ -14,34 +18,11 @@ const resultSchema = new mongoose.Schema({
     },
     score: {
         type: Number,
-        required: true
+        default: 0
     },
     totalQuestions: {
         type: Number,
-        required: true
-    },
-    status: {
-        type: String,
-        enum: ["Completed", "Terminated"],
-        default: "Completed"
-    },
-    isTerminated: {
-        type: Boolean,
-        default: false
-    },
-    terminationReason: {
-        type: String,
-        default: null
-    },
-    // Set by Admin to authorize a fresh exam attempt after unblocking.
-    // The old terminated record is preserved for audit; eligibility checks skip it.
-    resetByAdmin: {
-        type: Boolean,
-        default: false
-    },
-    resetByAdminAt: {
-        type: Date,
-        default: null
+        default: 0
     },
     commitmentId: {
         type: String,

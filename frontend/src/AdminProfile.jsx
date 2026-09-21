@@ -1,3 +1,4 @@
+import api from './api.js';
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
@@ -25,11 +26,11 @@ const AdminProfile = () => {
     const handleSubmit = async (e) => {
         e.preventDefault()
         try {
-            const token = localStorage.getItem('adminToken')
+            
             const payload = { email: formData.email }
             if (formData.password) payload.password = formData.password
 
-            const response = await axios.put('http://localhost:4000/api/admin/profile', payload, {
+            const response = await api.put('/admin/profile', payload, {
                 headers: {
                     Authorization: `Bearer ${token}`
                 }

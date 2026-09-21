@@ -1,3 +1,4 @@
+import { API_BASE_URL as API } from '../../api.js';
 import React, { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import axios from 'axios'
@@ -7,8 +8,8 @@ import { EmptyState } from '../../components/SkeletonLoader.jsx'
 import { useToast } from '../../components/Toast.jsx'
 import { ArrowLeft, Clock, Search, Database, Trash2, Users, BarChart3, Info, Plus } from 'lucide-react'
 
-const API = 'http://localhost:4000/api'
-const getToken = () => localStorage.getItem('adminToken')
+
+
 const diffColors = { easy: 'var(--success)', medium: 'var(--warning)', hard: 'var(--danger)' }
 
 export const AdminExamDetailPage = () => {
@@ -33,8 +34,8 @@ export const AdminExamDetailPage = () => {
             // We fetch all exams because there's no single exam endpoint in this app's existing API pattern
             // Or we can try to hit /admin/exams if it exists. Actually, we'll fetch all exams and find it.
             const [examsRes, qsRes] = await Promise.all([
-                axios.get(`${API}/exams`, { headers: { Authorization: `Bearer ${token}` } }),
-                axios.get(`${API}/questions`, { headers: { Authorization: `Bearer ${token}` } })
+                axios.get(`${API}/exams`, {  }),
+                axios.get(`${API}/questions`, {  })
             ])
             const found = examsRes.data.exams.find(e => e._id === id)
             if (!found) throw new Error('Exam not found')

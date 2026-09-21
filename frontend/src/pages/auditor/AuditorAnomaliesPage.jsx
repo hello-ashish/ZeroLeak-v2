@@ -1,3 +1,4 @@
+import { API_BASE_URL as API } from '../../api.js';
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AuditorLayout } from './AuditorLayout.jsx'
@@ -6,8 +7,8 @@ import axios from 'axios'
 import { format } from 'date-fns'
 import { ShieldAlert, RefreshCw, CheckCircle2, Filter } from 'lucide-react'
 
-const API = 'http://localhost:4000/api'
-const getToken = () => localStorage.getItem('auditorToken')
+
+
 
 export default function AuditorAnomaliesPage() {
     const [anomalies, setAnomalies] = useState([])
@@ -23,7 +24,7 @@ export default function AuditorAnomaliesPage() {
         setLoading(true)
         try {
             const res = await axios.get(`${API}/auditor/anomalies`, {
-                headers: { Authorization: `Bearer ${token}` }
+                
             })
             setAnomalies(res.data.anomalies)
         } catch (err) {
@@ -40,7 +41,7 @@ export default function AuditorAnomaliesPage() {
         setScanning(true)
         try {
             await axios.post(`${API}/auditor/anomalies/scan`, {}, {
-                headers: { Authorization: `Bearer ${token}` }
+                
             })
             await fetchAnomalies()
         } catch (err) {
@@ -54,7 +55,7 @@ export default function AuditorAnomaliesPage() {
         const token = getToken()
         try {
             await axios.patch(`${API}/auditor/anomalies/${id}/status`, { status }, {
-                headers: { Authorization: `Bearer ${token}` }
+                
             })
             setAnomalies(prev => prev.map(a => a._id === id ? { ...a, status } : a))
         } catch (err) {

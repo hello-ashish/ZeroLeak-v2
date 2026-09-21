@@ -24,7 +24,7 @@ export async function createCommitment({
     objectVersion = 1,
     commitmentType,
     payload,
-}) {
+}, session = null) {
     const canonicalPayload = canonicalize(payload);
     const payloadString = JSON.stringify(canonicalPayload);
     const canonicalHash = sha256(payloadString);
@@ -45,7 +45,7 @@ export async function createCommitment({
                 status: "PENDING",
             }
         },
-        { upsert: true, new: true }
+        { upsert: true, new: true, session }
     );
 
     return outboxRecord;

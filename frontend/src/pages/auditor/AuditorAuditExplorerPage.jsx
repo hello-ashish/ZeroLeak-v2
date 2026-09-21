@@ -1,3 +1,4 @@
+import { API_BASE_URL as API } from '../../api.js';
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AuditorLayout } from './AuditorLayout.jsx'
@@ -6,8 +7,8 @@ import axios from 'axios'
 import { format } from 'date-fns'
 import { Search, Download } from 'lucide-react'
 
-const API = 'http://localhost:4000/api'
-const getToken = () => localStorage.getItem('auditorToken')
+
+
 
 export default function AuditorAuditExplorerPage() {
     const [searchParams] = useSearchParams()
@@ -33,7 +34,7 @@ export default function AuditorAuditExplorerPage() {
             if (actionFilter) params.set('action', actionFilter)
             if (actorFilter) params.set('actor', actorFilter)
             const res = await axios.get(`${API}/auditor/logs?${params}`, {
-                headers: { Authorization: `Bearer ${token}` }
+                
             })
             setLogs(res.data.logs)
             setTotal(res.data.total)

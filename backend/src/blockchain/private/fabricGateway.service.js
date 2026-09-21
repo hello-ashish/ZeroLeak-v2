@@ -48,11 +48,14 @@ async function newSigner() {
 export async function getFabricContract() {
     if (contract) return contract;
 
+    if (process.env.BLOCKCHAIN_MODE === 'mock') {
+        return null;
+    }
+
     try {
         // We only attempt to connect if the crypto path exists
         if (!fs.existsSync(cryptoPath)) {
-            console.warn(`[Fabric] Crypto path ${cryptoPath} not found. Running without real Fabric network connection.`);
-            return null;
+            throw new Error(`[Fabric] Crypto path ${cryptoPath} not found. Cannot connect to real Fabric network. Failure in production mode.`);
         }
 
         const client = await newGrpcConnection();
@@ -83,6 +86,6 @@ export async function getFabricContract() {
         return contract;
     } catch (error) {
         console.error('[Fabric] Failed to connect to Fabric gateway:', error);
-        return null;
+        throw error;
     }
 }

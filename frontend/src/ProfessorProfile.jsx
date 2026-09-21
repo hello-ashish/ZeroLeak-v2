@@ -1,3 +1,4 @@
+import api from './api.js';
 import React, { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import axios from "axios"
@@ -39,7 +40,7 @@ const ProfessorProfile = () => {
         e.preventDefault()
 
         try {
-            const token = localStorage.getItem('profToken')
+            
             const payload = {
                 name: formData.name,
                 email: formData.email,
@@ -47,8 +48,8 @@ const ProfessorProfile = () => {
                 address: formData.address
             }
 
-            const response = await axios.put('http://localhost:4000/api/professor/profile', payload, {
-                headers: { Authorization: `Bearer ${token}` }
+            const response = await api.put('/professor/profile', payload, {
+                
             })
 
             localStorage.setItem('profData', JSON.stringify(response.data.professor))
@@ -78,14 +79,14 @@ const ProfessorProfile = () => {
         }
 
         try {
-            const token = localStorage.getItem('profToken')
+            
             const payload = {
                 oldPassword: formData.oldPassword,
                 newPassword: formData.password
             }
 
-            await axios.put('http://localhost:4000/api/professor/change-password', payload, {
-                headers: { Authorization: `Bearer ${token}` }
+            await api.put('/professor/change-password', payload, {
+                
             })
 
             // Clear password fields on success

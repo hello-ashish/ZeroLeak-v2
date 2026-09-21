@@ -14,7 +14,7 @@ const cheatingIncidentSchema = new Schema(
         },
         attemptId: {
             type: Schema.Types.ObjectId,
-            ref: "Result",
+            ref: "ExamAttempt",
             default: null,
         },
         violationType: {

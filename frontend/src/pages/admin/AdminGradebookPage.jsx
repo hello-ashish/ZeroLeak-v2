@@ -1,3 +1,4 @@
+import { API_BASE_URL as API } from '../../api.js';
 import React, { useEffect, useState, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import axios from 'axios'
@@ -9,8 +10,8 @@ import { useToast } from '../../components/Toast.jsx'
 import { Download, BarChart3, TrendingUp, Trophy, Search, ChevronRight, GraduationCap, Trash2, CheckSquare } from 'lucide-react'
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar, Cell } from 'recharts'
 
-const API = 'http://localhost:4000/api'
-const getToken = () => localStorage.getItem('adminToken')
+
+
 
 const CHART_COLORS = {
     primary: 'var(--brand-primary)',
@@ -75,7 +76,7 @@ export default function AdminGradebookPage() {
         try {
             await axios.post(`${API}/exams/results/bulk-delete`, {
                 resultIds: Array.from(selectedRows)
-            }, { headers: { Authorization: `Bearer ${token}` } });
+            }, {  });
             toast.success(`Successfully deleted ${selectedRows.size} results`);
             setSelectedRows(new Set());
             setSelectionMode(false);
@@ -113,8 +114,8 @@ export default function AdminGradebookPage() {
         try {
             setLoading(true)
             const [resRes, examRes] = await Promise.all([
-                axios.get(`${API}/exams/results`, { headers: { Authorization: `Bearer ${token}` } }),
-                axios.get(`${API}/exams`, { headers: { Authorization: `Bearer ${token}` } }),
+                axios.get(`${API}/exams/results`, {  }),
+                axios.get(`${API}/exams`, {  }),
             ])
             setResults(resRes.data.results || [])
             setExams(examRes.data.exams || [])

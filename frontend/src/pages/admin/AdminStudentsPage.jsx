@@ -1,3 +1,4 @@
+import { API_BASE_URL as API } from '../../api.js';
 import React, { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
@@ -9,8 +10,8 @@ import { SkeletonTable, EmptyState } from '../../components/SkeletonLoader.jsx'
 import { ScorePill } from '../../components/StatusBadge.jsx'
 import { useToast } from '../../components/Toast.jsx'
 
-const API = 'http://localhost:4000/api'
-const getToken = () => localStorage.getItem('adminToken')
+
+
 
 export default function AdminStudentsPage() {
     const [students, setStudents] = useState([])
@@ -43,9 +44,9 @@ export default function AdminStudentsPage() {
         try {
             if (showLoad) setLoading(true)
             const [stuRes, resRes, liveRes] = await Promise.all([
-                axios.get(`${API}/students`, { headers: { Authorization: `Bearer ${token}` } }),
-                axios.get(`${API}/exams/results`, { headers: { Authorization: `Bearer ${token}` } }),
-                axios.get(`${API}/admin/students/live`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: { liveStudents: [] } }))
+                axios.get(`${API}/students`, {  }),
+                axios.get(`${API}/exams/results`, {  }),
+                axios.get(`${API}/admin/students/live`, {  }).catch(() => ({ data: { liveStudents: [] } }))
             ])
             setStudents(stuRes.data.students || [])
             setResults(resRes.data.results || [])
@@ -68,7 +69,7 @@ export default function AdminStudentsPage() {
         if (!token) return;
         try {
             setBlockingId(id);
-            await axios.post(`${API}/admin/students/${id}/block`, {}, { headers: { Authorization: `Bearer ${token}` } });
+            await axios.post(`${API}/admin/students/${id}/block`, {}, {  });
             toast.success("Student access updated");
             fetchData(false);
             if (selectedStudent && selectedStudent._id === id) {
@@ -189,7 +190,7 @@ export default function AdminStudentsPage() {
         setCreating(true)
         try {
             await axios.post(`${API}/students/register`, form, {
-                headers: { Authorization: `Bearer ${getToken()}` }
+                
             })
             toast.success('Student registered successfully')
             setShowAdd(false)
@@ -207,7 +208,7 @@ export default function AdminStudentsPage() {
         setDeleting(true)
         try {
             await axios.delete(`${API}/admin/students/${deleteTarget._id}`, {
-                headers: { Authorization: `Bearer ${getToken()}` }
+                
             })
             toast.success('Student removed')
             if (selectedStudent?._id === deleteTarget._id) setSelectedStudent(null)
@@ -237,7 +238,7 @@ export default function AdminStudentsPage() {
     const handleBulkDelete = async () => {
         if (!window.confirm(`Are you sure you want to delete ${selectedIds.length} students?`)) return;
         try {
-            await axios.post(`${API}/admin/students/bulk-delete`, { ids: selectedIds }, { headers: { Authorization: `Bearer ${getToken()}` } });
+            await axios.post(`${API}/admin/students/bulk-delete`, { ids: selectedIds }, {  });
             toast.success('Students deleted successfully');
             setSelectedIds([]);
             fetchData();
@@ -248,7 +249,7 @@ export default function AdminStudentsPage() {
 
     const handleBulkBlock = async (block) => {
         try {
-            await axios.post(`${API}/admin/students/bulk-block`, { ids: selectedIds, block }, { headers: { Authorization: `Bearer ${getToken()}` } });
+            await axios.post(`${API}/admin/students/bulk-block`, { ids: selectedIds, block }, {  });
             toast.success(`Students ${block ? 'blocked' : 'unblocked'} successfully`);
             setSelectedIds([]);
             fetchData();
@@ -290,7 +291,7 @@ export default function AdminStudentsPage() {
     const confirmImport = async () => {
         setIsImporting(true);
         try {
-            const res = await axios.post(`${API}/admin/students/bulk-import`, { students: importPreview }, { headers: { Authorization: `Bearer ${getToken()}` } });
+            const res = await axios.post(`${API}/admin/students/bulk-import`, { students: importPreview }, {  });
             toast.success(`Import complete: ${res.data.imported} imported, ${res.data.skipped} skipped.`);
             fetchData();
             setImportPreview(null);

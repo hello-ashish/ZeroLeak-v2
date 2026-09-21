@@ -1,3 +1,4 @@
+import { API_BASE_URL as API } from '../../api.js';
 import React, { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
@@ -7,8 +8,8 @@ import { SkeletonTable, EmptyState } from '../../components/SkeletonLoader.jsx'
 import { useToast } from '../../components/Toast.jsx'
 import { Search, Users, Trash2, AlertTriangle, BookOpen, Clock, Activity, X, Mail, Upload, Download, CheckSquare, Loader2 } from 'lucide-react'
 
-const API = 'http://localhost:4000/api'
-const getToken = () => localStorage.getItem('adminToken')
+
+
 
 export default function AdminProfessorsPage() {
     const [professors, setProfessors] = useState([])
@@ -39,8 +40,8 @@ export default function AdminProfessorsPage() {
         try {
             setLoading(true)
             const [profRes, statsRes] = await Promise.all([
-                axios.get(`${API}/admin/professors`, { headers: { Authorization: `Bearer ${token}` } }),
-                axios.get(`${API}/admin/stats`, { headers: { Authorization: `Bearer ${token}` } })
+                axios.get(`${API}/admin/professors`, {  }),
+                axios.get(`${API}/admin/stats`, {  })
             ]);
             setProfessors(profRes.data.professors || [])
             setStats(statsRes.data.stats || null)
@@ -109,7 +110,7 @@ export default function AdminProfessorsPage() {
         setCreating(true)
         try {
             await axios.post(`${API}/admin/professors`, form, {
-                headers: { Authorization: `Bearer ${getToken()}` }
+                
             })
             toast.success('Professor created successfully')
             setShowAdd(false)
@@ -127,7 +128,7 @@ export default function AdminProfessorsPage() {
         setDeleting(true)
         try {
             await axios.delete(`${API}/admin/professors/${deleteTarget.id}`, {
-                headers: { Authorization: `Bearer ${getToken()}` }
+                
             })
             toast.success('Professor removed')
             if (selectedProf?._id === deleteTarget._id) setSelectedProf(null)
@@ -155,7 +156,7 @@ export default function AdminProfessorsPage() {
     const handleBulkDelete = async () => {
         if (!window.confirm(`Are you sure you want to delete ${selectedIds.length} professors?`)) return;
         try {
-            await axios.post(`${API}/admin/professors/bulk-delete`, { ids: selectedIds }, { headers: { Authorization: `Bearer ${getToken()}` } });
+            await axios.post(`${API}/admin/professors/bulk-delete`, { ids: selectedIds }, {  });
             toast.success('Professors deleted successfully');
             setSelectedIds([]);
             fetchData();
@@ -211,7 +212,7 @@ export default function AdminProfessorsPage() {
         try {
             const res = await axios.post(`${API}/admin/professors/bulk-import`, {
                 professors: importPreview
-            }, { headers: { Authorization: `Bearer ${getToken()}` } });
+            }, {  });
             toast.success(`Imported ${res.data.imported} professors (${res.data.skipped} skipped)`);
             fetchData();
             setImportPreview(null);
@@ -225,7 +226,7 @@ export default function AdminProfessorsPage() {
     const handleToggleBlock = async (prof) => {
         try {
             const res = await axios.post(`${API}/admin/professors/${prof._id}/block`, {}, {
-                headers: { Authorization: `Bearer ${getToken()}` }
+                
             });
             toast.success(res.data.message);
             setSelectedProf(prev => ({ ...prev, isBlocked: res.data.isBlocked }));
@@ -238,7 +239,7 @@ export default function AdminProfessorsPage() {
     const handleBulkBlock = async (block) => {
         try {
             await axios.post(`${API}/admin/professors/bulk-block`, { ids: selectedIds, block }, {
-                headers: { Authorization: `Bearer ${getToken()}` }
+                
             });
             toast.success(`Professors ${block ? 'blocked' : 'unblocked'} successfully`);
             setSelectedIds([]);

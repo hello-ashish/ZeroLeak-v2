@@ -1,3 +1,4 @@
+import { API_BASE_URL as API } from '../../api.js';
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
@@ -5,8 +6,8 @@ import { AdminLayout } from './AdminLayout.jsx'
 import { useToast } from '../../components/Toast.jsx'
 import { User, Palette, Lock, Info, Moon, Sun, AlertTriangle, Cpu, Globe, Database, Building2 } from 'lucide-react'
 
-const API = 'http://localhost:4000/api'
-const getToken = () => localStorage.getItem('adminToken')
+
+
 
 export default function AdminSettingsPage() {
     const [activeSection, setActiveSection] = useState('profile')
@@ -51,7 +52,7 @@ export default function AdminSettingsPage() {
                 return
             }
             await axios.put(`${API}/admin/profile`, body, {
-                headers: { Authorization: `Bearer ${getToken()}` }
+                
             })
             toast.success('Profile updated successfully')
             setPassword('')

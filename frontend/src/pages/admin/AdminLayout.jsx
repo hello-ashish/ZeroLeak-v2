@@ -1,3 +1,4 @@
+import api from '../../api.js';
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { LayoutDashboard, ClipboardList, Database, BarChart3, GraduationCap, Users, PackageOpen, ScrollText, Blocks, Settings, Search, LogOut, ChevronDown, Command, Bell, Plus, RefreshCw, ShieldAlert, Map } from 'lucide-react'
@@ -67,10 +68,14 @@ export const AdminLayout = ({ children, pendingBatchCount = 0 }) => {
         return () => window.removeEventListener('keydown', handler)
     }, [])
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        try {
+            await api.post('/admin/logout');
+        } catch(e) {}
+
         localStorage.removeItem('adminToken')
         localStorage.removeItem('adminData')
-        navigate('/')
+                navigate('/');
     }
 
     const initials = (adminData.email || 'A')

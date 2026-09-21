@@ -1,3 +1,4 @@
+import { API_BASE_URL as API } from '../../api.js';
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { AuditorLayout } from './AuditorLayout.jsx'
@@ -5,8 +6,8 @@ import { SkeletonRow } from '../../components/SkeletonLoader.jsx'
 import axios from 'axios'
 import { format } from 'date-fns'
 
-const API = 'http://localhost:4000/api'
-const getToken = () => localStorage.getItem('auditorToken')
+
+
 
 export default function AuditorPeoplePage() {
     const [students, setStudents] = useState([])
@@ -25,10 +26,10 @@ export default function AuditorPeoplePage() {
             setLoading(true)
             try {
                 if (tab === 'students') {
-                    const res = await axios.get(`${API}/auditor/students`, { headers: { Authorization: `Bearer ${token}` } })
+                    const res = await axios.get(`${API}/auditor/students`, {  })
                     setStudents(res.data.students)
                 } else {
-                    const res = await axios.get(`${API}/auditor/professors`, { headers: { Authorization: `Bearer ${token}` } })
+                    const res = await axios.get(`${API}/auditor/professors`, {  })
                     setProfessors(res.data.professors)
                 }
             } catch (err) {

@@ -1,3 +1,5 @@
+import { IntegrityOutbox } from "../models/integrityOutbox.models.js";
+import mongoose from "mongoose";
 import { Professor } from "../models/professor.models.js";
 import { Admin } from "../models/admin.models.js";
 import { Batch } from "../models/batch.models.js";
@@ -22,8 +24,38 @@ const logAction = async ({ actor, actorRole = "Admin", action, targetType, targe
     }
 };
 
-// ─── Register Admin ───────────────────────────────────────────────────────────
-export const registerAdmin = async (req, res) => {
+// ─── Bootstrap Admin ──────────────────────────────────────────────────────────
+export const bootstrapAdmin = async (req, res) => {
+    try {
+        const { adminId, email, password, bootstrapSecret } = req.body;
+        
+        if (!bootstrapSecret || bootstrapSecret !== process.env.ADMIN_BOOTSTRAP_SECRET) {
+            return res.status(401).json({ message: "Invalid or missing bootstrap secret" });
+        }
+
+        const adminCount = await Admin.countDocuments();
+        if (adminCount > 0) {
+            return res.status(403).json({ message: "Bootstrap endpoint disabled: Admin already exists" });
+        }
+
+        if (!adminId || !email || !password) {
+            return res.status(400).json({ message: "adminId, email, and password are required" });
+        }
+        
+        const admin = await Admin.create({ adminId, email, password });
+        const createdAdmin = await Admin.findById(admin._id).select("-password");
+        
+        await logAction({ actor: email, action: "ADMIN_BOOTSTRAPPED", targetType: "Admin", targetId: admin._id, targetLabel: email });
+        
+        return res.status(201).json({ message: "Admin bootstrapped successfully", admin: createdAdmin });
+    } catch (error) {
+        console.error("Admin Bootstrap Error:", error.message);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+// ─── Create Admin ───────────────────────────────────────────────────────────
+export const createAdmin = async (req, res) => {
     try {
         const { adminId, email, password } = req.body;
         if (!adminId || !email || !password) {
@@ -35,7 +67,10 @@ export const registerAdmin = async (req, res) => {
         }
         const admin = await Admin.create({ adminId, email, password });
         const createdAdmin = await Admin.findById(admin._id).select("-password");
-        return res.status(201).json({ message: "Admin registered successfully", admin: createdAdmin });
+        
+        await logAction({ actor: req.admin?.email, action: "ADMIN_CREATED", targetType: "Admin", targetId: admin._id, targetLabel: email });
+        
+        return res.status(201).json({ message: "Admin created successfully", admin: createdAdmin });
     } catch (error) {
         console.error("Admin Registration Error:", error.message);
         return res.status(500).json({ message: "Internal server error" });
@@ -52,13 +87,14 @@ export const loginAdmin = async (req, res) => {
         const admin = await Admin.findOne({ email });
         if (!admin) return res.status(401).json({ message: "Invalid email or password" });
         const isPasswordCorrect = await admin.isPasswordCorrect(password);
-        if (!isPasswordCorrect) return res.status(401).json({ message: "Invalid credentials" });
+        if (!isPasswordCorrect) return res.status(401).json({ message: "Invalid email or password" });
         const token = admin.generateAccessToken();
         const loggedInAdmin = await Admin.findById(admin._id).select("-password");
 
         await logAction({ actor: email, action: "ADMIN_LOGIN", targetType: "Admin", targetId: admin._id, targetLabel: email });
 
-        return res.status(200).json({ message: "Login successful", token, admin: loggedInAdmin });
+        const cookieOptions = { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "strict", maxAge: 24 * 60 * 60 * 1000 };
+        return res.status(200).cookie("adminToken", token, cookieOptions).json({ message: "Login successful", token, admin: loggedInAdmin });
     } catch (error) {
         console.error("Admin Login Error:", error.message);
         return res.status(500).json({ message: "Internal server error" });
@@ -174,8 +210,21 @@ export const reviewBatch = async (req, res) => {
         if (!batch) return res.status(404).json({ message: "Batch not found" });
 
         if (action === 'Accept') {
-            if (batch.status === 'Accepted' && batch.blockchainBlockHash) {
-                return res.status(400).json({ message: 'Batch is already accepted and committed to the blockchain ledger.' });
+            if (batch.status === 'Accepted') {
+                if (batch.commitmentId) {
+                    const outbox = await IntegrityOutbox.findOne({ eventId: batch.commitmentId });
+                    if (outbox) {
+                        if (outbox.status === 'FAILED') {
+                            outbox.status = 'PENDING';
+                            outbox.retryCount = 0;
+                            outbox.lastError = null;
+                            await outbox.save();
+                            return res.status(200).json({ message: 'Batch commitment retry initiated.', batch, outboxStatus: outbox.status });
+                        }
+                        return res.status(200).json({ message: `Batch is already accepted. Commitment status: ${outbox.status}`, batch, outboxStatus: outbox.status });
+                    }
+                }
+                return res.status(200).json({ message: 'Batch is already accepted.', batch });
             }
 
             if (!batch.questions || batch.questions.length === 0) {
@@ -207,33 +256,58 @@ export const reviewBatch = async (req, res) => {
                 };
             });
 
-            const insertedQuestions = await Question.insertMany(questionsToInsert);
-            const questionHashes = insertedQuestions.map((question) => question.contentHash);
-            const merkleRoot = buildMerkleRoot(questionHashes);
-
-            let commitment;
+            const session = await mongoose.startSession();
+            session.startTransaction();
             try {
-                commitment = await createCommitment({
+                const bulkOps = questionsToInsert.map(q => ({
+                    updateOne: {
+                        filter: { contentHash: q.contentHash },
+                        update: { 
+                            $setOnInsert: {
+                                encryptedContent: q.encryptedContent,
+                                difficultyLevel: q.difficultyLevel,
+                                subject: q.subject,
+                                topic: q.topic,
+                                createdBy: q.createdBy
+                            },
+                            $addToSet: { batchIds: batch._id }
+                        },
+                        upsert: true
+                    }
+                }));
+
+                await Question.bulkWrite(bulkOps, { session });
+
+                const questionHashes = questionsToInsert.map((question) => question.contentHash);
+                const merkleRoot = buildMerkleRoot(questionHashes);
+
+                const commitment = await createCommitment({
                     objectType: "Batch",
                     objectId: batch._id,
                     commitmentType: "QUESTION_BATCH",
                     payload: {
                         subject: batch.subject,
-                        questionCount: insertedQuestions.length,
+                        questionCount: questionsToInsert.length,
                         merkleRoot,
                         actorId: req.admin?._id,
                     }
-                });
-            } catch (blockchainError) {
-                await Question.deleteMany({ _id: { $in: insertedQuestions.map((question) => question._id) } });
-                throw new Error(`Batch approval rolled back: blockchain commitment failed (${blockchainError.message})`);
-            }
+                }, session);
 
-            batch.merkleRoot = merkleRoot;
-            batch.commitmentId = commitment.eventId;
-            batch.commitmentHash = commitment.canonicalHash;
-            batch.status = 'Accepted';
-            batch.adminMessage = 'Batch Approved, integrity committed to blockchain ledger';
+                batch.merkleRoot = merkleRoot;
+                batch.commitmentId = commitment.eventId;
+                batch.commitmentHash = commitment.canonicalHash;
+                batch.status = 'Accepted';
+                batch.adminMessage = 'Batch Approved, integrity committed to blockchain ledger';
+                
+                await batch.save({ session });
+                
+                await session.commitTransaction();
+            } catch (error) {
+                await session.abortTransaction();
+                throw error;
+            } finally {
+                session.endSession();
+            }
             await logAction({ actor: req.admin?.email, action: "BATCH_APPROVED", targetType: "Batch", targetId: batch._id, targetLabel: batch.title });
         } else if (action === 'Reject') {
             batch.status = 'Rejected';
@@ -271,7 +345,31 @@ export const deleteBatch = async (req, res) => {
                 };
                 return hashQuestionContent(sensitiveContent);
             });
-            await Question.deleteMany({ contentHash: { $in: contentHashes } });
+            await Question.updateMany(
+                { contentHash: { $in: contentHashes } },
+                { $pull: { batchIds: batchId } }
+            );
+
+            const orphanedQuestions = await Question.find({ 
+                contentHash: { $in: contentHashes }, 
+                batchIds: { $size: 0 } 
+            }).select('_id');
+
+            const orphanedIds = orphanedQuestions.map(q => q._id);
+
+            if (orphanedIds.length > 0) {
+                const exams = await Exam.find({ questions: { $in: orphanedIds } }).select('questions');
+                const usedQuestionIds = new Set();
+                exams.forEach(exam => {
+                    exam.questions.forEach(qid => usedQuestionIds.add(qid.toString()));
+                });
+
+                const idsToDelete = orphanedIds.filter(id => !usedQuestionIds.has(id.toString()));
+                
+                if (idsToDelete.length > 0) {
+                    await Question.deleteMany({ _id: { $in: idsToDelete } });
+                }
+            }
         }
 
         batch.isDeletedByAdmin = true;
@@ -750,4 +848,7 @@ export const bulkImportStudents = async (req, res) => {
         console.error("Error bulk importing students: ", error);
         return res.status(500).json({ message: "Internal server error during import" });
     }
+};
+export const logoutAdmin = async (req, res) => {
+    return res.status(200).clearCookie("adminToken", { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "strict" }).json({ message: "Logout successful" });
 };

@@ -1,7 +1,9 @@
 import { Router } from "express";
 import {
-    registerAuditor,
+    createAuditor,
+    bootstrapAuditor,
     loginAuditor,
+    logoutAuditor,
     getDashboardMetrics,
     getAuditLogs,
     getAnomalies,
@@ -11,13 +13,18 @@ import {
     getStudents,
     getProfessors
 } from "../controllers/auditor.controllers.js";
-import { verifyAuditorJWT } from "../middlewares/auth.middleware.js";
+import { verifyAuditorJWT, verifyAdminOrAuditorJWT } from "../middlewares/auth.middleware.js";
+import { authLimiter } from "../middlewares/rateLimiter.middleware.js";
 
 const router = Router();
 
 // ─── Public Routes ────────────────────────────────────────────────────────────
-router.route("/register").post(registerAuditor);
-router.route("/login").post(loginAuditor);
+router.route("/bootstrap").post(authLimiter, bootstrapAuditor);
+router.route("/login").post(authLimiter, loginAuditor);
+router.route("/logout").post(logoutAuditor);
+
+// ─── Protected Routes (Creation) ──────────────────────────────────────────────
+router.route("/auditors").post(verifyAdminOrAuditorJWT, authLimiter, createAuditor);
 
 // ─── Protected Routes (Read-Only & Auditor Specific) ──────────────────────────
 router.use(verifyAuditorJWT); // Apply to all below

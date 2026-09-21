@@ -1,9 +1,10 @@
-import { Router } from "express"
+import express, { Router } from "express"
 import {
     createProfessor,
     getAllProfessors,
     deleteProfessor,
-    registerAdmin,
+    createAdmin,
+    bootstrapAdmin,
     loginAdmin,
     updateAdminProfile,
     getBatches,
@@ -24,17 +25,22 @@ import {
     bulkImportProfessors,
     bulkDeleteStudents,
     bulkBlockStudents,
-    bulkImportStudents
+    bulkImportStudents,
+    logoutAdmin
 } from "../controllers/admin.controllers.js"
 import { verifyAdminJWT } from "../middlewares/auth.middleware.js"
+import { authLimiter } from "../middlewares/rateLimiter.middleware.js"
 
 const router = Router()
+const bulkParser = express.json({ limit: "50mb" })
 
 // ─── Public Routes ────────────────────────────────────────────────────────────
-router.route("/register").post(registerAdmin)
-router.route("/login").post(loginAdmin)
+router.route("/bootstrap").post(authLimiter, bootstrapAdmin)
+router.route("/login").post(authLimiter, loginAdmin)
+router.route("/logout").post(logoutAdmin)
 
 // ─── Protected Routes ─────────────────────────────────────────────────────────
+router.route("/admins").post(verifyAdminJWT, authLimiter, createAdmin)
 
 // Dashboard Stats
 router.route("/stats").get(verifyAdminJWT, getDashboardStats)
@@ -46,7 +52,7 @@ router.route("/audit-logs").get(verifyAdminJWT, getAuditLogs)
 router.route("/profile").put(verifyAdminJWT, updateAdminProfile)
 
 // Professor Management
-router.route("/professors/bulk-import").post(verifyAdminJWT, bulkImportProfessors)
+router.route("/professors/bulk-import").post(verifyAdminJWT, bulkParser, bulkImportProfessors)
 router.route("/professors/bulk-delete").post(verifyAdminJWT, bulkDeleteProfessors)
 router.route("/professors/bulk-block").post(verifyAdminJWT, bulkBlockProfessors)
 router.route("/professors").post(verifyAdminJWT, createProfessor)
@@ -55,7 +61,7 @@ router.route("/professors/:id/block").post(verifyAdminJWT, toggleBlockProfessor)
 router.route("/professors/:id").delete(verifyAdminJWT, deleteProfessor)
 
 // Student Management
-router.route("/students/bulk-import").post(verifyAdminJWT, bulkImportStudents)
+router.route("/students/bulk-import").post(verifyAdminJWT, bulkParser, bulkImportStudents)
 router.route("/students/bulk-delete").post(verifyAdminJWT, bulkDeleteStudents)
 router.route("/students/bulk-block").post(verifyAdminJWT, bulkBlockStudents)
 router.route("/students/live").get(verifyAdminJWT, getLiveStudents)

@@ -1,3 +1,4 @@
+import api from '../../api.js';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -11,12 +12,12 @@ const StudentResultsPage = () => {
     const navigate = useNavigate();
 
     useEffect(() => {
-        const token = localStorage.getItem('studentToken');
+        
         if (!token) return navigate('/student/login');
 
         const fetchData = async () => {
             try {
-                const response = await axios.get('http://localhost:4000/api/students/results', { headers: { Authorization: `Bearer ${token}` } });
+                const response = await api.get('/students/results', {  });
                 setResults(response.data.results || []);
             } catch (error) {
                 console.error("Failed to fetch results", error);

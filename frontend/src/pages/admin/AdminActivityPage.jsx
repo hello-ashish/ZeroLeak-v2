@@ -1,3 +1,4 @@
+import { API_BASE_URL as API } from '../../api.js';
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
@@ -7,8 +8,8 @@ import { SkeletonTable, EmptyState } from '../../components/SkeletonLoader.jsx'
 import { useToast } from '../../components/Toast.jsx'
 import { Key, UserPlus, UserMinus, CheckCircle2, XCircle, AlertTriangle, PlayCircle, Trash2, Edit3, MapPin, RefreshCw, ScrollText, Download, ShieldCheck } from 'lucide-react'
 
-const API = 'http://localhost:4000/api'
-const getToken = () => localStorage.getItem('adminToken')
+
+
 
 const getActionDetails = (action) => {
     const map = {
@@ -43,7 +44,7 @@ export default function AdminActivityPage() {
         try {
             setLoading(true)
             const res = await axios.get(`${API}/admin/audit-logs?page=${p}&limit=${LIMIT}`, {
-                headers: { Authorization: `Bearer ${token}` }
+                
             })
             setLogs(res.data.logs || [])
             setTotal(res.data.total || 0)

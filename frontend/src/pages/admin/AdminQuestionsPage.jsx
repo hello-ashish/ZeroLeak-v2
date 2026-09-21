@@ -1,3 +1,4 @@
+import { API_BASE_URL as API } from '../../api.js';
 import React, { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
@@ -7,8 +8,8 @@ import { SkeletonTable, EmptyState } from '../../components/SkeletonLoader.jsx'
 import { useToast } from '../../components/Toast.jsx'
 import { Database, CircleDot, Search, PackageOpen, X, BarChart3, Clock, AlertTriangle, CheckCircle2, Trash2 } from 'lucide-react'
 
-const API = 'http://localhost:4000/api'
-const getToken = () => localStorage.getItem('adminToken')
+
+
 
 export default function AdminQuestionsPage() {
     const [questions, setQuestions] = useState([])
@@ -25,7 +26,7 @@ export default function AdminQuestionsPage() {
         if (!token) { navigate('/admin/login'); return }
         try {
             setLoading(true)
-            const res = await axios.get(`${API}/questions`, { headers: { Authorization: `Bearer ${token}` } })
+            const res = await axios.get(`${API}/questions`, {  })
 
             setQuestions(res.data.questions || [])
         } catch {

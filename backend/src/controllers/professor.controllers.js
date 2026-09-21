@@ -21,7 +21,7 @@ export const loginProfessor = async (req, res) => {
         })
 
         if (!professor) {
-            return res.status(404).json({ message: "Professor not found" })
+            return res.status(401).json({ message: "Invalid ID/Email or password" })
         }
 
         if (professor.isBlocked) {
@@ -32,7 +32,7 @@ export const loginProfessor = async (req, res) => {
         const isPasswordCorrect = await professor.isPasswordCorrect(password)
 
         if (!isPasswordCorrect) {
-            return res.status(401).json({ message: "Invalid Password" })
+            return res.status(401).json({ message: "Invalid ID/Email or password" })
         }
 
         // generate JWT token for the professor
@@ -83,7 +83,10 @@ export const addQuestionToBatch = async (req, res) => {
         const { batchId } = req.params
         const questionData = req.body
 
-        const batch = await Batch.findById(batchId)
+        const batch = await Batch.findOne({ _id: batchId, createdBy: req.professor._id })
+        if (!batch) {
+            return res.status(404).json({ message: "Batch not found." })
+        }
         if(batch.status !== 'Draft' && batch.status !== 'MarkForReview') {
             return res.status(400).json({ message: "Can only edit Draft or Review batches." })
         }
@@ -104,7 +107,7 @@ export const bulkAddQuestionsToBatch = async (req, res) => {
         const { batchId } = req.params;
         const { questions } = req.body; // array of questions
 
-        const batch = await Batch.findById(batchId);
+        const batch = await Batch.findOne({ _id: batchId, createdBy: req.professor._id });
         if (!batch) {
             return res.status(404).json({ message: "Batch not found." });
         }
@@ -136,7 +139,10 @@ export const editQuestionInBatch = async (req, res) => {
         const { batchId, questionId } = req.params
         const questionData = req.body
 
-        const batch = await Batch.findById(batchId)
+        const batch = await Batch.findOne({ _id: batchId, createdBy: req.professor._id })
+        if (!batch) {
+            return res.status(404).json({ message: "Batch not found." })
+        }
         if(batch.status !== 'Draft' && batch.status !== 'MarkForReview') {
             return res.status(400).json({ message: "Can only edit Draft or Review batches." })
         }
@@ -161,7 +167,10 @@ export const deleteQuestionFromBatch = async (req, res) => {
     try {
         const { batchId, questionId } = req.params
 
-        const batch = await Batch.findById(batchId)
+        const batch = await Batch.findOne({ _id: batchId, createdBy: req.professor._id })
+        if (!batch) {
+            return res.status(404).json({ message: "Batch not found." })
+        }
         if(batch.status !== 'Draft' && batch.status !== 'MarkForReview') {
             return res.status(400).json({ message: "Can only edit Draft or Review batches." })
         }
@@ -179,8 +188,14 @@ export const deleteQuestionFromBatch = async (req, res) => {
 export const submitBatch = async (req, res) => {
     try {
         const { batchId } = req.params
-        const batch = await Batch.findByIdAndUpdate(batchId, {
-            status: "Submitted" }, {new: true})
+        const batch = await Batch.findOneAndUpdate(
+            { _id: batchId, createdBy: req.professor._id },
+            { status: "Submitted" }, 
+            { new: true }
+        )
+        if (!batch) {
+            return res.status(404).json({ message: "Batch not found." })
+        }
         res.status(200).json({ message: "Batch submitted to Admin", batch })
     } catch (error) {
         res.status(500).json({ message: error.message })
@@ -263,3 +278,6 @@ export const changeProfessorPassword = async (req, res) => {
          return res.status(500).json({ message: "Error changing password", error: error.message })
     }
 }
+export const logoutProfessor = async (req, res) => {
+    return res.status(200).clearCookie("profToken", { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "strict" }).json({ message: "Logout successful" });
+};

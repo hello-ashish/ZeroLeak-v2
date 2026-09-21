@@ -1,3 +1,4 @@
+import { API_BASE_URL as API } from '../../api.js';
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -10,8 +11,8 @@ import {
     Filter, RefreshCw, Eye, Unlock, ShieldCheck, ChevronLeft, ChevronRight, FileText, UserCheck
 } from 'lucide-react';
 
-const API = 'http://localhost:4000/api';
-const getToken = () => localStorage.getItem('adminToken');
+;
+
 
 export default function AdminCheatingDetection() {
     const navigate = useNavigate();
@@ -79,7 +80,7 @@ export default function AdminCheatingDetection() {
             if (statusFilter) url += `&reviewStatus=${statusFilter}`;
 
             const res = await axios.get(url, {
-                headers: { Authorization: `Bearer ${token}` }
+                
             });
 
             setIncidents(res.data.incidents || []);
@@ -118,7 +119,7 @@ export default function AdminCheatingDetection() {
             if (searchQuery) url += `&search=${encodeURIComponent(searchQuery)}`;
 
             const res = await axios.get(url, {
-                headers: { Authorization: `Bearer ${token}` }
+                
             });
 
             setBlockedStudents(res.data.blockedStudents || []);
@@ -156,7 +157,7 @@ export default function AdminCheatingDetection() {
             if (unblockedSearchQuery) url += `&search=${encodeURIComponent(unblockedSearchQuery)}`;
 
             const res = await axios.get(url, {
-                headers: { Authorization: `Bearer ${token}` }
+                
             });
 
             setUnblockedStudents(res.data.unblockedStudents || []);
@@ -206,7 +207,7 @@ export default function AdminCheatingDetection() {
         try {
             setUnblockingId(studentId);
             const res = await axios.post(`${API}/anti-cheating/unblock/${studentId}`, {}, {
-                headers: { Authorization: `Bearer ${token}` }
+                
             });
 
             const unlockedStudentName = res.data?.student?.name || selectedStudent?.name || 'Student';
@@ -249,7 +250,7 @@ export default function AdminCheatingDetection() {
         try {
             setAuthorizingAttemptId(examId);
             const res = await axios.post(`${API}/anti-cheating/authorize-attempt/${studentId}/${examId}`, {}, {
-                headers: { Authorization: `Bearer ${token}` }
+                
             });
 
             toast.success(res.data?.message || "New attempt authorized successfully");
@@ -287,7 +288,7 @@ export default function AdminCheatingDetection() {
 
         try {
             const res = await axios.get(`${API}/anti-cheating/terminated-exams/${studentId}`, {
-                headers: { Authorization: `Bearer ${token}` }
+                
             });
 
             const terminatedExams = res.data?.terminatedExams || [];

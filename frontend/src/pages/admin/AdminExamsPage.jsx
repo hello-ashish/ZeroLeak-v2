@@ -1,3 +1,4 @@
+import { API_BASE_URL as API } from '../../api.js';
 import React, { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
@@ -8,8 +9,8 @@ import { SkeletonTable, EmptyState } from '../../components/SkeletonLoader.jsx'
 import { useToast } from '../../components/Toast.jsx'
 import { Search, ClipboardList, Play, Square, Trash2, Plus, Clock, Users, ArrowRight, Calendar } from 'lucide-react'
 
-const API = 'http://localhost:4000/api'
-const getToken = () => localStorage.getItem('adminToken')
+
+
 
 const TABS = ['All', 'Draft', 'Scheduled', 'Live', 'Completed', 'Archived']
 
@@ -29,7 +30,7 @@ export default function AdminExamsPage() {
         if (!token) { navigate('/admin/login'); return }
         try {
             setLoading(true)
-            const res = await axios.get(`${API}/exams`, { headers: { Authorization: `Bearer ${token}` } })
+            const res = await axios.get(`${API}/exams`, {  })
             setExams(res.data.exams || [])
         } catch {
             toast.error('Failed to load exams')
@@ -58,7 +59,7 @@ export default function AdminExamsPage() {
         setDeleting(true)
         try {
             await axios.delete(`${API}/admin/exams/${deleteTarget._id}`, {
-                headers: { Authorization: `Bearer ${getToken()}` }
+                
             })
             toast.success('Exam deleted')
             if (selectedExam?._id === deleteTarget._id) setSelectedExam(null)
@@ -74,7 +75,7 @@ export default function AdminExamsPage() {
     const handleStatusChange = async (exam, newStatus) => {
         try {
             await axios.patch(`${API}/admin/exams/${exam._id}/status`, { status: newStatus }, {
-                headers: { Authorization: `Bearer ${getToken()}` }
+                
             })
             toast.success(`Exam ${newStatus.toLowerCase()}`)
             fetchData()
@@ -88,7 +89,7 @@ export default function AdminExamsPage() {
         try {
             const newReleaseStatus = !exam.isResultReleased;
             await axios.patch(`${API}/admin/exams/${exam._id}/release-results`, { isResultReleased: newReleaseStatus }, {
-                headers: { Authorization: `Bearer ${getToken()}` }
+                
             })
             toast.success(`Results ${newReleaseStatus ? 'released' : 'hidden'} successfully`)
             fetchData()

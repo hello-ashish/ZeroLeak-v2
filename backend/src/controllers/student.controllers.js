@@ -1,6 +1,7 @@
 import { Student } from "../models/student.models.js"
 import { Exam } from "../models/exam.models.js"
 import { Result } from "../models/result.models.js";
+import { ExamAttempt } from "../models/examAttempt.models.js";
 import { CheatingIncident } from "../models/cheatingIncident.models.js";
 import { AuditLog } from "../models/auditlog.models.js";
 
@@ -38,14 +39,15 @@ export const loginStudent = async (req, res) => {
         const { email, password } = req.body;
         if (!email || !password) return res.status(400).json({ message: "Email and password required" });
         const student = await Student.findOne({ email });
-        if (!student) return res.status(404).json({ message: "Student not found" });
+        if (!student) return res.status(401).json({ message: "Invalid email or password" });
         if (student.isBlocked) return res.status(403).json({ message: "Your account has been restricted by an administrator." });
         
         const isPasswordValid = await student.isPasswordCorrect(password);
-        if (!isPasswordValid) return res.status(401).json({ message: "Invalid credentials" });
+        if (!isPasswordValid) return res.status(401).json({ message: "Invalid email or password" });
         const token = student.generateAccessToken();
         const loggedInStudent = await Student.findById(student._id).select("-password");
-        return res.status(200).json({ message: "Login successful", token, student: loggedInStudent });
+        const cookieOptions = { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "strict", maxAge: 24 * 60 * 60 * 1000 };
+        return res.status(200).cookie("studentToken", token, cookieOptions).json({ message: "Login successful", token, student: loggedInStudent });
     } catch (error) {
         return res.status(500).json({ message: "Error logging in", error: error.message });
     }
@@ -71,21 +73,19 @@ export const pingSession = async (req, res) => {
             
             if (exam) {
                 // Terminate attempt if not already terminated
-                let result = await Result.findOne({ student: student._id, exam: currentExamId, resetByAdmin: { $ne: true } });
-                if (!result || !result.isTerminated) {
-                    if (result) {
-                        result.status = "Terminated";
-                        result.isTerminated = true;
-                        result.terminationReason = "Auto-terminated via telemetry ping: exceeded maximum security violations.";
-                        await result.save();
+                let attempt = await ExamAttempt.findOne({ student: student._id, exam: currentExamId, resetByAdmin: { $ne: true } });
+                if (!attempt || attempt.status !== "Terminated") {
+                    if (attempt) {
+                        attempt.status = "Terminated";
+                        attempt.terminationReason = "Auto-terminated via telemetry ping: exceeded maximum security violations.";
+                        await attempt.save();
                     } else {
-                        result = await Result.create({
+                        attempt = await ExamAttempt.create({
                             student: student._id,
                             exam: currentExamId,
-                            score: 0,
-                            totalQuestions: exam.questions ? exam.questions.length : 0,
                             status: "Terminated",
-                            isTerminated: true,
+                            startedAt: new Date(),
+                            expiresAt: new Date(),
                             terminationReason: "Auto-terminated via telemetry ping: exceeded maximum security violations."
                         });
                     }
@@ -94,7 +94,7 @@ export const pingSession = async (req, res) => {
                     const incident = await CheatingIncident.create({
                         studentId: student._id,
                         examId: currentExamId,
-                        attemptId: result._id,
+                        attemptId: attempt._id,
                         violationType: "EXAM_TERMINATION",
                         severity: "Critical",
                         description: "Exam attempt terminated via heartbeat telemetry due to missing incident logs.",
@@ -163,7 +163,7 @@ export const pingSession = async (req, res) => {
 export const getAvailableExams = async (req, res) => {
     try {
         // We fetch ALL exams, and we use .populate to inject the Admin's email into the "createdBy" field!
-        const exams = await Exam.find().populate("createdBy", "email").sort({ createdAt: -1 });
+        const exams = await Exam.find({ status: { $in: ["Scheduled", "Live", "Completed"] } }).populate("createdBy", "email").sort({ createdAt: -1 });
         return res.status(200).json({ exams });
     } catch (error) {
         return res.status(500).json({ message: "Error fetching exams", error: error.message });
@@ -193,6 +193,17 @@ export const getExamById = async (req, res) => {
             return res.status(404).json({
                 message: "Exam not found"
             })
+        }
+
+        const now = new Date();
+        if (exam.status === "Draft" || exam.status === "Archived") {
+            return res.status(403).json({ message: "Exam is not available." });
+        }
+        if (exam.status === "Scheduled" && exam.scheduledAt && now < new Date(exam.scheduledAt)) {
+             return res.status(403).json({ message: "Exam has not started yet." });
+        }
+        if (exam.status === "Completed" || (exam.endsAt && now >= new Date(exam.endsAt))) {
+             return res.status(403).json({ message: "Exam has already ended." });
         }
 
         // Protected exams must have a Merkle root
@@ -310,6 +321,53 @@ export const getExamById = async (req, res) => {
     }
 }
 
+// 5b. Start Exam Attempt
+export const startExam = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const exam = await Exam.findById(id);
+
+        if (!exam) {
+            return res.status(404).json({ message: "Exam not found." });
+        }
+
+        const now = new Date();
+        if (exam.status === "Draft" || exam.status === "Archived") {
+            return res.status(403).json({ message: "Exam is not available." });
+        }
+        if (exam.status === "Scheduled" && exam.scheduledAt && now < new Date(exam.scheduledAt)) {
+             return res.status(403).json({ message: "Exam has not started yet." });
+        }
+        if (exam.status === "Completed" || (exam.endsAt && now >= new Date(exam.endsAt))) {
+             return res.status(403).json({ message: "Exam has already ended." });
+        }
+
+        // Check if ExamAttempt already exists
+        let attempt = await ExamAttempt.findOne({ student: req.student._id, exam: id, resetByAdmin: { $ne: true } });
+        if (attempt) {
+            if (attempt.status === "Submitted" || attempt.status === "Terminated" || attempt.status === "Expired") {
+                return res.status(400).json({ message: "You have already completed or been terminated from this exam." });
+            }
+            // If InProgress, just return success
+            return res.status(200).json({ message: "Exam attempt already in progress.", attemptId: attempt._id });
+        }
+
+        const expiresAt = new Date(now.getTime() + (exam.durationMinutes * 60 * 1000) + 60000); // 1 minute grace period
+        attempt = await ExamAttempt.create({
+            student: req.student._id,
+            exam: id,
+            status: "InProgress",
+            startedAt: now,
+            expiresAt: expiresAt
+        });
+
+        return res.status(201).json({ message: "Exam attempt started successfully.", attemptId: attempt._id });
+    } catch (error) {
+        console.error("Error starting exam: ", error);
+        return res.status(500).json({ message: "Error starting exam" });
+    }
+}
+
 // 6. Save exam score to the database
 export const submitExamResult = async (req, res) => {
     try {
@@ -328,18 +386,16 @@ export const submitExamResult = async (req, res) => {
             })
         }
 
-        // Prevent duplicate submissions.
-        // Skip results marked resetByAdmin=true — those are audit records for terminated/authorized attempts.
-        const existingResult = await Result.findOne({
+        const existingAttempt = await ExamAttempt.findOne({
             student: req.student._id,
             exam: examId,
             resetByAdmin: { $ne: true }
         })
 
-        if (existingResult) {
+        if (!existingAttempt || existingAttempt.status !== "InProgress") {
             return res.status(400).json({
                 message:
-                    "You have already submitted this exam."
+                    "No active exam attempt found. You must start the exam first, or you have already submitted it."
             })
         }
 
@@ -351,6 +407,21 @@ export const submitExamResult = async (req, res) => {
             return res.status(404).json({
                 message: "Exam not found."
             })
+        }
+
+        const now = new Date();
+        if (exam.status === "Draft" || exam.status === "Archived") {
+            return res.status(403).json({ message: "Exam is not available." });
+        }
+        if (exam.status === "Completed" || (exam.endsAt && now >= new Date(exam.endsAt))) {
+            return res.status(403).json({ message: "Exam has already ended. Late submissions are rejected." });
+        }
+        
+        // Check duration constraint against ExamAttempt expiresAt
+        if (now.getTime() > existingAttempt.expiresAt.getTime()) {
+            existingAttempt.status = "Expired";
+            await existingAttempt.save();
+            return res.status(403).json({ message: "Exam time limit has expired. Late submissions are rejected." });
         }
 
         // Protected exams must contain a Merkle root
@@ -470,12 +541,17 @@ export const submitExamResult = async (req, res) => {
         const totalQuestions =
             decryptedQuestions.length
 
+        existingAttempt.status = "Submitted";
+        existingAttempt.submittedAt = now;
+        await existingAttempt.save();
+
         const result = await Result.create({
+            attemptId: existingAttempt._id,
             student: req.student._id,
             exam: examId,
             score,
             totalQuestions
-        })
+        });
 
         // Generate Submission Hash & Result Commitment
         const submissionPayload = canonicalize({
@@ -502,10 +578,15 @@ export const submitExamResult = async (req, res) => {
         result.commitmentHash = commitment.canonicalHash;
         await result.save();
 
+        const responseResult = result.toObject();
+        if (!exam.isResultReleased) {
+            delete responseResult.score;
+        }
+
         return res.status(201).json({
             message:
                 "Exam submitted successfully.",
-            result
+            result: responseResult
         })
 
     } catch (error) {
@@ -527,7 +608,16 @@ export const getStudentResults = async (req, res) => {
         const results = await Result.find({ student: req.student._id })
             .populate("exam", "title isResultReleased")
             .sort({ createdAt: -1 })
-        return res.status(200).json({ results })
+            
+        const safeResults = results.map(r => {
+            const obj = r.toObject();
+            if (!obj.exam || !obj.exam.isResultReleased) {
+                delete obj.score;
+            }
+            return obj;
+        });
+
+        return res.status(200).json({ results: safeResults })
     } catch (error) {
         return res.status(500).json({ message: "Error fetching results", error: error.message })
     }
@@ -575,3 +665,6 @@ export const changeStudentPassword = async (req, res) => {
         return res.status(500).json({ message: "Error changing password", error: error.message })
     }
 }
+export const logoutStudent = async (req, res) => {
+    return res.status(200).clearCookie("studentToken", { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "strict" }).json({ message: "Logout successful" });
+};

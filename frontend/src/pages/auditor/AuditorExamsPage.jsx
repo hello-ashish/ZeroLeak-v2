@@ -1,3 +1,4 @@
+import { API_BASE_URL as API } from '../../api.js';
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AuditorLayout } from './AuditorLayout.jsx'
@@ -7,8 +8,8 @@ import axios from 'axios'
 import { format } from 'date-fns'
 import { ClipboardList } from 'lucide-react'
 
-const API = 'http://localhost:4000/api'
-const getToken = () => localStorage.getItem('auditorToken')
+
+
 
 export default function AuditorExamsPage() {
     const [exams, setExams] = useState([])
@@ -21,7 +22,7 @@ export default function AuditorExamsPage() {
             if (!token) { navigate('/auditor/login'); return }
             try {
                 const res = await axios.get(`${API}/auditor/exams`, {
-                    headers: { Authorization: `Bearer ${token}` }
+                    
                 })
                 setExams(res.data.exams)
             } catch (err) {

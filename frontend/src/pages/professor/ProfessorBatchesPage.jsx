@@ -1,3 +1,4 @@
+import api from '../../api.js';
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
@@ -45,7 +46,7 @@ const ProfessorBatchesPage = () => {
     }
 
     useEffect(() => {
-        const token = localStorage.getItem('profToken')
+        
         if (!token) {
             navigate('/professor/login')
         } else {
@@ -55,8 +56,8 @@ const ProfessorBatchesPage = () => {
 
     const fetchMyBatches = async (token) => {
         try {
-            const response = await axios.get('http://localhost:4000/api/professor/batches', {
-                headers: { Authorization: `Bearer ${token}` }
+            const response = await api.get('/professor/batches', {
+                
             })
             setBatches(response.data.batches)
         } catch (error) {
@@ -70,13 +71,13 @@ const ProfessorBatchesPage = () => {
         e.preventDefault()
         setIsCreatingBatch(true)
         try {
-            const token = localStorage.getItem('profToken')
-            await axios.post('http://localhost:4000/api/professor/batches', {
+            
+            await api.post('/professor/batches', {
                 title: batchTitle,
                 subject: batchSubject,
                 description: batchDescription
             }, {
-                headers: { Authorization: `Bearer ${token}` }
+                
             })
             setBatchTitle('')
             setBatchSubject('')
@@ -100,16 +101,16 @@ const ProfessorBatchesPage = () => {
     const handleAddQuestionToBatch = async (e) => {
         e.preventDefault();
         try {
-            const token = localStorage.getItem('profToken');
+            
             const payload = { title, options, correctAnswer, difficultyLevel, subject, topic, correctAnswerIndex: Number(correctAnswerIndex) };
 
             if (editingQuestionId) {
-                await axios.put(`http://localhost:4000/api/professor/batches/${activeBatchId}/questions/${editingQuestionId}`, payload, {
-                    headers: { Authorization: `Bearer ${token}` }
+                await api.put(`/professor/batches/${activeBatchId}/questions/${editingQuestionId}`, payload, {
+                    
                 });
             } else {
-                await axios.post(`http://localhost:4000/api/professor/batches/${activeBatchId}/questions`, payload, {
-                    headers: { Authorization: `Bearer ${token}` }
+                await api.post(`/professor/batches/${activeBatchId}/questions`, payload, {
+                    
                 });
             }
 
@@ -136,9 +137,9 @@ const ProfessorBatchesPage = () => {
     const handleDeleteQuestion = async (batchId, questionId) => {
         if (!window.confirm("Are you sure you want to delete this question?")) return;
         try {
-            const token = localStorage.getItem('profToken');
-            await axios.delete(`http://localhost:4000/api/professor/batches/${batchId}/questions/${questionId}`, {
-                headers: { Authorization: `Bearer ${token}` }
+            
+            await api.delete(`/professor/batches/${batchId}/questions/${questionId}`, {
+                
             });
             fetchMyBatches(token);
         } catch (error) {
@@ -149,9 +150,9 @@ const ProfessorBatchesPage = () => {
     const submitBatch = async (batchId) => {
         setSubmittingBatchId(batchId);
         try {
-            const token = localStorage.getItem('profToken');
-            await axios.post(`http://localhost:4000/api/professor/batches/${batchId}/submit`, {}, {
-                headers: { Authorization: `Bearer ${token}` }
+            
+            await api.post(`/professor/batches/${batchId}/submit`, {}, {
+                
             });
             fetchMyBatches(token);
             toast.success("Batch submitted successfully");
@@ -165,9 +166,9 @@ const ProfessorBatchesPage = () => {
     const handleDeleteBatch = async (batchId) => {
         if (!window.confirm("Are you sure you want to delete this batch?")) return;
         try {
-            const token = localStorage.getItem('profToken');
-            await axios.delete(`http://localhost:4000/api/professor/batches/${batchId}`, {
-                headers: { Authorization: `Bearer ${token}` }
+            
+            await api.delete(`/professor/batches/${batchId}`, {
+                
             });
             fetchMyBatches(token);
         } catch (error) {
@@ -237,9 +238,9 @@ const ProfessorBatchesPage = () => {
     const confirmImport = async () => {
         setIsImporting(true);
         try {
-            const token = localStorage.getItem('profToken');
-            await axios.post(`http://localhost:4000/api/professor/batches/${previewBatchId}/questions/bulk`, { questions: previewQuestions }, {
-                headers: { Authorization: `Bearer ${token}` }
+            
+            await api.post(`/professor/batches/${previewBatchId}/questions/bulk`, { questions: previewQuestions }, {
+                
             });
             fetchMyBatches(token);
             toast.success(`${previewQuestions.length} questions imported successfully!`);

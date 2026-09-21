@@ -1,3 +1,4 @@
+import api from '../../api.js';
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation, Link, Outlet } from 'react-router-dom'
 import { LayoutDashboard, PackageOpen, Settings, Search, LogOut, ChevronDown, Bell, Plus, FileText , RefreshCw } from 'lucide-react'
@@ -49,10 +50,14 @@ export const ProfessorLayout = () => {
         return () => window.removeEventListener('keydown', handler)
     }, [])
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        try {
+            await api.post('/professor/logout');
+        } catch(e) {}
+
         localStorage.removeItem('profToken')
         localStorage.removeItem('profData')
-        navigate('/')
+                navigate('/');
     }
 
     const initials = (profData.name || profData.email || 'P')

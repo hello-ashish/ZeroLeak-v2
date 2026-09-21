@@ -8,7 +8,7 @@ import './index.css'
 import Home from './Home'
 import AdminLogin from './AdminLogin'
 import AdminProfile from "./AdminProfile"
-import ProfessorLogin from './ProfessorLogin'
+import ProfessorLogin from './professorLogin'
 import { ProfessorLayout } from './pages/professor/ProfessorLayout.jsx'
 import ProfessorDashboardPage from './pages/professor/ProfessorDashboardPage.jsx'
 import ProfessorBatchesPage from './pages/professor/ProfessorBatchesPage.jsx'

@@ -1,3 +1,4 @@
+import api from '../../api.js';
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation, Link, Outlet } from 'react-router-dom'
 import { LayoutDashboard, ClipboardList, BarChart3, Target, User, Settings, Search, LogOut, ChevronDown, Bell , RefreshCw } from 'lucide-react'
@@ -41,10 +42,14 @@ export const StudentLayout = () => {
 
     const studentData = JSON.parse(localStorage.getItem('studentData') || '{}')
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        try {
+            await api.post('/students/logout');
+        } catch(e) {}
+
         localStorage.removeItem('studentToken')
         localStorage.removeItem('studentData')
-        navigate('/')
+                navigate('/');
     }
 
     // Global Axios Interceptor for Blocking

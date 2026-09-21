@@ -1,3 +1,4 @@
+import api from './api.js';
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -23,7 +24,7 @@ const ProfessorDashboard = () => {
     const [activeBatchId, setActiveBatchId] = useState(null);
 
     useEffect(() => {
-        const token = localStorage.getItem('profToken');
+        
         const profDataString = localStorage.getItem('profData');
 
         if (!token || !profDataString) {
@@ -56,9 +57,9 @@ const ProfessorDashboard = () => {
 
     const fetchMyBatches = async () => {
         try {
-            const token = localStorage.getItem('profToken')
-            const response = await axios.get('http://localhost:4000/api/professor/batches', {
-                headers: { Authorization: `Bearer ${token}` }
+            
+            const response = await api.get('/professor/batches', {
+                
             })
             setBatches(response.data.batches)
         } catch (error) {
@@ -69,13 +70,13 @@ const ProfessorDashboard = () => {
     const handleCreateBatch = async (e) => {
         e.preventDefault()
         try {
-            const token = localStorage.getItem('profToken')
-            await axios.post('http://localhost:4000/api/professor/batches', {
+            
+            await api.post('/professor/batches', {
                 title: batchTitle,
                 subject: batchSubject,
                 description: batchDescription
             }, {
-                headers: { Authorization: `Bearer ${token}` }
+                
             })
             alert("Batch created successfully")
             setBatchTitle('')
@@ -90,11 +91,11 @@ const ProfessorDashboard = () => {
     const handleAddQuestionToBatch = async (e) => {
         e.preventDefault();
         try {
-            const token = localStorage.getItem('profToken');
-            await axios.post(`http://localhost:4000/api/professor/batches/${activeBatchId}/questions`, {
+            
+            await api.post(`/professor/batches/${activeBatchId}/questions`, {
                 title, options, correctAnswer, difficultyLevel, subject, topic, correctAnswerIndex: Number(correctAnswerIndex)
             }, {
-                headers: { Authorization: `Bearer ${token}` }
+                
             });
 
             alert("Question successfully added to the batch!");
@@ -108,9 +109,9 @@ const ProfessorDashboard = () => {
 
     const submitBatch = async (batchId) => {
         try {
-            const token = localStorage.getItem('profToken');
-            await axios.post(`http://localhost:4000/api/professor/batches/${batchId}/submit`, {}, {
-                headers: { Authorization: `Bearer ${token}` }
+            
+            await api.post(`/professor/batches/${batchId}/submit`, {}, {
+                
             });
             alert("Batch submitted to admin for review!");
             fetchMyBatches();

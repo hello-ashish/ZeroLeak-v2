@@ -1,3 +1,4 @@
+import api from './api.js';
 import React, { useState } from "react"
 import axios from "axios"
 import { useNavigate } from "react-router-dom"
@@ -18,14 +19,14 @@ const ProfessorLogin = () => {
         setLoading(true)
 
         try {
-            const response = await axios.post('http://localhost:4000/api/professor/login', {
+            const response = await api.post('/professor/login', {
                 email,
                 password
             })
 
             const { token, professor } = response.data
 
-            localStorage.setItem('profToken', token)
+            
             localStorage.setItem('profData', JSON.stringify(professor))
 
             navigate('/professor/dashboard')

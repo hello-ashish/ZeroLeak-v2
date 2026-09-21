@@ -1,3 +1,4 @@
+import api from './api.js';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -9,7 +10,7 @@ const StudentDashboard = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const token = localStorage.getItem('studentToken');
+    
     const studentDataString = localStorage.getItem('studentData');
 
     if (!token || !studentDataString) {
@@ -26,8 +27,8 @@ const StudentDashboard = () => {
 
   const fetchExams = async (token) => {
     try {
-      const response = await axios.get('http://localhost:4000/api/students/exams', {
-        headers: { Authorization: `Bearer ${token}` }
+      const response = await api.get('/students/exams', {
+        
       });
       setExams(response.data.exams);
     } catch (error) {
@@ -37,8 +38,8 @@ const StudentDashboard = () => {
 
   const fetchResults = async (token) => {
     try {
-      const response = await axios.get('http://localhost:4000/api/students/results', {
-        headers: { Authorization: `Bearer ${token}` }
+      const response = await api.get('/students/results', {
+        
       });
       setResults(response.data.results);
     } catch (error) {

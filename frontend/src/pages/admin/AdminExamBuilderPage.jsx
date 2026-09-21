@@ -1,3 +1,4 @@
+import { API_BASE_URL as API } from '../../api.js';
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AdminLayout } from './AdminLayout.jsx'
@@ -5,8 +6,8 @@ import { ArrowLeft, Check, BookOpen, Clock, Settings, Upload, Search, Database, 
 import { useToast } from '../../components/Toast.jsx'
 import axios from 'axios'
 
-const API = 'http://localhost:4000/api'
-const getToken = () => localStorage.getItem('adminToken')
+
+
 
 export const AdminExamBuilderPage = () => {
     const [step, setStep] = useState(1)
@@ -28,7 +29,7 @@ export const AdminExamBuilderPage = () => {
                 passingPercentage: form.passingPercentage,
                 questions: form.selectedQuestions,
                 status: form.status
-            }, { headers: { Authorization: `Bearer ${getToken()}` } })
+            }, {  })
             toast.success('Exam created successfully!')
             navigate('/admin/exams')
         } catch (err) {
@@ -39,7 +40,7 @@ export const AdminExamBuilderPage = () => {
     }
 
     React.useEffect(() => {
-        axios.get(`${API}/questions`, { headers: { Authorization: `Bearer ${getToken()}` } })
+        axios.get(`${API}/questions`, {  })
             .then(res => setAllQuestions(res.data.questions || []))
             .catch(console.error)
     }, [])

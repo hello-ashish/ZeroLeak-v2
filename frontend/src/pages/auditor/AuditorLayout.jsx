@@ -1,3 +1,4 @@
+import api from '../../api.js';
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { LayoutDashboard, FileText, Database, Users, LogOut, ChevronDown, Search, Activity, ShieldAlert, GraduationCap, ClipboardList, RefreshCw, Map } from 'lucide-react'
@@ -38,10 +39,14 @@ export const AuditorLayout = ({ children, openAnomaliesCount = 0 }) => {
 
     const auditorData = JSON.parse(localStorage.getItem('auditorData') || '{}')
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        try {
+            await api.post('/auditor/logout');
+        } catch(e) {}
+
         localStorage.removeItem('auditorToken')
         localStorage.removeItem('auditorData')
-        navigate('/')
+                navigate('/');
     }
 
     const initials = (auditorData.email || 'A')

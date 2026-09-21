@@ -1,21 +1,31 @@
 import express from "express"
 import cors from "cors"
+import helmet from "helmet"
+import cookieParser from "cookie-parser"
+import { globalLimiter } from "./middlewares/rateLimiter.middleware.js"
 import questionRouter from "./routes/question.routes.js"
 import examRouter from "./routes/exam.routes.js"
 import studentRouter from "./routes/student.routes.js"
 
 const app = express()
 
+// security headers
+app.use(helmet())
+
+// rate limiting
+app.use(globalLimiter)
+
 // middleware setup
 app.use(cors({
-    origin: process.env.CORS_ORIGIN || "*",
+    origin: process.env.CORS_ORIGIN || "http://localhost:3000",
     credentials: true
 }))
 
 // we need this to parse json data coming from requests (like req.body)
-app.use(express.json({ limit: "50mb" }))
-app.use(express.urlencoded({ extended: true, limit: "50mb" }))
+app.use(express.json({ limit: "2mb" }))
+app.use(express.urlencoded({ extended: true, limit: "2mb" }))
 app.use(express.static("public"))
+app.use(cookieParser())
 
 import adminRouter from "./routes/admin.routes.js"
 import professorRouter from "./routes/professor.routes.js"

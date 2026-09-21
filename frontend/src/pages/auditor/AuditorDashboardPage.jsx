@@ -1,3 +1,4 @@
+import { API_BASE_URL as API } from '../../api.js';
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
@@ -7,8 +8,8 @@ import { AlertTriangle, Activity, CheckCircle2, ShieldAlert, FileText, ChevronRi
 import { format } from 'date-fns'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 
-const API = 'http://localhost:4000/api'
-const getToken = () => localStorage.getItem('auditorToken')
+
+
 
 const CHART_COLORS = {
     primary: 'var(--brand-primary)',
@@ -37,10 +38,10 @@ export default function AuditorDashboardPage() {
             }
             try {
                 const res = await axios.get(`${API}/auditor/metrics`, {
-                    headers: { Authorization: `Bearer ${token}` }
+                    
                 })
                 const bcRes = await axios.get(`${API}/blockchain/status`, {
-                    headers: { Authorization: `Bearer ${token}` }
+                    
                 }).catch(() => ({ data: null }))
                 
                 setMetrics(res.data.metrics)
@@ -70,7 +71,7 @@ export default function AuditorDashboardPage() {
         try {
             const token = getToken()
             const res = await axios.post(`${API}/blockchain/audit-batch`, {}, {
-                headers: { Authorization: `Bearer ${token}` }
+                
             })
             alert(res.data.message)
         } catch (err) {

@@ -32,6 +32,7 @@ const questionSchema = new mongoose.Schema(
         contentHash: {
             type: String,
             required: true,
+            unique: true,
             index: true,
         },
 
@@ -56,6 +57,11 @@ const questionSchema = new mongoose.Schema(
             ref: "Professor",
             required: true,
         },
+
+        batchIds: [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Batch",
+        }],
     },
     {
         timestamps: true,

@@ -1,3 +1,4 @@
+import api from './api.js';
 import React, { useState } from "react"
 import axios from "axios"
 import { useNavigate } from 'react-router-dom';
@@ -18,7 +19,7 @@ const AdminLogin = () => {
         setLoading(true)
 
         try {
-            const response = await axios.post("http://localhost:4000/api/admin/login", {
+            const response = await api.post("/admin/login", {
                 email: email,
                 password: password
             })
@@ -26,7 +27,7 @@ const AdminLogin = () => {
             const token = response.data.token
             const admin = response.data.admin
 
-            localStorage.setItem('adminToken', token)
+            
             localStorage.setItem('adminData', JSON.stringify(admin))
             navigate('/admin/dashboard')
         } catch (err) {

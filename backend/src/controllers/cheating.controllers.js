@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { Student } from "../models/student.models.js";
 import { Exam } from "../models/exam.models.js";
 import { Result } from "../models/result.models.js";
+import { ExamAttempt } from "../models/examAttempt.models.js";
 import { CheatingIncident } from "../models/cheatingIncident.models.js";
 import { AuditLog } from "../models/auditlog.models.js";
 import { Anomaly } from "../models/anomaly.models.js";
@@ -38,9 +39,9 @@ export const recordIncident = async (req, res) => {
         let validAttemptId = null;
         if (attemptId) {
             if (isValidObjectId(attemptId)) {
-                const existingResult = await Result.findOne({ _id: attemptId, student: student._id, exam: examId });
-                if (existingResult) {
-                    validAttemptId = existingResult._id;
+                const existingAttempt = await ExamAttempt.findOne({ _id: attemptId, student: student._id, exam: examId });
+                if (existingAttempt) {
+                    validAttemptId = existingAttempt._id;
                 }
             }
         }
@@ -63,15 +64,15 @@ export const recordIncident = async (req, res) => {
         // ── SERVER-SIDE 3-STRIKE ENFORCEMENT ────────────────────────────────────
         // Count cumulative incidents for this student+exam that occurred AFTER the most recent reset (if any).
         // This gives students a clean slate of 0/3 violations for their second chance attempt.
-        const latestResetResult = await Result.findOne({
+        const latestResetAttempt = await ExamAttempt.findOne({
             student: student._id,
             exam: examId,
             resetByAdmin: true
         }).sort({ resetByAdminAt: -1 });
 
         const incidentQuery = { studentId: student._id, examId };
-        if (latestResetResult && latestResetResult.resetByAdminAt) {
-            incidentQuery.createdAt = { $gt: latestResetResult.resetByAdminAt };
+        if (latestResetAttempt && latestResetAttempt.resetByAdminAt) {
+            incidentQuery.createdAt = { $gt: latestResetAttempt.resetByAdminAt };
         }
 
         const incidentCount = await CheatingIncident.countDocuments(incidentQuery);
@@ -83,21 +84,19 @@ export const recordIncident = async (req, res) => {
             shouldTerminate = true;
 
             // Terminate the exam attempt if not already terminated
-            let result = await Result.findOne({ student: student._id, exam: examId, resetByAdmin: { $ne: true } });
-            if (!result || !result.isTerminated) {
-                if (result) {
-                    result.status = "Terminated";
-                    result.isTerminated = true;
-                    result.terminationReason = description || "Auto-terminated: exceeded maximum security violations.";
-                    await result.save();
+            let attempt = await ExamAttempt.findOne({ student: student._id, exam: examId, resetByAdmin: { $ne: true } });
+            if (!attempt || attempt.status !== "Terminated") {
+                if (attempt) {
+                    attempt.status = "Terminated";
+                    attempt.terminationReason = description || "Auto-terminated: exceeded maximum security violations.";
+                    await attempt.save();
                 } else {
-                    result = await Result.create({
+                    attempt = await ExamAttempt.create({
                         student: student._id,
                         exam: examId,
-                        score: 0,
-                        totalQuestions: exam.questions ? exam.questions.length : 0,
                         status: "Terminated",
-                        isTerminated: true,
+                        startedAt: new Date(),
+                        expiresAt: new Date(),
                         terminationReason: description || "Auto-terminated: exceeded maximum security violations."
                     });
                 }
@@ -205,31 +204,27 @@ export const terminateAttempt = async (req, res) => {
             return res.status(404).json({ message: "Exam not found." });
         }
 
-        // Check for existing result to prevent duplicate termination
-        let result = await Result.findOne({ student: student._id, exam: examId });
+        // Check for existing attempt to prevent duplicate termination
+        let attempt = await ExamAttempt.findOne({ student: student._id, exam: examId, resetByAdmin: { $ne: true } });
 
-        if (result) {
-            if (result.isTerminated) {
+        if (attempt) {
+            if (attempt.status === "Terminated") {
                 return res.status(400).json({
                     message: "Exam attempt has already been terminated.",
-                    result
+                    attempt
                 });
             }
 
-            // Update existing result to Terminated status
-            result.status = "Terminated";
-            result.isTerminated = true;
-            result.terminationReason = reason || "Auto-terminated due to cheating violations.";
-            await result.save();
+            attempt.status = "Terminated";
+            attempt.terminationReason = reason || "Auto-terminated due to cheating violations.";
+            await attempt.save();
         } else {
-            // Create a new terminated Result record
-            result = await Result.create({
+            attempt = await ExamAttempt.create({
                 student: student._id,
                 exam: examId,
-                score: 0,
-                totalQuestions: exam.questions ? exam.questions.length : 0,
                 status: "Terminated",
-                isTerminated: true,
+                startedAt: new Date(),
+                expiresAt: new Date(),
                 terminationReason: reason || "Auto-terminated due to cheating violations."
             });
         }
@@ -267,7 +262,7 @@ export const terminateAttempt = async (req, res) => {
 
         return res.status(200).json({
             message: "Exam attempt terminated successfully",
-            result,
+            attempt,
             isBlocked
         });
     } catch (error) {
@@ -468,17 +463,17 @@ export const unblockStudent = async (req, res) => {
         // so the admin UI can prompt for an authorized new attempt
         let terminatedExams = [];
         try {
-            const terminatedResults = await Result.find({
+            const terminatedAttempts = await ExamAttempt.find({
                 student: student._id,
-                isTerminated: true,
+                status: "Terminated",
                 resetByAdmin: { $ne: true }
             }).populate("exam", "title _id");
 
-            terminatedExams = terminatedResults.map(r => ({
-                resultId: r._id,
-                examId: r.exam?._id || r.exam,
-                examTitle: r.exam?.title || "Unknown Exam",
-                terminationReason: r.terminationReason
+            terminatedExams = terminatedAttempts.map(a => ({
+                attemptId: a._id,
+                examId: a.exam?._id || a.exam,
+                examTitle: a.exam?.title || "Unknown Exam",
+                terminationReason: a.terminationReason
             }));
         } catch (tErr) {
             console.error("Error fetching terminated results on unblock:", tErr.message);
@@ -546,24 +541,24 @@ export const authorizeNewAttempt = async (req, res) => {
             return res.status(404).json({ message: "Exam not found." });
         }
 
-        // Find the terminated result to reset
-        const terminatedResult = await Result.findOne({
+        // Find the terminated attempt to reset
+        const terminatedAttempt = await ExamAttempt.findOne({
             student: studentId,
             exam: examId,
-            isTerminated: true,
+            status: "Terminated",
             resetByAdmin: { $ne: true }  // don't re-reset already authorized ones
         });
 
-        if (!terminatedResult) {
+        if (!terminatedAttempt) {
             return res.status(404).json({
                 message: "No active terminated attempt found for this student and exam. It may have already been authorized or was never terminated."
             });
         }
 
-        // Mark the terminated result as reset by admin — preserves audit record
-        terminatedResult.resetByAdmin = true;
-        terminatedResult.resetByAdminAt = new Date();
-        await terminatedResult.save();
+        // Mark the terminated attempt as reset by admin — preserves audit record
+        terminatedAttempt.resetByAdmin = true;
+        terminatedAttempt.resetByAdminAt = new Date();
+        await terminatedAttempt.save();
 
         // Log the authorization
         try {
@@ -583,7 +578,7 @@ export const authorizeNewAttempt = async (req, res) => {
 
         return res.status(200).json({
             message: `New exam attempt authorized for ${student.name} on "${exam.title}". The student can now retake the exam.`,
-            authorizedResultId: terminatedResult._id,
+            authorizedAttemptId: terminatedAttempt._id,
             studentId: student._id,
             examId: exam._id
         });
@@ -606,28 +601,28 @@ export const getMyExamIncidentCount = async (req, res) => {
         }
 
         // Only count incidents that occurred after the most recent admin reset
-        const latestResetResult = await Result.findOne({
+        const latestResetAttempt = await ExamAttempt.findOne({
             student: student._id,
             exam: examId,
             resetByAdmin: true
         }).sort({ resetByAdminAt: -1 });
 
         const incidentQuery = { studentId: student._id, examId };
-        if (latestResetResult && latestResetResult.resetByAdminAt) {
-            incidentQuery.createdAt = { $gt: latestResetResult.resetByAdminAt };
+        if (latestResetAttempt && latestResetAttempt.resetByAdminAt) {
+            incidentQuery.createdAt = { $gt: latestResetAttempt.resetByAdminAt };
         }
 
         const incidentCount = await CheatingIncident.countDocuments(incidentQuery);
 
-        // Check if the terminated result has been reset by admin (allowing a fresh attempt)
-        const terminatedResult = await Result.findOne({
+        // Check if the terminated attempt has been reset by admin (allowing a fresh attempt)
+        const terminatedAttempt = await ExamAttempt.findOne({
             student: student._id,
             exam: examId,
-            isTerminated: true
+            status: "Terminated"
         }).sort({ createdAt: -1 });
 
-        const resetByAdmin = terminatedResult ? (terminatedResult.resetByAdmin === true) : false;
-        const isTerminated = terminatedResult ? (!terminatedResult.resetByAdmin) : false;
+        const resetByAdmin = terminatedAttempt ? (terminatedAttempt.resetByAdmin === true) : false;
+        const isTerminated = terminatedAttempt ? (!terminatedAttempt.resetByAdmin) : false;
 
         return res.status(200).json({
             incidentCount,
@@ -658,17 +653,17 @@ export const getPendingTerminatedExams = async (req, res) => {
             return res.status(404).json({ message: "Student not found." });
         }
 
-        const terminatedResults = await Result.find({
+        const terminatedAttempts = await ExamAttempt.find({
             student: student._id,
-            isTerminated: true,
+            status: "Terminated",
             resetByAdmin: { $ne: true }
         }).populate("exam", "title _id");
 
-        const terminatedExams = terminatedResults.map(r => ({
-            resultId: r._id,
-            examId: r.exam?._id || r.exam,
-            examTitle: r.exam?.title || "Unknown Exam",
-            terminationReason: r.terminationReason
+        const terminatedExams = terminatedAttempts.map(a => ({
+            attemptId: a._id,
+            examId: a.exam?._id || a.exam,
+            examTitle: a.exam?.title || "Unknown Exam",
+            terminationReason: a.terminationReason
         }));
 
         return res.status(200).json({ terminatedExams, studentName: student.name });

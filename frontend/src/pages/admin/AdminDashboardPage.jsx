@@ -1,3 +1,4 @@
+import { API_BASE_URL as API } from '../../api.js';
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
@@ -16,8 +17,8 @@ import {
 } from 'recharts'
 import { format, subDays } from 'date-fns'
 
-const API = 'http://localhost:4000/api'
-const getToken = () => localStorage.getItem('adminToken')
+
+
 
 const CHART_COLORS = {
     primary: 'var(--brand-primary)',
@@ -43,7 +44,7 @@ export default function AdminDashboardPage() {
             }
             try {
                 const res = await axios.get(`${API}/admin/stats`, {
-                    headers: { Authorization: `Bearer ${token}` }
+                    
                 })
                 setStats(res.data)
                 setLoading(false)

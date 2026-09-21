@@ -1,10 +1,11 @@
+import { API_BASE_URL as API } from '../../api.js';
 import React, { useState } from 'react'
 import axios from 'axios'
 import { useNavigate, Link } from 'react-router-dom'
 import { Mail, Lock, Eye, EyeOff, ShieldCheck, Loader2 } from 'lucide-react'
 import AuthShell from '../../components/auth/AuthShell';
 
-const API = 'http://localhost:4000/api'
+
 
 export default function AuditorLogin() {
     const navigate = useNavigate()
@@ -21,7 +22,7 @@ export default function AuditorLogin() {
         try {
             const response = await axios.post(`${API}/auditor/login`, { email, password })
             const { token, auditor } = response.data
-            localStorage.setItem('auditorToken', token)
+            
             localStorage.setItem('auditorData', JSON.stringify(auditor))
             navigate('/auditor/dashboard')
         } catch (err) {

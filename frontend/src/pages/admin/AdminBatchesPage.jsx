@@ -1,3 +1,4 @@
+import { API_BASE_URL as API } from '../../api.js';
 import React, { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
@@ -7,8 +8,8 @@ import { SkeletonCard, EmptyState } from '../../components/SkeletonLoader.jsx'
 import { useToast } from '../../components/Toast.jsx'
 import { AlertTriangle, PackageOpen, Check, X, Eye, Clock, MessageSquare, ChevronRight, Trash2 } from 'lucide-react'
 
-const API = 'http://localhost:4000/api'
-const getToken = () => localStorage.getItem('adminToken')
+
+
 
 const TABS = ['Pending', 'Accepted', 'Rejected', 'Marked', 'All']
 
@@ -31,7 +32,7 @@ export default function AdminBatchesPage() {
         if (!token) { navigate('/admin/login'); return }
         try {
             setLoading(true)
-            const res = await axios.get(`${API}/admin/batches`, { headers: { Authorization: `Bearer ${token}` } })
+            const res = await axios.get(`${API}/admin/batches`, {  })
             const all = res.data.batches || []
             setBatches(all)
             setPendingCount(all.filter(b => b.status === 'Submitted').length)
@@ -50,7 +51,7 @@ export default function AdminBatchesPage() {
     const openBatch = async (batch) => {
         const token = getToken()
         try {
-            const res = await axios.get(`${API}/admin/batches/${batch._id}`, { headers: { Authorization: `Bearer ${token}` } })
+            const res = await axios.get(`${API}/admin/batches/${batch._id}`, {  })
             setActiveBatch(res.data.batch)
             setActionState(null)
             setRejectReason('')
@@ -83,7 +84,7 @@ export default function AdminBatchesPage() {
         setReviewing(true)
         try {
             await axios.post(`${API}/admin/batches/${activeBatch._id}/review`, { action, adminMessage }, {
-                headers: { Authorization: `Bearer ${getToken()}` }
+                
             })
             const labels = { Accept: 'approved', Reject: 'rejected', MarkForReview: 'marked for review' }
             toast.success(`Batch ${labels[action]} successfully`)
@@ -101,7 +102,7 @@ export default function AdminBatchesPage() {
         setReviewing(true)
         try {
             await axios.delete(`${API}/admin/batches/${activeBatch._id}`, {
-                headers: { Authorization: `Bearer ${getToken()}` }
+                
             })
             toast.success('Batch deleted successfully')
             setActiveBatch(null)
