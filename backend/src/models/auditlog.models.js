@@ -34,6 +34,15 @@ const auditLogSchema = new mongoose.Schema({
     isCommitted: {
         type: Boolean,
         default: false
+    },
+    commitmentStatus: {
+        type: String,
+        enum: ["UNCOMMITTED", "PENDING", "CONFIRMED", "FAILED"],
+        default: "UNCOMMITTED"
+    },
+    outboxEventId: {
+        type: String,
+        default: null
     }
 }, { timestamps: true })
 

@@ -68,7 +68,13 @@ export const getBlockchainBlock = async (req, res) => {
 
 export const commitAuditBatch = async (req, res) => {
     try {
-        const logs = await AuditLog.find({ isCommitted: false }).sort({ createdAt: 1 });
+        const logs = await AuditLog.find({ 
+            $or: [
+                { commitmentStatus: "UNCOMMITTED" },
+                { commitmentStatus: { $exists: false }, isCommitted: false }
+            ]
+        }).sort({ createdAt: 1 });
+        
         if (logs.length === 0) {
             return res.status(200).json({ message: "No uncommitted audit events found", block: null });
         }
@@ -99,9 +105,12 @@ export const commitAuditBatch = async (req, res) => {
         });
 
         const logIds = logs.map(l => l._id);
-        await AuditLog.updateMany({ _id: { $in: logIds } }, { $set: { isCommitted: true } });
+        await AuditLog.updateMany(
+            { _id: { $in: logIds } }, 
+            { $set: { commitmentStatus: "PENDING", outboxEventId: commitment.eventId } }
+        );
 
-        return res.status(201).json({ message: "Audit batch queued for commitment successfully", block: commitment });
+        return res.status(202).json({ message: "Audit batch queued for commitment successfully", block: commitment });
     } catch (error) {
         console.error("Audit batch commitment error:", error);
         return res.status(500).json({ message: "Failed to commit audit batch" });
@@ -119,6 +128,15 @@ export const verifyEntityCommitment = async (req, res) => {
                 verified: false, 
                 message: "No cryptographic commitment found for this entity.", 
                 block: null 
+            });
+        }
+        
+        if (outboxRecord.status === "PENDING" || outboxRecord.status === "SUBMITTED") {
+            return res.status(202).json({
+                verified: false,
+                queued: true,
+                message: "Cryptographic commitment is queued and pending confirmation.",
+                block: outboxRecord
             });
         }
         
