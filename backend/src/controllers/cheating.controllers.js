@@ -450,11 +450,6 @@ export const unblockStudent = async (req, res) => {
                 { $set: { reviewStatus: "Dismissed", reviewedBy: req.admin._id, reviewedAt: new Date() } }
             );
 
-            // Change actionTaken for blocked incidents to STUDENT_UNBLOCKED
-            await CheatingIncident.updateMany(
-                { studentId: student._id, actionTaken: { $in: ["STUDENT_BLOCKED", "EXAM_TERMINATED"] } },
-                { $set: { actionTaken: "STUDENT_UNBLOCKED" } }
-            );
         } catch (incErr) {
             console.error("Error updating incidents on unblock:", incErr.message);
         }
