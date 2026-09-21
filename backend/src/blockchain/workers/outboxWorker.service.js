@@ -7,12 +7,38 @@ const WORKER_INTERVAL_MS = 5000;
 
 export async function processOutbox() {
     try {
-        const records = await IntegrityOutbox.find({
-            status: { $in: ["PENDING", "FAILED"] },
-            retryCount: { $lt: MAX_RETRIES }
-        }).sort({ createdAt: 1 }).limit(10);
+        const now = new Date();
+        const thirtySecondsFromNow = new Date(now.getTime() + 30000);
 
-        for (const record of records) {
+        // Atomic claim loop
+        while (true) {
+            // Find and atomically claim one pending record
+            const record = await IntegrityOutbox.findOneAndUpdate(
+                {
+                    $or: [
+                        { status: "PENDING" },
+                        { status: "PROCESSING", processingUntil: { $lt: now } } // crashed worker recovery
+                    ],
+                    $or: [
+                        { nextRetryAt: null },
+                        { nextRetryAt: { $lte: now } }
+                    ],
+                    retryCount: { $lt: MAX_RETRIES }
+                },
+                {
+                    $set: {
+                        status: "PROCESSING",
+                        processingUntil: thirtySecondsFromNow
+                    }
+                },
+                { new: true, sort: { createdAt: 1 } } // process oldest first
+            );
+
+            if (!record) {
+                // No more records to process at this time
+                break;
+            }
+
             try {
                 // Check idempotency: Did we already successfully commit this but crash before saving?
                 let isAlreadyConfirmed = false;
@@ -31,6 +57,7 @@ export async function processOutbox() {
                     record.status = "CONFIRMED";
                     record.privateTransactionId = existingRecordTxId;
                     record.processedAt = new Date();
+                    record.processingUntil = null;
                     await record.save();
                     
                     // Update audit logs
@@ -55,6 +82,7 @@ export async function processOutbox() {
                 record.status = "CONFIRMED";
                 record.privateTransactionId = result.txId || null;
                 record.processedAt = new Date();
+                record.processingUntil = null;
                 await record.save();
                 
                 await AuditLog.updateMany(
@@ -66,7 +94,16 @@ export async function processOutbox() {
             } catch (error) {
                 record.retryCount += 1;
                 record.lastError = error.message;
-                record.status = record.retryCount >= MAX_RETRIES ? "FAILED" : "PENDING";
+                record.processingUntil = null;
+
+                if (record.retryCount >= MAX_RETRIES) {
+                    record.status = "FAILED";
+                } else {
+                    record.status = "PENDING";
+                    // Exponential backoff: 2^retryCount seconds
+                    record.nextRetryAt = new Date(Date.now() + Math.pow(2, record.retryCount) * 1000);
+                }
+                
                 await record.save();
                 
                 if (record.status === "FAILED") {

@@ -2,7 +2,7 @@ import { jest } from '@jest/globals';
 
 jest.unstable_mockModule('../../models/integrityOutbox.models.js', () => ({
     IntegrityOutbox: {
-        find: jest.fn(),
+        findOneAndUpdate: jest.fn(),
     }
 }));
 
@@ -55,11 +55,7 @@ describe('Blockchain Commitment Lifecycle', () => {
         };
         
         // Mock query chain
-        IntegrityOutbox.find.mockReturnValue({
-            sort: jest.fn().mockReturnValue({
-                limit: jest.fn().mockResolvedValue([outboxRecord])
-            })
-        });
+        IntegrityOutbox.findOneAndUpdate.mockResolvedValueOnce(outboxRecord).mockResolvedValueOnce(null);
 
         mockGetIntegrityRecord.mockRejectedValue(new Error('Not found'));
         mockCommitIntegrityRecord.mockResolvedValue(JSON.stringify({ txId: '0xtx1', status: 'SUCCESS' }));
@@ -88,11 +84,7 @@ describe('Blockchain Commitment Lifecycle', () => {
             save: mockSave
         };
         
-        IntegrityOutbox.find.mockReturnValue({
-            sort: jest.fn().mockReturnValue({
-                limit: jest.fn().mockResolvedValue([outboxRecord])
-            })
-        });
+        IntegrityOutbox.findOneAndUpdate.mockResolvedValueOnce(outboxRecord).mockResolvedValueOnce(null);
 
         mockGetIntegrityRecord.mockRejectedValue(new Error('Not found'));
         mockCommitIntegrityRecord.mockRejectedValue(new Error('Fabric network timeout'));
@@ -118,11 +110,7 @@ describe('Blockchain Commitment Lifecycle', () => {
             save: mockSave
         };
         
-        IntegrityOutbox.find.mockReturnValue({
-            sort: jest.fn().mockReturnValue({
-                limit: jest.fn().mockResolvedValue([outboxRecord])
-            })
-        });
+        IntegrityOutbox.findOneAndUpdate.mockResolvedValueOnce(outboxRecord).mockResolvedValueOnce(null);
 
         mockGetIntegrityRecord.mockRejectedValue(new Error('Not found'));
         mockCommitIntegrityRecord.mockRejectedValue(new Error('Fabric network timeout'));
@@ -151,11 +139,7 @@ describe('Blockchain Commitment Lifecycle', () => {
             save: mockSave
         };
         
-        IntegrityOutbox.find.mockReturnValue({
-            sort: jest.fn().mockReturnValue({
-                limit: jest.fn().mockResolvedValue([outboxRecord])
-            })
-        });
+        IntegrityOutbox.findOneAndUpdate.mockResolvedValueOnce(outboxRecord).mockResolvedValueOnce(null);
 
         // Simulate that the record DOES exist on Fabric (worker crashed before ACK)
         mockGetIntegrityRecord.mockResolvedValue({ txId: '0xrecoveredtx' });

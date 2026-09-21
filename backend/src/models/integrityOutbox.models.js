@@ -14,13 +14,15 @@ const integrityOutboxSchema = new mongoose.Schema({
     payload: { type: mongoose.Schema.Types.Mixed, required: true }, // The canonical data
     status: {
         type: String,
-        enum: ["PENDING", "SUBMITTED", "CONFIRMED", "FAILED"],
+        enum: ["PENDING", "PROCESSING", "SUBMITTED", "CONFIRMED", "FAILED"],
         default: "PENDING",
         index: true,
     },
     retryCount: { type: Number, default: 0 },
     lastError: { type: String, default: null },
     processedAt: { type: Date, default: null },
+    processingUntil: { type: Date, default: null, index: true },
+    nextRetryAt: { type: Date, default: null, index: true },
     privateTransactionId: { type: String, default: null }, // ID returned by Fabric
 }, { timestamps: true });
 
