@@ -206,5 +206,52 @@ describe('Exam Lifecycle and Server-Authoritative Timing', () => {
             expect(res.status).toBe(403);
             expect(res.body.message).toContain("Exam time limit has expired");
         });
+
+        it('should reject duplicate submission when attempt is already Submitted', async () => {
+            mockAttemptFindOne.mockResolvedValue({
+                status: 'Submitted',
+                startedAt: new Date(),
+                expiresAt: new Date(Date.now() + 3600000)
+            });
+
+            const res = await supertest(app).post('/api/student/results').send({
+                examId: 'exam_123',
+                answers: []
+            });
+            expect(res.status).toBe(400);
+            expect(res.body.message).toContain("No active exam attempt found");
+        });
+
+        it('should reject submission when attempt is Terminated', async () => {
+            mockAttemptFindOne.mockResolvedValue({
+                status: 'Terminated',
+                startedAt: new Date(),
+                expiresAt: new Date(Date.now() + 3600000)
+            });
+
+            const res = await supertest(app).post('/api/student/results').send({
+                examId: 'exam_123',
+                answers: []
+            });
+            expect(res.status).toBe(400);
+            expect(res.body.message).toContain("No active exam attempt found");
+        });
+    });
+
+    describe('POST /api/student/exams/:id/start (Double-Start Prevention)', () => {
+        it('should return existing attempt if student already has an InProgress attempt', async () => {
+            mockExamFindById.mockResolvedValue(createMockExam({ status: 'Live' }));
+            mockAttemptFindOne.mockResolvedValue({
+                _id: 'existing_attempt',
+                status: 'InProgress',
+                startedAt: new Date()
+            });
+
+            const res = await supertest(app).post('/api/student/exams/exam_123/start');
+            // Should not create a new attempt
+            expect(mockAttemptCreate).not.toHaveBeenCalled();
+            // Should return 200 with existing attempt info
+            expect(res.status).toBe(200);
+        });
     });
 });
