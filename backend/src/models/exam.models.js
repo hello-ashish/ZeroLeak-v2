@@ -49,6 +49,10 @@ const examSchema = new mongoose.Schema({
         type: String,
         default: null,
     },
+    merkleTreeVersion: {
+        type: String,
+        default: "v1",
+    },
     commitmentId: {
         type: String,
         default: null,

@@ -277,7 +277,7 @@ export const getExamById = async (req, res) => {
 
         // Rebuild the Merkle root
         const calculatedMerkleRoot =
-            buildMerkleRoot(questionHashes, { version: exam.merkleTreeVersion || 'v1' })
+            buildMerkleRoot(questionHashes)
 
         // Verify the complete exam
         if (
@@ -489,7 +489,7 @@ export const submitExamResult = async (req, res) => {
 
         // Rebuild and verify Merkle root
         const calculatedMerkleRoot =
-            buildMerkleRoot(questionHashes, { version: exam.merkleTreeVersion || 'v1' })
+            buildMerkleRoot(questionHashes)
 
         if (
             calculatedMerkleRoot !==

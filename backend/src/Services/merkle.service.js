@@ -1,14 +1,19 @@
 import crypto from "crypto";
 
-function hashPair(left, right) {
-    const combined = left < right ? left + right : right + left;
+function hashPair(left, right, sort) {
+    let combined;
+    if (sort) {
+        combined = left < right ? left + right : right + left;
+    } else {
+        combined = left + right;
+    }
     return crypto
         .createHash("sha256")
         .update(combined, "utf8")
         .digest("hex");
 }
 
-export function buildMerkleRoot(hashes) {
+export function buildMerkleRoot(hashes, options = { version: "v1" }) {
     if (!Array.isArray(hashes) || hashes.length === 0) {
         throw new Error(
             "At least one hash is required to build a Merkle tree."
@@ -27,8 +32,17 @@ export function buildMerkleRoot(hashes) {
         );
     }
 
-    // Sort the initial hashes lexicographically to make the entire tree order-independent (Lexicographical Merkle Tree)
-    let level = [...hashes].sort();
+    let level;
+    if (options.version === "v2") {
+        level = hashes.map((hash, index) => {
+            return crypto.createHash("sha256").update(`${index}:${hash}`, "utf8").digest("hex");
+        });
+    } else {
+        // Sort the initial hashes lexicographically to make the entire tree order-independent (Lexicographical Merkle Tree)
+        level = [...hashes].sort();
+    }
+
+    const sortPairs = options.version !== "v2";
 
     while (level.length > 1) {
         const nextLevel = [];
@@ -42,7 +56,7 @@ export function buildMerkleRoot(hashes) {
                     : level[i];
 
             nextLevel.push(
-                hashPair(left, right)
+                hashPair(left, right, sortPairs)
             );
         }
 

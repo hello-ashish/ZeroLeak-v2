@@ -93,7 +93,7 @@ export const createExam = async (req, res) => {
 
         // Build Merkle root
         const questionMerkleRoot =
-            buildMerkleRoot(questionHashes);
+            buildMerkleRoot(questionHashes, { version: "v2" });
 
         // Create protected exam
         const exam = await Exam.create({
@@ -103,7 +103,8 @@ export const createExam = async (req, res) => {
                 duration || 60,
             createdBy: req.admin._id,
             questions,
-            questionMerkleRoot
+            questionMerkleRoot,
+            merkleTreeVersion: "v2"
         });
 
         try {
@@ -117,6 +118,7 @@ export const createExam = async (req, res) => {
                     durationMinutes: duration || 60,
                     questionCount: questions.length,
                     questionMerkleRoot,
+                    merkleTreeVersion: "v2",
                     actorId: req.admin?._id,
                 }
             });

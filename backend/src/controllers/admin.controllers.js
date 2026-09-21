@@ -279,7 +279,7 @@ export const reviewBatch = async (req, res) => {
                 await Question.bulkWrite(bulkOps, { session });
 
                 const questionHashes = questionsToInsert.map((question) => question.contentHash);
-                const merkleRoot = buildMerkleRoot(questionHashes);
+                const merkleRoot = buildMerkleRoot(questionHashes, { version: "v2" });
 
                 const commitment = await createCommitment({
                     objectType: "Batch",
@@ -290,10 +290,12 @@ export const reviewBatch = async (req, res) => {
                         questionCount: questionsToInsert.length,
                         merkleRoot,
                         actorId: req.admin?._id,
+                        merkleTreeVersion: "v2"
                     }
                 }, session);
 
                 batch.merkleRoot = merkleRoot;
+                batch.merkleTreeVersion = "v2";
                 batch.commitmentId = commitment.eventId;
                 batch.commitmentHash = commitment.canonicalHash;
                 batch.status = 'Accepted';

@@ -64,7 +64,7 @@ export async function recomputeEntityHash(objectType, objectId, outboxPayload) {
             case "Exam": {
                 const exam = await Exam.findById(objectId);
                 if (!exam) return null;
-                return sha256(JSON.stringify(canonicalize({
+                const payloadObj = {
                     title: exam.title,
                     startTime: exam.startTime,
                     duration: exam.duration,
@@ -72,20 +72,28 @@ export async function recomputeEntityHash(objectType, objectId, outboxPayload) {
                     totalMarks: exam.totalMarks,
                     questions: exam.questions,
                     questionMerkleRoot: exam.questionMerkleRoot
-                })));
+                };
+                if (exam.merkleTreeVersion === "v2") {
+                    payloadObj.merkleTreeVersion = "v2";
+                }
+                return sha256(JSON.stringify(canonicalize(payloadObj)));
             }
             case "Batch": {
                 const batch = await Batch.findById(objectId);
                 if (!batch) return null;
                 const questions = await Question.find({ batchIds: batch._id });
                 const questionHashes = questions.map(q => q.contentHash);
-                const merkleRoot = buildMerkleRoot(questionHashes);
-                return sha256(JSON.stringify(canonicalize({
+                const merkleRoot = buildMerkleRoot(questionHashes, { version: batch.merkleTreeVersion || "v1" });
+                const payloadObj = {
                     subject: batch.subject,
                     questionCount: questions.length,
                     merkleRoot: merkleRoot,
-                    actorId: outboxPayload?.actorId
-                })));
+                    actorId: outboxPayload?.payload?.actorId // outboxPayload contains the actual record
+                };
+                if (batch.merkleTreeVersion === "v2") {
+                    payloadObj.merkleTreeVersion = "v2";
+                }
+                return sha256(JSON.stringify(canonicalize(payloadObj)));
             }
             case "Result": {
                 const result = await Result.findById(objectId);
