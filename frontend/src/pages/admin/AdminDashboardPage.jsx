@@ -50,6 +50,8 @@ export default function AdminDashboardPage() {
             } catch (err) {
                 console.error(err)
                 if (err.response?.status === 401) {
+                    localStorage.removeItem('adminToken')
+                    localStorage.removeItem('adminData')
                     navigate('/admin/login')
                 } else {
                     setError('Failed to load command center analytics.')

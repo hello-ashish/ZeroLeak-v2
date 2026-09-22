@@ -6,21 +6,21 @@ import { StatusBadge } from '../../components/StatusBadge.jsx'
 import { ConfirmDialog } from '../../components/Modal.jsx'
 import { SkeletonTable, EmptyState } from '../../components/SkeletonLoader.jsx'
 import { useToast } from '../../components/Toast.jsx'
-import { Search, ClipboardList, Play, Square, Trash2, Plus, Clock, Users, ArrowRight, Calendar } from 'lucide-react'
+import { Search, ClipboardList, Play, Square, Trash2, Plus, ChevronDown, ChevronRight, Check } from 'lucide-react'
 
 const API = 'http://localhost:4000/api'
 const getToken = () => localStorage.getItem('adminToken')
 
-const TABS = ['All', 'Draft', 'Scheduled', 'Live', 'Completed', 'Archived']
+const TABS = ['All', 'Draft', 'Ongoing', 'Completed', 'Archived']
 
 export default function AdminExamsPage() {
-    const [exams, setExams] = useState([])
+    const [examinations, setExaminations] = useState([])
     const [loading, setLoading] = useState(true)
     const [activeTab, setActiveTab] = useState('All')
     const [search, setSearch] = useState('')
+    const [expandedExams, setExpandedExams] = useState({})
     const [deleteTarget, setDeleteTarget] = useState(null)
     const [deleting, setDeleting] = useState(false)
-    const [selectedExam, setSelectedExam] = useState(null)
     const toast = useToast()
     const navigate = useNavigate()
 
@@ -29,10 +29,10 @@ export default function AdminExamsPage() {
         if (!token) { navigate('/admin/login'); return }
         try {
             setLoading(true)
-            const res = await axios.get(`${API}/exams`, { headers: { Authorization: `Bearer ${token}` } })
-            setExams(res.data.exams || [])
+            const res = await axios.get(`${API}/admin/examinations`, { headers: { Authorization: `Bearer ${token}` } })
+            setExaminations(res.data.examinations || [])
         } catch {
-            toast.error('Failed to load exams')
+            toast.error('Failed to load examinations')
         } finally {
             setLoading(false)
         }
@@ -41,60 +41,72 @@ export default function AdminExamsPage() {
     useEffect(() => { fetchData() }, [])
 
     const filtered = useMemo(() => {
-        return exams
+        return examinations
             .filter(e => activeTab === 'All' ? true : (e.status || 'Draft') === activeTab)
             .filter(e => e.title?.toLowerCase().includes(search.toLowerCase()))
-    }, [exams, activeTab, search])
+    }, [examinations, activeTab, search])
 
     const tabCounts = useMemo(() => {
         const c = {}
         TABS.forEach(t => {
-            c[t] = t === 'All' ? exams.length : exams.filter(e => (e.status || 'Draft') === t).length
+            c[t] = t === 'All' ? examinations.length : examinations.filter(e => (e.status || 'Draft') === t).length
         })
         return c
-    }, [exams])
+    }, [examinations])
+
+    const toggleExpand = (id) => {
+        setExpandedExams(p => ({ ...p, [id]: !p[id] }))
+    }
 
     const handleDelete = async () => {
         setDeleting(true)
         try {
-            await axios.delete(`${API}/admin/exams/${deleteTarget._id}`, {
+            await axios.delete(`${API}/admin/examinations/${deleteTarget._id}`, {
                 headers: { Authorization: `Bearer ${getToken()}` }
             })
-            toast.success('Exam deleted')
-            if (selectedExam?._id === deleteTarget._id) setSelectedExam(null)
+            toast.success('Examination deleted')
             setDeleteTarget(null)
             fetchData()
         } catch {
-            toast.error('Failed to delete exam')
+            toast.error('Failed to delete examination')
         } finally {
             setDeleting(false)
         }
     }
 
-    const handleStatusChange = async (exam, newStatus) => {
+    const handleExaminationStatus = async (examId, newStatus) => {
         try {
-            await axios.patch(`${API}/admin/exams/${exam._id}/status`, { status: newStatus }, {
+            await axios.patch(`${API}/admin/examinations/${examId}/status`, { status: newStatus }, {
                 headers: { Authorization: `Bearer ${getToken()}` }
             })
-            toast.success(`Exam ${newStatus.toLowerCase()}`)
+            toast.success(`Examination marked as ${newStatus}`)
             fetchData()
-            if (selectedExam?._id === exam._id) setSelectedExam({ ...selectedExam, status: newStatus })
         } catch {
-            toast.error('Failed to update exam status')
+            toast.error('Failed to update examination status')
         }
     }
 
-    const handleToggleResultsRelease = async (exam) => {
+    const handleReleaseResults = async (examId, isReleased) => {
         try {
-            const newReleaseStatus = !exam.isResultReleased;
-            await axios.patch(`${API}/admin/exams/${exam._id}/release-results`, { isResultReleased: newReleaseStatus }, {
+            await axios.patch(`${API}/admin/examinations/${examId}/release-results`, { isResultReleased: isReleased }, {
                 headers: { Authorization: `Bearer ${getToken()}` }
             })
-            toast.success(`Results ${newReleaseStatus ? 'released' : 'hidden'} successfully`)
+            toast.success(isReleased ? 'Results Released' : 'Results Hidden')
             fetchData()
-            if (selectedExam?._id === exam._id) setSelectedExam({ ...selectedExam, isResultReleased: newReleaseStatus })
         } catch {
-            toast.error('Failed to toggle results release')
+            toast.error('Failed to toggle results')
+        }
+    }
+
+    const handleSubjectStatus = async (examId, newStatus) => {
+        try {
+            await axios.patch(`${API}/admin/exams/${examId}/status`, { status: newStatus }, {
+                headers: { Authorization: `Bearer ${getToken()}` }
+            })
+            toast.success(`Subject status updated`)
+            fetchData()
+        } catch {
+            toast.error('Failed to update subject status')
         }
     }
 
@@ -107,25 +119,18 @@ export default function AdminExamsPage() {
                         <p className="page-subtitle">Manage examination lifecycles and analyze outcomes</p>
                     </div>
                     <button className="btn btn-primary" onClick={() => navigate('/admin/exams/create')}>
-                        <Plus size={16} /> New Exam
+                        <Plus size={16} /> New Examination
                     </button>
                 </div>
             </div>
 
             <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
-                {/* Main List Area */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                    {/* Tabs */}
                     <div className="flex gap-3 mb-4 flex-wrap" style={{ alignItems: 'center', borderBottom: '1px solid var(--border-default)' }}>
                         <div className="tabs" style={{ marginBottom: -1 }}>
                             {TABS.map(t => (
-                                <button
-                                    key={t}
-                                    className={`tab-item ${activeTab === t ? 'active' : ''}`}
-                                    onClick={() => { setActiveTab(t); setSelectedExam(null); }}
-                                >
-                                    {t}
-                                    <span className="tab-count">{tabCounts[t]}</span>
+                                <button key={t} className={`tab-item ${activeTab === t ? 'active' : ''}`} onClick={() => setActiveTab(t)}>
+                                    {t} <span className="tab-count">{tabCounts[t]}</span>
                                 </button>
                             ))}
                         </div>
@@ -137,188 +142,122 @@ export default function AdminExamsPage() {
                         </div>
                     </div>
 
-                    {/* Table */}
-                    <div className="data-table-wrapper">
-                        <table className="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Exam Title</th>
-                                    <th>Questions</th>
-                                    <th>Duration</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            {loading ? (
-                                <SkeletonTable rows={5} />
-                            ) : (
-                                <tbody>
-                                    {filtered.length === 0 ? (
-                                        <tr><td colSpan={5}>
-                                            <EmptyState
-                                                icon={<ClipboardList size={32} color="var(--text-tertiary)" />}
-                                                title={`No ${activeTab.toLowerCase()} exams`}
-                                                description={search ? 'No exams match that search.' : `You don't have any exams in ${activeTab} status.`}
-                                                action={!search && <button className="btn btn-primary" onClick={() => navigate('/admin/exams/create')}><Plus size={16} /> New Exam</button>}
-                                            />
-                                        </td></tr>
-                                    ) : filtered.map(exam => {
-                                        const isSelected = selectedExam?._id === exam._id
-                                        return (
-                                            <tr key={exam._id}
-                                                onClick={() => setSelectedExam(exam)}
-                                                style={{
-                                                    cursor: 'pointer',
-                                                    background: isSelected ? 'var(--bg-active)' : 'transparent',
-                                                    borderLeft: isSelected ? '2px solid var(--brand-primary)' : '2px solid transparent'
-                                                }}
-                                            >
-                                                <td>
-                                                    <div>
-                                                        <p style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{exam.title}</p>
-                                                        <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }} className="truncate" title={exam.description}>
-                                                            {exam.description?.slice(0, 50)}{exam.description?.length > 50 ? '...' : ''}
-                                                        </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                        {loading ? (
+                            <SkeletonTable rows={5} />
+                        ) : filtered.length === 0 ? (
+                            <EmptyState
+                                icon={<ClipboardList size={32} color="var(--text-tertiary)" />}
+                                title={`No ${activeTab.toLowerCase()} exams`}
+                                description={search ? 'No exams match that search.' : `You don't have any exams in ${activeTab} status.`}
+                                action={!search && <button className="btn btn-primary" onClick={() => navigate('/admin/exams/create')}><Plus size={16} /> New Examination</button>}
+                            />
+                        ) : (
+                            filtered.map(examination => {
+                                const isExpanded = expandedExams[examination._id];
+                                const totalSubjects = examination.subjects?.length || 0;
+                                const isComplete = examination.status === 'Completed';
+
+                                return (
+                                    <div key={examination._id} className="card" style={{ overflow: 'hidden' }}>
+                                        {/* Examination Header Bar */}
+                                        <div 
+                                            style={{ 
+                                                padding: '20px 24px', 
+                                                display: 'flex', 
+                                                justifyContent: 'space-between', 
+                                                alignItems: 'center',
+                                                cursor: 'pointer',
+                                                background: isExpanded ? 'var(--bg-active)' : 'transparent',
+                                                transition: 'background 0.2s'
+                                            }}
+                                            onClick={() => toggleExpand(examination._id)}
+                                        >
+                                            <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                                                {isExpanded ? <ChevronDown size={20} color="var(--text-tertiary)" /> : <ChevronRight size={20} color="var(--text-tertiary)" />}
+                                                <div>
+                                                    <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 4px 0' }}>{examination.title}</h3>
+                                                    <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>
+                                                        {totalSubjects} Subjects • Created {new Date(examination.createdAt).toLocaleDateString()}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                                                <StatusBadge status={examination.status} />
+                                                <div onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 8 }}>
+                                                    {examination.status !== 'Completed' && examination.status !== 'Archived' && (
+                                                        <button className="btn btn-sm btn-primary" onClick={() => handleExaminationStatus(examination._id, 'Completed')}>
+                                                            <Check size={14} style={{ marginRight: 4 }} /> Complete Examination
+                                                        </button>
+                                                    )}
+                                                    {isComplete && (
+                                                        <button 
+                                                            className={`btn btn-sm ${examination.isResultReleased ? 'btn-secondary' : 'btn-success'}`}
+                                                            onClick={() => handleReleaseResults(examination._id, !examination.isResultReleased)}
+                                                        >
+                                                            {examination.isResultReleased ? 'Hide Results' : 'Release Results'}
+                                                        </button>
+                                                    )}
+                                                    <button className="btn btn-sm btn-ghost" style={{ color: 'var(--danger)' }} onClick={() => setDeleteTarget(examination)}>
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Expanded Subjects View */}
+                                        {isExpanded && (
+                                            <div style={{ padding: '0 24px 24px 60px', borderTop: '1px solid var(--border-default)', background: 'var(--bg-surface)' }}>
+                                                <h4 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', margin: '20px 0 12px 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Subjects</h4>
+                                                {totalSubjects === 0 ? (
+                                                    <p style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>No subjects configured for this examination.</p>
+                                                ) : (
+                                                    <div style={{ display: 'grid', gap: 12 }}>
+                                                        {examination.subjects.map(subj => (
+                                                            <div key={subj._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)' }}>
+                                                                <div>
+                                                                    <p style={{ fontWeight: 500, color: 'var(--text-primary)', margin: '0 0 4px 0' }}>{subj.subject}</p>
+                                                                    <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: 0 }}>
+                                                                        {subj.questions?.length || 0} Questions • {subj.durationMinutes} mins
+                                                                    </p>
+                                                                </div>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                                                                    <StatusBadge status={subj.status || 'Draft'} />
+                                                                    <div style={{ display: 'flex', gap: 8 }}>
+                                                                        {(subj.status === 'Draft' || !subj.status) && (
+                                                                            <button className="btn btn-sm btn-success" onClick={() => handleSubjectStatus(subj._id, 'Live')} title="Start Exam">
+                                                                                <Play size={14} /> Start
+                                                                            </button>
+                                                                        )}
+                                                                        {subj.status === 'Live' && (
+                                                                            <button className="btn btn-sm btn-secondary" onClick={() => handleSubjectStatus(subj._id, 'Completed')} title="Complete">
+                                                                                <Square size={14} /> Finish
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        ))}
                                                     </div>
-                                                </td>
-                                                <td style={{ color: 'var(--text-secondary)' }}>{exam.questions?.length || 0}</td>
-                                                <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{exam.durationMinutes}m</td>
-                                                <td><StatusBadge status={exam.status || 'Draft'} /></td>
-                                                <td onClick={e => e.stopPropagation()}>
-                                                    <div className="flex gap-1">
-                                                        {(exam.status === 'Draft' || !exam.status) && (
-                                                            <button className="btn btn-sm btn-success" onClick={() => handleStatusChange(exam, 'Live')} title="Publish">
-                                                                <Play size={14} />
-                                                            </button>
-                                                        )}
-                                                        {exam.status === 'Live' && (
-                                                            <button className="btn btn-sm btn-secondary" onClick={() => handleStatusChange(exam, 'Completed')} title="Complete">
-                                                                <Square size={14} />
-                                                            </button>
-                                                        )}
-                                                        {exam.status === 'Completed' && (
-                                                            <button className="btn btn-sm btn-secondary" onClick={() => handleStatusChange(exam, 'Archived')} title="Archive">
-                                                                Archive
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        )
-                                    })}
-                                </tbody>
-                            )}
-                        </table>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                )
+                            })
+                        )}
                     </div>
                 </div>
-
-                {/* Insights Side Panel */}
-                {selectedExam && (
-                    <div style={{
-                        width: 320,
-                        flexShrink: 0,
-                        background: 'var(--bg-elevated)',
-                        border: '1px solid var(--border-default)',
-                        borderRadius: 'var(--radius-lg)',
-                        position: 'sticky',
-                        top: 'var(--topbar-height)',
-                        marginTop: 48,
-                        animation: 'slideInRight 200ms ease'
-                    }}>
-                        <div style={{ padding: 20, borderBottom: '1px solid var(--border-default)' }}>
-                            <StatusBadge status={selectedExam.status || 'Draft'} />
-                            <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginTop: 12 }}>{selectedExam.title}</h3>
-                            <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 4 }}>
-                                Created {new Date(selectedExam.createdAt).toLocaleDateString()}
-                            </p>
-                        </div>
-                        <div style={{ padding: 20 }}>
-                            <div className="flex gap-2 mb-4">
-                                <div style={{ flex: 1, background: 'var(--bg-surface)', padding: 12, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-                                    <Clock size={16} color="var(--text-tertiary)" className="mb-2" />
-                                    <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Duration</div>
-                                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{selectedExam.durationMinutes}m</div>
-                                </div>
-                                <div style={{ flex: 1, background: 'var(--bg-surface)', padding: 12, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-                                    <ClipboardList size={16} color="var(--text-tertiary)" className="mb-2" />
-                                    <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Questions</div>
-                                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{selectedExam.questions?.length || 0}</div>
-                                </div>
-                            </div>
-
-                            <div style={{ marginBottom: 16 }}>
-                                <div style={{ background: 'var(--bg-surface)', padding: 12, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', marginBottom: 8 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                                        <Calendar size={16} color="var(--text-tertiary)" />
-                                        <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Exam Date</div>
-                                    </div>
-                                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
-                                        {selectedExam.scheduledAt
-                                            ? new Date(selectedExam.scheduledAt).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
-                                            : 'Not Scheduled'}
-                                    </div>
-                                </div>
-                                <div className="flex gap-2">
-                                    <div style={{ flex: 1, background: 'var(--bg-surface)', padding: 12, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-                                        <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>Start Time</div>
-                                        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
-                                            {selectedExam.scheduledAt
-                                                ? new Date(selectedExam.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                                                : '-'}
-                                        </div>
-                                    </div>
-                                    <div style={{ flex: 1, background: 'var(--bg-surface)', padding: 12, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-                                        <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>End Time</div>
-                                        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
-                                            {selectedExam.endsAt
-                                                ? new Date(selectedExam.endsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                                                : '-'}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Actions */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 24 }}>
-                                {selectedExam.status === 'Completed' && (
-                                    <button
-                                        className={`btn ${selectedExam.isResultReleased ? 'btn-secondary' : 'btn-success'}`}
-                                        style={{ width: '100%' }}
-                                        onClick={() => handleToggleResultsRelease(selectedExam)}
-                                    >
-                                        {selectedExam.isResultReleased ? 'Hide Results' : 'Release Results'}
-                                    </button>
-                                )}
-                                <button
-                                    className="btn btn-primary"
-                                    style={{ width: '100%', justifyContent: 'space-between' }}
-                                    onClick={() => navigate(`/admin/exams/${selectedExam._id}`)}
-                                >
-                                    Open Exam Workspace <ArrowRight size={16} />
-                                </button>
-                                <button
-                                    className="btn btn-danger"
-                                    style={{ width: '100%' }}
-                                    onClick={() => setDeleteTarget(selectedExam)}
-                                >
-                                    <Trash2 size={16} /> Delete Exam
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
             </div>
 
-            {/* Delete Confirm */}
-            <ConfirmDialog
-                open={!!deleteTarget}
-                onClose={() => setDeleteTarget(null)}
+            <ConfirmDialog 
+                isOpen={!!deleteTarget}
+                title="Delete Examination"
+                message={`Are you sure you want to delete "${deleteTarget?.title}"? This will also delete all its subjects.`}
+                confirmText={deleting ? 'Deleting...' : 'Yes, Delete'}
                 onConfirm={handleDelete}
-                title="Delete Exam"
-                message={`Are you sure you want to permanently delete "${deleteTarget?.title}"? This cannot be undone.`}
-                confirmLabel="Delete Exam"
+                onCancel={() => setDeleteTarget(null)}
                 danger
-                loading={deleting}
             />
         </AdminLayout>
     )

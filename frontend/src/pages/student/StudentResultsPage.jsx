@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Target, Search, FileText, ChevronRight, X, Clock, Calendar, CheckCircle2, AlertCircle, XCircle } from 'lucide-react';
+import { Target, Search, FileText, ChevronRight, X, Clock, Calendar, CheckCircle2, AlertCircle, XCircle, ChevronDown } from 'lucide-react';
 
 const StudentResultsPage = () => {
     const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedResult, setSelectedResult] = useState(null);
+    const [expandedResults, setExpandedResults] = useState({});
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -37,24 +38,117 @@ const StudentResultsPage = () => {
         return 'F';
     };
 
+    const toggleExpand = (id) => {
+        setExpandedResults(prev => ({ ...prev, [id]: !prev[id] }));
+    };
+
     const getFilteredResults = () => {
         if (!searchQuery) return results;
         return results.filter(r => 
-            r.exam?.title?.toLowerCase().includes(searchQuery.toLowerCase())
+            r.exam?.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            r.exam?.examinationId?.title?.toLowerCase().includes(searchQuery.toLowerCase())
         );
     };
 
     const filteredResults = getFilteredResults();
 
     if (loading) {
-
-    return (
+        return (
             <div style={{ padding: 32 }}>
                 <div style={{ height: 40, width: 200, background: 'var(--bg-card)', borderRadius: 8, marginBottom: 32, animation: 'pulse 2s infinite' }} />
                 <div style={{ height: 400, background: 'var(--bg-card)', borderRadius: 12, animation: 'pulse 2s infinite' }} />
             </div>
         );
     }
+
+    // Grouping
+    const groupedResults = {};
+    const standaloneResults = [];
+
+    filteredResults.forEach(result => {
+        if (result.exam?.examinationId) {
+            const pId = String(result.exam.examinationId._id);
+            if (!groupedResults[pId]) {
+                groupedResults[pId] = {
+                    examination: result.exam.examinationId,
+                    results: []
+                };
+            }
+            groupedResults[pId].results.push(result);
+        } else {
+            standaloneResults.push(result);
+        }
+    });
+
+    const groups = Object.values(groupedResults);
+
+    const renderResultRow = (result, isChild = false) => {
+        const pct = Math.round((result.score / result.totalQuestions) * 100);
+        const grade = getGrade(pct);
+        const isReleased = result.exam?.examinationId 
+            ? result.exam.examinationId.isResultReleased === true 
+            : result.exam?.isResultReleased === true;
+        
+        return (
+            <tr key={result._id} style={{ borderBottom: '1px solid var(--border-default)', transition: 'background 0.2s ease', background: isChild ? 'var(--bg-body)' : 'transparent' }} className={isChild ? "" : "table-row-hover"}>
+                <td style={{ padding: isChild ? '16px 24px 16px 48px' : '16px 24px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ width: 32, height: 32, borderRadius: 8, background: isChild ? 'var(--bg-card)' : 'var(--bg-body)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--brand-primary)' }}>
+                            <FileText size={16} />
+                        </div>
+                        <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>
+                            {isChild ? (result.exam?.title?.split(' - ').pop() || 'Deleted Exam') : (result.exam?.title || 'Deleted Exam')}
+                        </span>
+                    </div>
+                </td>
+                <td style={{ padding: '16px 24px', fontSize: 14, color: 'var(--text-secondary)' }}>
+                    {new Date(result.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                </td>
+                <td style={{ padding: '16px 24px', textAlign: 'right' }}>
+                    {isReleased ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                            <span style={{ fontSize: 15, fontWeight: 600, color: pct >= 80 ? 'var(--success)' : pct >= 50 ? 'var(--warning)' : 'var(--danger)' }}>{pct}%</span>
+                            <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{result.score} / {result.totalQuestions} pts</span>
+                        </div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                            <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontStyle: 'italic' }}>Not Released</span>
+                        </div>
+                    )}
+                </td>
+                <td style={{ padding: '16px 24px', textAlign: 'center' }}>
+                    {isReleased ? (
+                        <span style={{ 
+                            display: 'inline-flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center',
+                            width: 28,
+                            height: 28,
+                            borderRadius: '50%',
+                            fontSize: 13, 
+                            fontWeight: 700, 
+                            background: pct >= 70 ? 'var(--success-subtle)' : pct >= 50 ? 'var(--warning-subtle)' : 'var(--danger-subtle)',
+                            color: pct >= 70 ? 'var(--success)' : pct >= 50 ? 'var(--warning)' : 'var(--danger)'
+                        }}>
+                            {grade}
+                        </span>
+                    ) : (
+                        <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>-</span>
+                    )}
+                </td>
+                <td style={{ padding: '16px 24px', textAlign: 'right' }}>
+                    <button 
+                        className="btn btn-secondary"
+                        style={{ padding: '6px 12px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4, opacity: isReleased ? 1 : 0.5, cursor: isReleased ? 'pointer' : 'not-allowed' }}
+                        onClick={() => isReleased && setSelectedResult(result)}
+                        disabled={!isReleased}
+                    >
+                        Details <ChevronRight size={14} />
+                    </button>
+                </td>
+            </tr>
+        );
+    };
 
     return (
         <div style={{ maxWidth: 1100, margin: '0 auto', paddingBottom: 48 }}>
@@ -108,69 +202,88 @@ const StudentResultsPage = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {filteredResults.map(result => {
-                                    const pct = Math.round((result.score / result.totalQuestions) * 100);
-                                    const grade = getGrade(pct);
-                                    const isReleased = result.exam?.isResultReleased === true;
-                                    
+                                {/* Render Hierarchical Results */}
+                                {groups.map(group => {
+                                    const isExpanded = expandedResults[group.examination._id];
+                                    const isReleased = group.examination.isResultReleased;
+
+                                    let totalScore = 0;
+                                    let totalQuestions = 0;
+                                    group.results.forEach(r => {
+                                        totalScore += r.score;
+                                        totalQuestions += r.totalQuestions;
+                                    });
+                                    const overallPct = Math.round((totalScore / Math.max(1, totalQuestions)) * 100);
+                                    const overallGrade = getGrade(overallPct);
+
                                     return (
-                                        <tr key={result._id} style={{ borderBottom: '1px solid var(--border-default)', transition: 'background 0.2s ease' }} className="table-row-hover">
-                                            <td style={{ padding: '16px 24px' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                                    <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--bg-body)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--brand-primary)' }}>
-                                                        <FileText size={16} />
+                                        <React.Fragment key={group.examination._id}>
+                                            <tr 
+                                                onClick={() => toggleExpand(group.examination._id)}
+                                                style={{ borderBottom: '1px solid var(--border-default)', cursor: 'pointer', background: isExpanded ? 'var(--bg-active)' : 'transparent', transition: 'background 0.2s ease' }} 
+                                                className="table-row-hover"
+                                            >
+                                                <td style={{ padding: '16px 24px' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                                        <div style={{ width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                            {isExpanded ? <ChevronDown size={18} color="var(--text-tertiary)" /> : <ChevronRight size={18} color="var(--text-tertiary)" />}
+                                                        </div>
+                                                        <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--bg-body)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--brand-primary)' }}>
+                                                            <Target size={16} />
+                                                        </div>
+                                                        <div>
+                                                            <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', display: 'block' }}>{group.examination.title}</span>
+                                                            <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{group.results.length} Subject{group.results.length !== 1 ? 's' : ''} Taken</span>
+                                                        </div>
                                                     </div>
-                                                    <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>{result.exam?.title || 'Deleted Exam'}</span>
-                                                </div>
-                                            </td>
-                                            <td style={{ padding: '16px 24px', fontSize: 14, color: 'var(--text-secondary)' }}>
-                                                {new Date(result.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
-                                            </td>
-                                            <td style={{ padding: '16px 24px', textAlign: 'right' }}>
-                                                {isReleased ? (
-                                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                                                        <span style={{ fontSize: 15, fontWeight: 600, color: pct >= 80 ? 'var(--success)' : pct >= 50 ? 'var(--warning)' : 'var(--danger)' }}>{pct}%</span>
-                                                        <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{result.score} / {result.totalQuestions} pts</span>
-                                                    </div>
-                                                ) : (
-                                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                                                        <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontStyle: 'italic' }}>Result Not Released Yet</span>
-                                                    </div>
-                                                )}
-                                            </td>
-                                            <td style={{ padding: '16px 24px', textAlign: 'center' }}>
-                                                {isReleased ? (
-                                                    <span style={{ 
-                                                        display: 'inline-flex', 
-                                                        alignItems: 'center', 
-                                                        justifyContent: 'center',
-                                                        width: 28,
-                                                        height: 28,
-                                                        borderRadius: '50%',
-                                                        fontSize: 13, 
-                                                        fontWeight: 700, 
-                                                        background: pct >= 70 ? 'var(--success-subtle)' : pct >= 50 ? 'var(--warning-subtle)' : 'var(--danger-subtle)',
-                                                        color: pct >= 70 ? 'var(--success)' : pct >= 50 ? 'var(--warning)' : 'var(--danger)'
-                                                    }}>
-                                                        {grade}
-                                                    </span>
-                                                ) : (
-                                                    <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>-</span>
-                                                )}
-                                            </td>
-                                            <td style={{ padding: '16px 24px', textAlign: 'right' }}>
-                                                <button 
-                                                    className="btn btn-secondary"
-                                                    style={{ padding: '6px 12px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4, opacity: isReleased ? 1 : 0.5, cursor: isReleased ? 'pointer' : 'not-allowed' }}
-                                                    onClick={() => isReleased && setSelectedResult(result)}
-                                                    disabled={!isReleased}
-                                                >
-                                                    Details <ChevronRight size={14} />
-                                                </button>
-                                            </td>
-                                        </tr>
+                                                </td>
+                                                <td style={{ padding: '16px 24px', fontSize: 14, color: 'var(--text-secondary)' }}>
+                                                    -
+                                                </td>
+                                                <td style={{ padding: '16px 24px', textAlign: 'right' }}>
+                                                    {isReleased ? (
+                                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                                                            <span style={{ fontSize: 15, fontWeight: 600, color: overallPct >= 80 ? 'var(--success)' : overallPct >= 50 ? 'var(--warning)' : 'var(--danger)' }}>{overallPct}%</span>
+                                                            <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Overall</span>
+                                                        </div>
+                                                    ) : (
+                                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                                                            <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontStyle: 'italic' }}>Not Released</span>
+                                                        </div>
+                                                    )}
+                                                </td>
+                                                <td style={{ padding: '16px 24px', textAlign: 'center' }}>
+                                                    {isReleased ? (
+                                                        <span style={{ 
+                                                            display: 'inline-flex', 
+                                                            alignItems: 'center', 
+                                                            justifyContent: 'center',
+                                                            width: 28,
+                                                            height: 28,
+                                                            borderRadius: '50%',
+                                                            fontSize: 13, 
+                                                            fontWeight: 700, 
+                                                            background: overallPct >= 70 ? 'var(--success-subtle)' : overallPct >= 50 ? 'var(--warning-subtle)' : 'var(--danger-subtle)',
+                                                            color: overallPct >= 70 ? 'var(--success)' : overallPct >= 50 ? 'var(--warning)' : 'var(--danger)'
+                                                        }}>
+                                                            {overallGrade}
+                                                        </span>
+                                                    ) : (
+                                                        <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>-</span>
+                                                    )}
+                                                </td>
+                                                <td style={{ padding: '16px 24px', textAlign: 'right' }}>
+                                                    {/* Parent row has no direct details button, it's just an accordion */}
+                                                </td>
+                                            </tr>
+
+                                            {isExpanded && group.results.map(result => renderResultRow(result, true))}
+                                        </React.Fragment>
                                     );
                                 })}
+
+                                {/* Render Standalone Results */}
+                                {standaloneResults.map(result => renderResultRow(result, false))}
                             </tbody>
                         </table>
                     </div>

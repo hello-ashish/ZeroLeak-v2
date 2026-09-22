@@ -29,7 +29,7 @@ const StudentPerformancePage = () => {
 
     if (loading) {
 
-    return (
+        return (
             <div style={{ height: '50vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <div style={{ width: 40, height: 40, border: '3px solid var(--border-default)', borderTopColor: 'var(--brand-primary)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
             </div>
@@ -64,7 +64,7 @@ const StudentPerformancePage = () => {
     const sortedAllResults = [...results].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)); // Oldest to newest
     const reverseAllResults = [...sortedAllResults].reverse(); // Newest to oldest
 
-    const releasedResults = results.filter(r => r.exam?.isResultReleased === true);
+    const releasedResults = results.filter(r => r.exam?.examinationId ? r.exam.examinationId.isResultReleased === true : r.exam?.isResultReleased === true);
     const sortedResults = [...releasedResults].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)); // Oldest to newest
     const reverseResults = [...sortedResults].reverse(); // Newest to oldest
 
@@ -322,40 +322,6 @@ const StudentPerformancePage = () => {
                         )}
                     </div>
                 </section>
-
-                {/* INSIGHTS MODULE */}
-                <section style={{ display: 'flex', flexDirection: 'column' }}>
-                    <h2 style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Performance Insights</h2>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 24 }}>
-
-                        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', borderRadius: 16, padding: 32, flex: 1 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-                                <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--bg-body)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--brand-primary)' }}>
-                                    <Target size={16} />
-                                </div>
-                                <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Why Your Score Changed</h3>
-                            </div>
-                            <p style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 16 }}>
-                                {whyInsight}
-                            </p>
-                            {whyDetails.map((detail, i) => (
-                                <div key={i} style={{ fontSize: 14, color: 'var(--text-primary)', background: 'var(--bg-body)', padding: '12px 16px', borderRadius: 8, marginBottom: 8 }}>
-                                    {detail}
-                                </div>
-                            ))}
-                        </div>
-
-                        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', borderRadius: 16, padding: 32 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                                {nextAction.icon}
-                                <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Next Recommended Action</h3>
-                            </div>
-                            <div style={{ fontSize: 16, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 4 }}>{nextAction.title}</div>
-                            <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{nextAction.desc}</p>
-                        </div>
-
-                    </div>
-                </section>
             </div>
 
             {/* LOWER TIER: Subject & Recent Lists */}
@@ -399,7 +365,8 @@ const StudentPerformancePage = () => {
                             reverseAllResults.slice(0, 6).map((r, i) => {
                                 const pct = Math.round((r.score / r.totalQuestions) * 100);
                                 const grade = getGrade(pct);
-                                const isReleased = r.exam?.isResultReleased === true;
+                                const isReleased = r.exam?.examinationId ? r.exam.examinationId.isResultReleased === true : r.exam?.isResultReleased === true;
+
                                 return (
                                     <div key={r._id} style={{ display: 'flex', alignItems: 'center', padding: '20px 32px', borderBottom: i !== Math.min(reverseAllResults.length, 6) - 1 ? '1px solid var(--border-default)' : 'none', cursor: 'pointer', transition: 'background 0.2s' }} className="table-row-hover" onClick={() => navigate('/student/results')}>
                                         <div style={{ flex: 1 }}>

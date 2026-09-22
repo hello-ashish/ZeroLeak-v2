@@ -40,7 +40,7 @@ const ProfessorDashboardPage = () => {
     // Calculate metrics
     const totalBatches = batches.length
     const pendingBatches = batches.filter(b => b.status === 'Draft' || b.status === 'MarkForReview').length
-    const approvedBatches = batches.filter(b => b.status === 'Accepted').length
+    const submittedBatches = batches.filter(b => ['Submitted', 'Accepted', 'Rejected'].includes(b.status)).length
     const totalQuestions = batches.reduce((sum, b) => sum + (b.questions?.length || 0), 0)
 
     const recentBatches = [...batches].reverse().slice(0, 5)
@@ -59,11 +59,6 @@ const ProfessorDashboardPage = () => {
                         <p className="page-subtitle" style={{ fontSize: 14 }}>
                             Here's an overview of your academic contributions.
                         </p>
-                    </div>
-                    <div className="page-actions">
-                        <button className="btn btn-primary" onClick={() => navigate('/professor/batches')}>
-                            <Plus size={16} /> New Batch
-                        </button>
                     </div>
                 </div>
             </div>
@@ -86,11 +81,11 @@ const ProfessorDashboardPage = () => {
                     </p>
                 </div>
                 <div className="kpi-module">
-                    <p className="kpi-module-title">Approved</p>
-                    {loading ? <Skeleton height={38} width={50} style={{ margin: '8px 0' }} /> : <p className="kpi-module-value">{approvedBatches}</p>}
+                    <p className="kpi-module-title">Submitted</p>
+                    {loading ? <Skeleton height={38} width={50} style={{ margin: '8px 0' }} /> : <p className="kpi-module-value">{submittedBatches}</p>}
                     <p className="kpi-module-sub" style={{ color: 'var(--success)' }}>
                         <CheckCircle size={16} style={{ marginRight: 4 }} />
-                        <span>Ready for Exams</span>
+                        <span>With Admin</span>
                     </p>
                 </div>
                 <div className="kpi-module">
@@ -131,7 +126,7 @@ const ProfessorDashboardPage = () => {
                                                 </td>
                                                 <td style={{ color: 'var(--text-secondary)' }}>{batch.subject}</td>
                                                 <td style={{ color: 'var(--text-secondary)' }}>{batch.questions?.length || 0}</td>
-                                                <td><StatusBadge status={batch.status || 'Draft'} /></td>
+                                                <td><StatusBadge status={['Accepted', 'Rejected'].includes(batch.status) ? 'Submitted' : (batch.status || 'Draft')} /></td>
                                             </tr>
                                         ))
                                     ) : (

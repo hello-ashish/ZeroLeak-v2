@@ -162,8 +162,11 @@ export const pingSession = async (req, res) => {
 // 3. Get all available Exams for Students to see!
 export const getAvailableExams = async (req, res) => {
     try {
-        // We fetch ALL exams, and we use .populate to inject the Admin's email into the "createdBy" field!
-        const exams = await Exam.find().populate("createdBy", "email").sort({ createdAt: -1 });
+        // We fetch ALL exams that are Live or Completed, and use .populate to inject the Admin's email into the "createdBy" field
+        const exams = await Exam.find({ status: { $in: ["Live", "Completed"] } })
+            .populate("createdBy", "email")
+            .populate("examinationId", "title description isResultReleased")
+            .sort({ createdAt: -1 });
         return res.status(200).json({ exams });
     } catch (error) {
         return res.status(500).json({ message: "Error fetching exams", error: error.message });
@@ -525,7 +528,14 @@ export const submitExamResult = async (req, res) => {
 export const getStudentResults = async (req, res) => {
     try {
         const results = await Result.find({ student: req.student._id })
-            .populate("exam", "title isResultReleased")
+            .populate({
+                path: "exam",
+                select: "title isResultReleased examinationId",
+                populate: {
+                    path: "examinationId",
+                    select: "isResultReleased title"
+                }
+            })
             .sort({ createdAt: -1 })
         return res.status(200).json({ results })
     } catch (error) {

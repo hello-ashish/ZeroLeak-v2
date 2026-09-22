@@ -21,7 +21,7 @@ const StudentDashboardPage = () => {
                     axios.get('http://localhost:4000/api/students/results', { headers: { Authorization: `Bearer ${token}` } })
                 ]);
                 setExams(examsRes.data.exams || []);
-                
+
                 // Sort results newest first
                 const sortedResults = (resultsRes.data.results || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
                 setResults(sortedResults);
@@ -36,9 +36,9 @@ const StudentDashboardPage = () => {
     }, [navigate]);
 
     // --- DATA CALCULATIONS ---
-    const releasedResults = results.filter(r => r.exam?.isResultReleased === true);
+    const releasedResults = results.filter(r => r.exam?.examinationId ? r.exam.examinationId.isResultReleased === true : r.exam?.isResultReleased === true);
     const completedExams = releasedResults.length;
-    
+
     // Overall Average
     const averageScore = completedExams > 0
         ? Math.round(releasedResults.reduce((acc, curr) => acc + (curr.score / curr.totalQuestions) * 100, 0) / completedExams)
@@ -87,7 +87,7 @@ const StudentDashboardPage = () => {
 
     if (loading) {
 
-    return (
+        return (
             <div style={{ height: '50vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <div style={{ width: 40, height: 40, border: '3px solid var(--border-default)', borderTopColor: 'var(--brand-primary)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
             </div>
@@ -98,7 +98,7 @@ const StudentDashboardPage = () => {
 
     return (
         <div style={{ maxWidth: 1100, margin: '0 auto', paddingBottom: 64, fontFamily: 'Inter, system-ui, sans-serif' }}>
-            
+
             {/* Header & Identity Strip */}
             <div style={{ marginBottom: 40 }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
@@ -121,11 +121,11 @@ const StudentDashboardPage = () => {
 
             {/* Top Tier: Next Move & Academic Pulse */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 24, marginBottom: 24, '@media (min-width: 1024px)': { gridTemplateColumns: '2fr 1fr' } }}>
-                
+
                 {/* YOUR NEXT MOVE */}
                 <section style={{ display: 'flex', flexDirection: 'column' }}>
                     <h2 style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Your Next Move</h2>
-                    
+
                     {upNext ? (
                         <div style={{ flex: 1, background: 'linear-gradient(135deg, var(--brand-primary), #2563EB)', borderRadius: 16, padding: 32, color: 'white', position: 'relative', overflow: 'hidden' }}>
                             <div style={{ position: 'absolute', right: -20, top: -40, opacity: 0.1 }}>
@@ -137,10 +137,10 @@ const StudentDashboardPage = () => {
                                 </div>
                                 <h3 style={{ fontSize: 28, fontWeight: 400, marginBottom: 8, letterSpacing: '-0.01em' }}>{upNext.title}</h3>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 16, opacity: 0.9, fontSize: 14, marginBottom: 32 }}>
-                                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Clock size={16}/> {upNext.durationMinutes} Minutes</span>
-                                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Target size={16}/> {upNext.questions?.length || 0} Questions</span>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Clock size={16} /> {upNext.durationMinutes} Minutes</span>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Target size={16} /> {upNext.questions?.length || 0} Questions</span>
                                 </div>
-                                <button 
+                                <button
                                     onClick={() => navigate(`/student/take-exam/${upNext._id}`)}
                                     style={{ background: 'white', color: 'var(--brand-primary)', padding: '12px 24px', borderRadius: 8, fontSize: 14, fontWeight: 600, border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8, transition: 'transform 0.1s' }}
                                     onMouseDown={e => e.currentTarget.style.transform = 'scale(0.98)'}
@@ -168,7 +168,7 @@ const StudentDashboardPage = () => {
                 <section style={{ display: 'flex', flexDirection: 'column' }}>
                     <h2 style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Academic Pulse</h2>
                     <div style={{ flex: 1, background: 'var(--bg-card)', border: '1px solid var(--border-default)', borderRadius: 16, padding: 24, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-                        
+
                         <div>
                             <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Current Average</div>
                             <div style={{ fontSize: 32, fontWeight: 300, color: 'var(--text-primary)', lineHeight: 1 }}>{averageScore}%</div>
@@ -207,54 +207,7 @@ const StudentDashboardPage = () => {
 
             {/* Bottom Tier: Recent Results & Activity */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 24, '@media (min-width: 1024px)': { gridTemplateColumns: '2fr 1fr' } }}>
-                
-                {/* RECENT RESULTS */}
-                <section style={{ display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                        <h2 style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Recent Results</h2>
-                        <button onClick={() => navigate('/student/results')} style={{ background: 'none', border: 'none', color: 'var(--brand-primary)', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
-                            View All <ChevronRight size={14} />
-                        </button>
-                    </div>
-                    
-                    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', borderRadius: 16, overflow: 'hidden' }}>
-                        {results.length === 0 ? (
-                            <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-tertiary)' }}>No past results available.</div>
-                        ) : (
-                            results.slice(0, 5).map((r, i) => {
-                                const pct = Math.round((r.score / r.totalQuestions) * 100);
-                                const grade = getGrade(pct);
-                                const isReleased = r.exam?.isResultReleased === true;
-                                return (
-                                    <div key={r._id} style={{ display: 'flex', alignItems: 'center', padding: '16px 24px', borderBottom: i !== Math.min(results.length, 5) - 1 ? '1px solid var(--border-default)' : 'none', cursor: 'pointer', transition: 'background 0.2s' }} className="table-row-hover" onClick={() => navigate('/student/results')}>
-                                        <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--bg-body)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', marginRight: 16 }}>
-                                            <BookOpen size={16} />
-                                        </div>
-                                        <div style={{ flex: 1 }}>
-                                            <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 4 }}>{r.exam?.title || 'Deleted Exam'}</div>
-                                            <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{new Date(r.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</div>
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-                                            {isReleased ? (
-                                                <>
-                                                    <div style={{ textAlign: 'right' }}>
-                                                        <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-primary)' }}>{pct}%</div>
-                                                        <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{r.score}/{r.totalQuestions}</div>
-                                                    </div>
-                                                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: grade.color + '20', color: grade.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 14 }}>
-                                                        {grade.letter}
-                                                    </div>
-                                                </>
-                                            ) : (
-                                                <div style={{ fontSize: 13, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>Pending Release</div>
-                                            )}
-                                        </div>
-                                    </div>
-                                )
-                            })
-                        )}
-                    </div>
-                </section>
+
 
                 {/* RECENT ACTIVITY TIMELINE */}
                 <section style={{ display: 'flex', flexDirection: 'column' }}>

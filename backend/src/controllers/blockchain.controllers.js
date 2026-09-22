@@ -146,12 +146,12 @@ export const verifyEntityCommitment = async (req, res) => {
 export const getPublicAnchorStatus = async (req, res) => {
     try {
         if (!isAnchorConnected()) {
-            return res.status(404).json({ message: "Public anchor not configured or unavailable." });
+            return res.status(200).json({ anchor: null, message: "Public anchor not configured or unavailable." });
         }
         
         const anchor = await getPolygonAnchor();
         if (!anchor) {
-            return res.status(404).json({ message: "Public anchor not found or unavailable." });
+            return res.status(200).json({ anchor: null, message: "Public anchor not found or unavailable." });
         }
         return res.status(200).json({ anchor });
     } catch (error) {

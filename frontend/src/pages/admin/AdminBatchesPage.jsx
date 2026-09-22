@@ -22,7 +22,7 @@ export default function AdminBatchesPage() {
     const [rejectReason, setRejectReason] = useState('')
     const [markReason, setMarkReason] = useState('')
     const [actionState, setActionState] = useState(null) // 'reject', 'mark', or 'delete'
-    
+
     const navigate = useNavigate()
     const toast = useToast()
 
@@ -35,7 +35,7 @@ export default function AdminBatchesPage() {
             const all = res.data.batches || []
             setBatches(all)
             setPendingCount(all.filter(b => b.status === 'Submitted').length)
-            
+
             // Auto-select first pending batch if none selected
             if (!activeBatch && all.filter(b => b.status === 'Submitted').length > 0) {
                 openBatch(all.filter(b => b.status === 'Submitted')[0])
@@ -143,7 +143,7 @@ export default function AdminBatchesPage() {
                             ))}
                         </div>
                     </div>
-                    
+
                     <div style={{ flex: 1, overflowY: 'auto', padding: 12 }}>
                         {loading ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -160,12 +160,12 @@ export default function AdminBatchesPage() {
                                 {filtered.map(batch => {
                                     const isSelected = activeBatch?._id === batch._id
                                     return (
-                                        <div 
+                                        <div
                                             key={batch._id}
                                             onClick={() => openBatch(batch)}
-                                            style={{ 
-                                                padding: 16, 
-                                                background: isSelected ? 'var(--bg-active)' : 'var(--bg-surface)', 
+                                            style={{
+                                                padding: 16,
+                                                background: isSelected ? 'var(--bg-active)' : 'var(--bg-surface)',
                                                 border: isSelected ? '1px solid var(--brand-primary)' : '1px solid var(--border-subtle)',
                                                 borderRadius: 'var(--radius-md)',
                                                 cursor: 'pointer',
@@ -182,7 +182,7 @@ export default function AdminBatchesPage() {
                                                 by {batch.createdBy?.name || 'Unknown'}
                                             </div>
                                             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                                                <StatusBadge status={batch.status === 'Submitted' ? 'Scheduled' : batch.status === 'Accepted' ? 'Live' : batch.status === 'Rejected' ? 'Rejected' : batch.status} />
+                                                <StatusBadge status={batch.status === 'Submitted' ? 'Pending' : batch.status === 'Accepted' ? 'Live' : batch.status === 'Rejected' ? 'Rejected' : batch.status} />
                                                 <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{batch.questions?.length || 0} Qs</span>
                                             </div>
                                         </div>
@@ -202,7 +202,7 @@ export default function AdminBatchesPage() {
                                 <div>
                                     <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 8 }}>
                                         <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}>{activeBatch.title}</h2>
-                                        <StatusBadge status={activeBatch.status === 'Submitted' ? 'Scheduled' : activeBatch.status === 'Accepted' ? 'Live' : activeBatch.status === 'Rejected' ? 'Rejected' : activeBatch.status} />
+                                        <StatusBadge status={activeBatch.status === 'Submitted' ? 'Pending' : activeBatch.status === 'Accepted' ? 'Live' : activeBatch.status === 'Rejected' ? 'Rejected' : activeBatch.status} />
                                     </div>
                                     <div style={{ display: 'flex', gap: 24, fontSize: 13, color: 'var(--text-secondary)' }}>
                                         <span><strong style={{ color: 'var(--text-primary)' }}>Professor:</strong> {activeBatch.createdBy?.name || 'Unknown'}</span>
@@ -210,7 +210,7 @@ export default function AdminBatchesPage() {
                                         <span><strong style={{ color: 'var(--text-primary)' }}>Submitted:</strong> {new Date(activeBatch.createdAt).toLocaleString()}</span>
                                     </div>
                                 </div>
-                                
+
                                 {!actionState && (
                                     <div style={{ display: 'flex', gap: 8 }}>
                                         {activeBatch.status === 'Submitted' && (
@@ -294,7 +294,7 @@ export default function AdminBatchesPage() {
                                                         <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{q.topic || 'No topic'}</span>
                                                     </div>
                                                     <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.5, marginBottom: 16 }}>{q.title}</p>
-                                                    
+
                                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                                                         {q.options?.map((opt, j) => {
                                                             const isCorrect = opt === q.correctAnswer
@@ -305,11 +305,11 @@ export default function AdminBatchesPage() {
                                                                     border: `1px solid ${isCorrect ? 'var(--success-border)' : 'var(--border-subtle)'}`,
                                                                     display: 'flex', gap: 10, alignItems: 'center', fontSize: 13
                                                                 }}>
-                                                                    <div style={{ 
-                                                                        width: 20, height: 20, borderRadius: '50%', 
-                                                                        background: isCorrect ? 'var(--success)' : 'var(--bg-elevated)', 
-                                                                        color: isCorrect ? '#fff' : 'var(--text-tertiary)', 
-                                                                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 600 
+                                                                    <div style={{
+                                                                        width: 20, height: 20, borderRadius: '50%',
+                                                                        background: isCorrect ? 'var(--success)' : 'var(--bg-elevated)',
+                                                                        color: isCorrect ? '#fff' : 'var(--text-tertiary)',
+                                                                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 600
                                                                     }}>
                                                                         {String.fromCharCode(65 + j)}
                                                                     </div>

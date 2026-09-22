@@ -2,6 +2,7 @@ import express from "express"
 import cors from "cors"
 import questionRouter from "./routes/question.routes.js"
 import examRouter from "./routes/exam.routes.js"
+import examinationRouter from "./routes/examination.routes.js"
 import studentRouter from "./routes/student.routes.js"
 
 const app = express()
@@ -25,6 +26,7 @@ import blockchainRouter from "./routes/blockchain.routes.js"
 
 // this says: any request starting with /api/admin goes to the adminRouter
 app.use("/api/admin", adminRouter)
+app.use("/api/admin/examinations", examinationRouter)
 // http://localhost:4000/api/admin/
 
 // this says: any request starting with /api/professor goes to the professorRouter

@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AdminLayout } from './AdminLayout.jsx'
-import { ArrowLeft, Check, BookOpen, Clock, Settings, Upload, Search, Database, Loader2 } from 'lucide-react'
+import { ArrowLeft, Check, BookOpen, Settings, Search, Database, Trash2, Plus } from 'lucide-react'
 import { useToast } from '../../components/Toast.jsx'
 import axios from 'axios'
 
@@ -10,39 +10,50 @@ const getToken = () => localStorage.getItem('adminToken')
 
 export const AdminExamBuilderPage = () => {
     const [step, setStep] = useState(1)
-    const [form, setForm] = useState({ title: '', description: '', durationMinutes: 60, passingPercentage: 50, status: 'Draft', selectedQuestions: [] })
+    const [form, setForm] = useState({ title: '', description: '' })
+    const [subjects, setSubjects] = useState([])
     const [allQuestions, setAllQuestions] = useState([])
-    const [qSearch, setQSearch] = useState('')
+    const [currentSubj, setCurrentSubj] = useState({ subject: '', numQuestions: 10, durationMinutes: 60, passingPercentage: 50 })
     const [creating, setCreating] = useState(false)
-    const [isGenerating, setIsGenerating] = useState(false)
     const navigate = useNavigate()
     const toast = useToast()
-
-    const handleCreate = async () => {
-        setCreating(true)
-        try {
-            await axios.post(`${API}/exams`, {
-                title: form.title,
-                description: form.description,
-                duration: form.durationMinutes,
-                passingPercentage: form.passingPercentage,
-                questions: form.selectedQuestions,
-                status: form.status
-            }, { headers: { Authorization: `Bearer ${getToken()}` } })
-            toast.success('Exam created successfully!')
-            navigate('/admin/exams')
-        } catch (err) {
-            toast.error(err.response?.data?.message || 'Failed to create exam')
-        } finally {
-            setCreating(false)
-        }
-    }
 
     React.useEffect(() => {
         axios.get(`${API}/questions`, { headers: { Authorization: `Bearer ${getToken()}` } })
             .then(res => setAllQuestions(res.data.questions || []))
             .catch(console.error)
     }, [])
+
+    const handleAddSubject = () => {
+        if (!currentSubj.subject) return toast.error('Please select or enter a subject')
+        if (subjects.some(s => s.subject.toLowerCase() === currentSubj.subject.toLowerCase())) {
+            return toast.error('Subject already added')
+        }
+        setSubjects([...subjects, { ...currentSubj }])
+        setCurrentSubj({ subject: '', numQuestions: 10, durationMinutes: 60, passingPercentage: 50 })
+    }
+
+    const removeSubject = (idx) => {
+        setSubjects(subjects.filter((_, i) => i !== idx))
+    }
+
+    const handleCreate = async () => {
+        setCreating(true)
+        try {
+            await axios.post(`${API}/admin/examinations`, {
+                title: form.title,
+                description: form.description,
+                subjects: subjects
+            }, { headers: { Authorization: `Bearer ${getToken()}` } })
+
+            toast.success('Examination created successfully!')
+            navigate('/admin/exams')
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to create examination')
+        } finally {
+            setCreating(false)
+        }
+    }
 
     return (
         <AdminLayout>
@@ -52,24 +63,22 @@ export const AdminExamBuilderPage = () => {
                 </button>
                 <div className="page-header-top">
                     <div>
-                        <h1 className="page-title" style={{ fontSize: 24 }}>Exam Builder</h1>
-                        <p className="page-subtitle">Configure a new examination</p>
+                        <h1 className="page-title" style={{ fontSize: 24 }}>Examination Builder</h1>
+                        <p className="page-subtitle">Configure a new multi-subject examination (e.g. JEE Mains)</p>
                     </div>
                 </div>
             </div>
 
             <div style={{ maxWidth: 800, margin: '0 auto' }}>
-                {/* Wizard Steps */}
                 <div style={{ display: 'flex', gap: 12, marginBottom: 32 }}>
                     {[
                         { num: 1, label: 'Details', icon: <BookOpen size={16} /> },
-                        { num: 2, label: 'Configuration', icon: <Settings size={16} /> },
-                        { num: 3, label: 'Questions', icon: <Database size={16} /> },
-                        { num: 4, label: 'Review', icon: <Check size={16} /> }
+                        { num: 2, label: 'Subjects', icon: <Database size={16} /> },
+                        { num: 3, label: 'Review', icon: <Check size={16} /> }
                     ].map(s => (
-                        <div key={s.num} style={{ 
-                            flex: 1, 
-                            padding: '12px 16px', 
+                        <div key={s.num} style={{
+                            flex: 1,
+                            padding: '12px 16px',
                             background: step >= s.num ? 'var(--brand-primary-subtle)' : 'var(--bg-elevated)',
                             border: `1px solid ${step >= s.num ? 'var(--brand-primary-border)' : 'var(--border-default)'}`,
                             color: step >= s.num ? 'var(--brand-primary)' : 'var(--text-tertiary)',
@@ -84,195 +93,119 @@ export const AdminExamBuilderPage = () => {
 
                 <div className="card" style={{ padding: 32 }}>
                     {step === 1 && (
-                        <div style={{ animation: 'dialogScale 200ms ease' }}>
-                            <h2 style={{ fontSize: 18, marginBottom: 24 }}>Basic Information</h2>
+                        <div>
+                            <h2 style={{ fontSize: 18, marginBottom: 24 }}>Examination Details</h2>
                             <div className="form-group mb-4">
-                                <label className="form-label">Exam Title *</label>
-                                <input className="form-input" placeholder="e.g. Computer Science Midterm" autoFocus value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
+                                <label className="form-label">Examination Title *</label>
+                                <input className="form-input" placeholder="e.g. JEE Mains 2026" autoFocus value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
                             </div>
                             <div className="form-group">
                                 <label className="form-label">Description *</label>
-                                <textarea className="form-textarea" style={{ minHeight: 120 }} placeholder="What topics are covered in this exam?" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+                                <textarea className="form-textarea" style={{ minHeight: 120 }} placeholder="General instructions for the examination..." value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
                             </div>
                         </div>
                     )}
 
                     {step === 2 && (
-                        <div style={{ animation: 'dialogScale 200ms ease' }}>
-                            <h2 style={{ fontSize: 18, marginBottom: 24 }}>Exam Rules & Configuration</h2>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-                                <div className="form-group">
-                                    <label className="form-label">Duration (minutes) *</label>
-                                    <div className="search-input-wrap">
-                                        <Clock size={16} style={{ color: 'var(--text-tertiary)' }} />
-                                        <input className="search-input" type="number" min="5" value={form.durationMinutes} onChange={e => setForm(f => ({ ...f, durationMinutes: e.target.value }))} />
+                        <div>
+                            <h2 style={{ fontSize: 18, marginBottom: 24 }}>Configure Subjects</h2>
+
+                            {/* Subject List */}
+                            {subjects.length > 0 && (
+                                <div style={{ marginBottom: 24, display: 'grid', gap: 12 }}>
+                                    {subjects.map((s, idx) => (
+                                        <div key={idx} style={{ padding: 16, border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', background: 'var(--bg-surface)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <div>
+                                                <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{s.subject}</div>
+                                                <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{s.numQuestions} Qs • {s.durationMinutes} mins • {s.passingPercentage}% Pass</div>
+                                            </div>
+                                            <button className="btn btn-sm btn-ghost" style={{ color: 'var(--danger)' }} onClick={() => removeSubject(idx)}>
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Add Subject Form */}
+                            <div style={{ background: 'var(--bg-elevated)', padding: 20, borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-subtle)' }}>
+                                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 16 }}>Add Subject</h4>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                                    <div className="form-group">
+                                        <label className="form-label">Subject Name</label>
+                                        <select 
+                                            className="form-select" 
+                                            value={currentSubj.subject} 
+                                            onChange={e => setCurrentSubj({ ...currentSubj, subject: e.target.value })}
+                                        >
+                                            <option value="">-- Select Subject --</option>
+                                            {[...new Set(allQuestions.map(q => q.subject))].filter(Boolean).map(subj => (
+                                                <option key={subj} value={subj}>{subj}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Number of Questions</label>
+                                        <input type="number" className="form-input" min="1" value={currentSubj.numQuestions} onChange={e => setCurrentSubj({ ...currentSubj, numQuestions: parseInt(e.target.value) || 0 })} />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Duration (minutes)</label>
+                                        <input type="number" className="form-input" min="1" value={currentSubj.durationMinutes} onChange={e => setCurrentSubj({ ...currentSubj, durationMinutes: parseInt(e.target.value) || 0 })} />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Passing %</label>
+                                        <input type="number" className="form-input" min="1" max="100" value={currentSubj.passingPercentage} onChange={e => setCurrentSubj({ ...currentSubj, passingPercentage: parseInt(e.target.value) || 0 })} />
                                     </div>
                                 </div>
-                                <div className="form-group">
-                                    <label className="form-label">Passing Percentage</label>
-                                    <div className="search-input-wrap">
-                                        <Check size={16} style={{ color: 'var(--text-tertiary)' }} />
-                                        <input className="search-input" type="number" min="0" max="100" value={form.passingPercentage} onChange={e => setForm(f => ({ ...f, passingPercentage: e.target.value }))} />
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="form-group mt-4">
-                                <label className="form-label">Initial Status</label>
-                                <select className="form-select" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
-                                    <option value="Draft">Draft - Hidden from students</option>
-                                    <option value="Scheduled">Scheduled - Visible but locked</option>
-                                    <option value="Live">Live - Open for attempts</option>
-                                </select>
+                                <button className="btn btn-sm btn-secondary mt-4 w-full" onClick={handleAddSubject}>
+                                    <Plus size={16} style={{ marginRight: 6 }} /> Add Subject
+                                </button>
                             </div>
                         </div>
                     )}
 
                     {step === 3 && (
-                        <div style={{ animation: 'dialogScale 200ms ease' }}>
-                            <h2 style={{ fontSize: 18, marginBottom: 24 }}>Generate Questions</h2>
-                            <p style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>
-                                Select a subject and the number of questions. The system will randomly choose them for you.
-                            </p>
-                            
-                            <div className="form-group mb-4">
-                                <label className="form-label">Subject *</label>
-                                <select 
-                                    className="form-select" 
-                                    value={form.subject || ''} 
-                                    onChange={e => setForm(f => ({ ...f, subject: e.target.value, selectedQuestions: [] }))}
-                                >
-                                    <option value="">-- Select Subject --</option>
-                                    {[...new Set(allQuestions.map(q => q.subject))].filter(Boolean).map(subj => (
-                                        <option key={subj} value={subj}>{subj}</option>
+                        <div>
+                            <h2 style={{ fontSize: 18, marginBottom: 24 }}>Review & Generate</h2>
+                            <div style={{ background: 'var(--bg-elevated)', padding: 24, borderRadius: 'var(--radius-lg)' }}>
+                                <h3 style={{ fontSize: 20, fontWeight: 700, margin: '0 0 8px 0' }}>{form.title}</h3>
+                                <p style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>{form.description}</p>
+
+                                <h4 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Subjects to Generate</h4>
+                                <div style={{ display: 'grid', gap: 8 }}>
+                                    {subjects.map((s, idx) => (
+                                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)' }}>
+                                            <span style={{ fontWeight: 500 }}>{s.subject}</span>
+                                            <span style={{ color: 'var(--text-secondary)' }}>{s.numQuestions} Qs ({s.durationMinutes}m)</span>
+                                        </div>
                                     ))}
-                                </select>
-                            </div>
-
-                            <div className="form-group mb-4">
-                                <label className="form-label">Number of Questions *</label>
-                                <div className="search-input-wrap">
-                                    <Database size={16} style={{ color: 'var(--text-tertiary)' }} />
-                                    <input 
-                                        className="search-input" 
-                                        type="number" 
-                                        min="1" 
-                                        placeholder="e.g. 10"
-                                        value={form.questionCount || ''} 
-                                        onChange={e => setForm(f => ({ ...f, questionCount: parseInt(e.target.value) || 0, selectedQuestions: [] }))} 
-                                    />
+                                </div>
+                                <div style={{ marginTop: 24, padding: 16, background: 'var(--warning-subtle)', border: '1px solid var(--warning-border)', borderRadius: 'var(--radius-md)', color: 'var(--warning)', fontSize: 13 }}>
+                                    <strong>Note:</strong> Generating this examination will automatically pick random questions from the question bank for each subject. You can manage the schedule for each subject individually after generation.
                                 </div>
                             </div>
-
-                            {form.subject && (
-                                <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 16 }}>
-                                    Available questions in {form.subject}: {allQuestions.filter(q => q.subject === form.subject).length}
-                                </div>
-                            )}
-
-                            <button 
-                                className="btn btn-secondary" 
-                                style={{ marginBottom: 24, width: '100%', justifyContent: 'center' }}
-                                disabled={isGenerating || !form.subject || !form.questionCount}
-                                onClick={() => {
-                                    if (!form.subject) return toast.error('Please select a subject')
-                                    if (!form.questionCount || form.questionCount <= 0) return toast.error('Please enter a valid number of questions')
-                                    
-                                    const subjectQuestions = allQuestions.filter(q => q.subject === form.subject)
-                                    if (subjectQuestions.length < form.questionCount) {
-                                        return toast.error(`Only ${subjectQuestions.length} questions available for ${form.subject}.`)
-                                    }
-                                    
-                                    setIsGenerating(true)
-                                    setForm(f => ({ ...f, selectedQuestions: [] }))
-                                    
-                                    setTimeout(() => {
-                                        const shuffled = [...subjectQuestions].sort(() => 0.5 - Math.random())
-                                        const selected = shuffled.slice(0, form.questionCount).map(q => q._id)
-                                        setForm(f => ({ ...f, selectedQuestions: selected }))
-                                        setIsGenerating(false)
-                                    }, 800)
-                                }}
-                            >
-                                {isGenerating ? (
-                                    <><Loader2 size={16} className="spin" /> Generating Questions...</>
-                                ) : (
-                                    <>Generate Random Questions</>
-                                )}
-                            </button>
-
-                            {form.selectedQuestions.length > 0 && (
-                                <div style={{ padding: 12, background: 'var(--success-subtle)', color: 'var(--success)', borderRadius: 'var(--radius-md)', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
-                                    <Check size={16} />
-                                    {form.selectedQuestions.length} random questions successfully generated!
-                                </div>
-                            )}
                         </div>
                     )}
+                </div>
 
-                    {step === 4 && (
-                        <div style={{ animation: 'dialogScale 200ms ease' }}>
-                            <h2 style={{ fontSize: 18, marginBottom: 24 }}>Review & Publish</h2>
-                            <div style={{ background: 'var(--bg-elevated)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)', padding: 24, marginBottom: 24 }}>
-                                <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
-                                    <div style={{ width: 120, color: 'var(--text-secondary)', fontSize: 13 }}>Title</div>
-                                    <div style={{ fontWeight: 600 }}>{form.title || 'Untitled Exam'}</div>
-                                </div>
-                                <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
-                                    <div style={{ width: 120, color: 'var(--text-secondary)', fontSize: 13 }}>Duration</div>
-                                    <div>{form.durationMinutes} minutes</div>
-                                </div>
-                                <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
-                                    <div style={{ width: 120, color: 'var(--text-secondary)', fontSize: 13 }}>Pass Requirement</div>
-                                    <div>{form.passingPercentage}%</div>
-                                </div>
-                                <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
-                                    <div style={{ width: 120, color: 'var(--text-secondary)', fontSize: 13 }}>Questions</div>
-                                    <div>{form.selectedQuestions.length} selected</div>
-                                </div>
-                                <div style={{ display: 'flex', gap: 16 }}>
-                                    <div style={{ width: 120, color: 'var(--text-secondary)', fontSize: 13 }}>Status</div>
-                                    <div>
-                                        <span className={`badge badge-${form.status === 'Live' ? 'live' : form.status === 'Scheduled' ? 'scheduled' : 'draft'}`}>
-                                            {form.status}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                            {form.selectedQuestions.length === 0 && (
-                                <div style={{ display: 'flex', gap: 12, alignItems: 'center', padding: 16, background: 'var(--warning-subtle)', borderRadius: 'var(--radius-md)', color: 'var(--warning)' }}>
-                                    <Upload size={20} />
-                                    <span style={{ fontSize: 13 }}>You haven't generated any questions. Please go back to step 3.</span>
-                                </div>
-                            )}
-                        </div>
-                    )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 24 }}>
+                    <button className="btn btn-ghost" onClick={() => step > 1 ? setStep(s => s - 1) : navigate('/admin/exams')}>
+                        {step === 1 ? 'Cancel' : 'Back'}
+                    </button>
 
-                    {/* Footer Actions */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 32, paddingTop: 24, borderTop: '1px solid var(--border-default)' }}>
-                        <button className="btn btn-ghost" onClick={() => step > 1 ? setStep(s => s - 1) : navigate('/admin/exams')} disabled={creating}>
-                            {step > 1 ? '← Back' : 'Cancel'}
+                    {step < 3 ? (
+                        <button className="btn btn-primary" onClick={() => {
+                            if (step === 1 && !form.title.trim()) return toast.error('Title is required')
+                            if (step === 2 && subjects.length === 0) return toast.error('Add at least one subject')
+                            setStep(s => s + 1)
+                        }}>
+                            Next Step
                         </button>
-                        
-                        {step < 4 ? (
-                            <button className="btn btn-primary" onClick={() => {
-                                if (step === 1 && !form.title.trim()) {
-                                    toast.error('Title is required')
-                                    return
-                                }
-                                if (step === 3) {
-                                    if (form.selectedQuestions.length === 0 || form.selectedQuestions.length !== form.questionCount) {
-                                        toast.error('Please generate questions before proceeding.')
-                                        return
-                                    }
-                                }
-                                setStep(s => s + 1)
-                            }}>Next Step →</button>
-                        ) : (
-                            <button className="btn btn-primary" onClick={handleCreate} disabled={creating}>
-                                {creating ? 'Creating...' : '✓ Create Exam Workspace'}
-                            </button>
-                        )}
-                    </div>
+                    ) : (
+                        <button className="btn btn-primary" onClick={handleCreate} disabled={creating}>
+                            {creating ? 'Generating Examination...' : 'Generate Examination'}
+                        </button>
+                    )}
                 </div>
             </div>
         </AdminLayout>

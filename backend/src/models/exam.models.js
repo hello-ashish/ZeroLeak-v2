@@ -41,6 +41,15 @@ const examSchema = new mongoose.Schema({
         ref: 'Admin',
         required: true,
     },
+    examinationId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Examination',
+        required: true,
+    },
+    subject: {
+        type: String,
+        required: true,
+    },
     questions: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Question',

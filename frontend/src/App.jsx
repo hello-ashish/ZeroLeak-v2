@@ -8,10 +8,11 @@ import './index.css'
 import Home from './Home'
 import AdminLogin from './AdminLogin'
 import AdminProfile from "./AdminProfile"
-import ProfessorLogin from './ProfessorLogin'
+import ProfessorLogin from './professorLogin'
 import { ProfessorLayout } from './pages/professor/ProfessorLayout.jsx'
 import ProfessorDashboardPage from './pages/professor/ProfessorDashboardPage.jsx'
 import ProfessorBatchesPage from './pages/professor/ProfessorBatchesPage.jsx'
+import ProfessorCreateBatchPage from './pages/professor/ProfessorCreateBatchPage.jsx'
 import ProfessorProfile from "./ProfessorProfile"
 import StudentLogin from './StudentLogin'
 import TakeExam from './TakeExam'
@@ -82,6 +83,8 @@ function App() {
           <Route element={<ProfessorLayout />}>
             <Route path="/professor/dashboard" element={<ProfessorDashboardPage />} />
             <Route path="/professor/batches" element={<ProfessorBatchesPage />} />
+            <Route path="/professor/batches/create" element={<ProfessorCreateBatchPage />} />
+            <Route path="/professor/batches/:id/edit" element={<ProfessorCreateBatchPage />} />
             <Route path="/professor/profile" element={<ProfessorProfile />} />
           </Route>
 

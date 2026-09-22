@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation, Link, Outlet } from 'react-router-dom'
-import { LayoutDashboard, PackageOpen, Settings, Search, LogOut, ChevronDown, Bell, Plus, FileText , RefreshCw } from 'lucide-react'
+import { LayoutDashboard, PackageOpen, Settings, Search, LogOut, ChevronDown, Bell, Plus, FileText, RefreshCw } from 'lucide-react'
 import { CommandPalette } from '../../components/CommandPalette.jsx'
 import { HeaderThemeSlider } from '../../components/HeaderThemeSlider.jsx'
 
@@ -14,6 +14,7 @@ const NAV = [
     {
         section: 'Exams & Questions',
         items: [
+            { label: 'Create Batch', icon: <Plus size={18} />, path: '/professor/batches/create' },
             { label: 'My Batches', icon: <PackageOpen size={18} />, path: '/professor/batches' },
         ]
     },
@@ -177,24 +178,6 @@ export const ProfessorLayout = () => {
                                     <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
                                         No new notifications
                                     </div>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Quick Create Dropdown */}
-                        <div className="dropdown">
-                            <button
-                                className="topbar-create-btn"
-                                onClick={() => setShowCreate(v => !v)}
-                                aria-expanded={showCreate}
-                                aria-label="Quick create"
-                            >
-                                <Plus size={16} />
-                                Create
-                            </button>
-                            {showCreate && (
-                                <div className="dropdown-menu" style={{ minWidth: 200 }}>
-                                    <button className="dropdown-item" onClick={() => { navigate('/professor/batches'); setShowCreate(false) }}><FileText size={14} style={{ marginRight: 4 }} /> New Batch</button>
                                 </div>
                             )}
                         </div>
