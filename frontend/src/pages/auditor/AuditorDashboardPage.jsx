@@ -213,8 +213,9 @@ export default function AuditorDashboardPage() {
                                     <Tooltip
                                         contentStyle={{ background: 'var(--bg-overlay)', border: '1px solid var(--border-default)', borderRadius: 8, fontSize: 13, boxShadow: 'var(--shadow-md)' }}
                                         itemStyle={{ color: 'var(--text-primary)', fontWeight: 600 }}
+                                        cursor={{ stroke: 'var(--border-default)', strokeWidth: 1, strokeDasharray: '4 4' }}
                                     />
-                                    <Area type="monotone" dataKey="count" name="Events" stroke={CHART_COLORS.primary} strokeWidth={3} fillOpacity={1} fill="url(#colorCount)" />
+                                    <Area type="monotone" dataKey="count" name="Events" stroke={CHART_COLORS.primary} strokeWidth={3} fillOpacity={1} fill="url(#colorCount)" activeDot={{ r: 6, strokeWidth: 0, fill: CHART_COLORS.primary }} />
                                 </AreaChart>
                             </ResponsiveContainer>
                         </div>

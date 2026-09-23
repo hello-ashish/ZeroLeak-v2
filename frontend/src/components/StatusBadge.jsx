@@ -16,6 +16,7 @@ export const StatusBadge = ({ status }) => {
         // Generic
         active: 'success',
         inactive: 'neutral',
+        Pending: 'warning',
     }
 
     const labels = {

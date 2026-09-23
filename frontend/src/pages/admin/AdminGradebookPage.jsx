@@ -243,9 +243,9 @@ export default function AdminGradebookPage() {
                                     <XAxis dataKey="range" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} dy={10} />
                                     <YAxis tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} allowDecimals={false} />
                                     <Tooltip 
-                                        cursor={{ fill: 'var(--bg-hover)' }}
+                                        cursor={{ fill: 'var(--bg-body)' }}
                                         contentStyle={{ background: 'var(--bg-overlay)', border: '1px solid var(--border-default)', borderRadius: 8, fontSize: 13, boxShadow: 'var(--shadow-md)' }}
-                                        itemStyle={{ color: 'var(--text-primary)' }}
+                                        itemStyle={{ color: 'var(--text-primary)', fontWeight: 600 }}
                                     />
                                     <Bar dataKey="count" name="Students" radius={[4, 4, 0, 0]}>
                                         {classSummary.dist.map((entry, index) => (

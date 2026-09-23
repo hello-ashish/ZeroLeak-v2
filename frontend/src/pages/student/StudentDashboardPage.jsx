@@ -72,7 +72,7 @@ const StudentDashboardPage = () => {
 
     // Up Next
     const takenExamIds = new Set(results.map(r => r.exam?._id));
-    const availableExams = exams.filter(e => !takenExamIds.has(e._id));
+    const availableExams = exams.filter(e => !takenExamIds.has(e._id) && e.status === 'Live');
     const upNext = availableExams.length > 0 ? availableExams[0] : null;
 
     // Helpers

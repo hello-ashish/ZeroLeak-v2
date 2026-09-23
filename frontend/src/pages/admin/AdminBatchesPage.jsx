@@ -22,6 +22,7 @@ export default function AdminBatchesPage() {
     const [rejectReason, setRejectReason] = useState('')
     const [markReason, setMarkReason] = useState('')
     const [actionState, setActionState] = useState(null) // 'reject', 'mark', or 'delete'
+    const [batchLoading, setBatchLoading] = useState(false)
 
     const navigate = useNavigate()
     const toast = useToast()
@@ -49,6 +50,7 @@ export default function AdminBatchesPage() {
 
     const openBatch = async (batch) => {
         const token = getToken()
+        setBatchLoading(true)
         try {
             const res = await axios.get(`${API}/admin/batches/${batch._id}`, { headers: { Authorization: `Bearer ${token}` } })
             setActiveBatch(res.data.batch)
@@ -57,6 +59,8 @@ export default function AdminBatchesPage() {
             setMarkReason('')
         } catch {
             toast.error('Failed to open batch')
+        } finally {
+            setBatchLoading(false)
         }
     }
 
@@ -195,7 +199,13 @@ export default function AdminBatchesPage() {
 
                 {/* Right Side: Review Interface */}
                 <div style={{ flex: 1, minWidth: 0, background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                    {activeBatch ? (
+                    {batchLoading ? (
+                        <div style={{ padding: 32, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                            <SkeletonCard />
+                            <SkeletonCard />
+                            <SkeletonCard />
+                        </div>
+                    ) : activeBatch ? (
                         <>
                             {/* Header */}
                             <div style={{ padding: '24px 32px', borderBottom: '1px solid var(--border-default)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -222,7 +232,7 @@ export default function AdminBatchesPage() {
                                                 </button>
                                             </>
                                         )}
-                                        <button className="btn btn-danger" style={{ background: 'transparent', color: 'var(--danger)', border: '1px solid var(--danger)' }} onClick={() => setActionState('delete')}>
+                                        <button className="btn btn-danger" onClick={() => setActionState('delete')}>
                                             <Trash2 size={16} /> Delete
                                         </button>
                                     </div>

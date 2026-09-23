@@ -239,8 +239,9 @@ export default function AdminDashboardPage() {
                                         <Tooltip
                                             contentStyle={{ background: 'var(--bg-overlay)', border: '1px solid var(--border-default)', borderRadius: 8, fontSize: 13, boxShadow: 'var(--shadow-md)' }}
                                             itemStyle={{ color: 'var(--text-primary)', fontWeight: 600 }}
+                                            cursor={{ stroke: 'var(--border-default)', strokeWidth: 1, strokeDasharray: '4 4' }}
                                         />
-                                        <Area type="monotone" dataKey="score" name="Avg Score (%)" stroke={CHART_COLORS.primary} strokeWidth={3} fillOpacity={1} fill="url(#colorScore)" />
+                                        <Area type="monotone" dataKey="score" name="Avg Score (%)" stroke={CHART_COLORS.primary} strokeWidth={3} fillOpacity={1} fill="url(#colorScore)" activeDot={{ r: 6, strokeWidth: 0, fill: CHART_COLORS.primary }} />
                                     </AreaChart>
                                 </ResponsiveContainer>
                             </div>
@@ -262,9 +263,9 @@ export default function AdminDashboardPage() {
                                             <XAxis dataKey="range" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} dy={10} />
                                             <YAxis tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} allowDecimals={false} />
                                             <Tooltip
-                                                cursor={{ fill: 'var(--bg-hover)' }}
+                                                cursor={{ fill: 'var(--bg-body)' }}
                                                 contentStyle={{ background: 'var(--bg-overlay)', border: '1px solid var(--border-default)', borderRadius: 8, fontSize: 13, boxShadow: 'var(--shadow-md)' }}
-                                                itemStyle={{ color: 'var(--text-primary)' }}
+                                                itemStyle={{ color: 'var(--text-primary)', fontWeight: 600 }}
                                             />
                                             <Bar dataKey="count" name="Submissions" radius={[4, 4, 0, 0]}>
                                                 {scoreDistData.map((entry, index) => (

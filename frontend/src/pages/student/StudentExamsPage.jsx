@@ -117,6 +117,7 @@ const StudentExamsPage = () => {
         const status = getExamStatus(exam._id);
         const isBlocked = status === 'blocked';
         const isCompleted = status === 'completed';
+        const isClosed = !isCompleted && !isBlocked && exam.status === 'Completed';
 
         return (
             <div
@@ -153,6 +154,10 @@ const StudentExamsPage = () => {
                         ) : isCompleted ? (
                             <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--success)', background: 'var(--success-subtle)', padding: '2px 8px', borderRadius: 12, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                                 <CheckCircle2 size={12} /> Completed
+                            </span>
+                        ) : isClosed ? (
+                            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', background: 'var(--bg-body)', padding: '2px 8px', borderRadius: 12, display: 'inline-flex', alignItems: 'center', gap: 4, border: '1px solid var(--border-default)' }}>
+                                <Lock size={11} /> Closed
                             </span>
                         ) : (
                             <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--brand-primary)', background: 'var(--bg-body)', padding: '2px 8px', borderRadius: 12, border: '1px solid var(--border-default)' }}>Available</span>
@@ -194,6 +199,24 @@ const StudentExamsPage = () => {
                             }}
                         >
                             <Lock size={14} /> Access Blocked
+                        </button>
+                    ) : isClosed ? (
+                        <button
+                            disabled
+                            style={{
+                                padding: '8px 16px',
+                                fontSize: 14,
+                                background: 'var(--bg-body)',
+                                color: 'var(--text-tertiary)',
+                                border: '1px solid var(--border-default)',
+                                borderRadius: 8,
+                                cursor: 'not-allowed',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8
+                            }}
+                        >
+                            Exam Closed
                         </button>
                     ) : isCompleted ? (
                         <button

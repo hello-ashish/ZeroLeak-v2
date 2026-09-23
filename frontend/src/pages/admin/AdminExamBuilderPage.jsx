@@ -132,7 +132,7 @@ export const AdminExamBuilderPage = () => {
                                 <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 16 }}>Add Subject</h4>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                                     <div className="form-group">
-                                        <label className="form-label">Subject Name</label>
+                                        <label className="form-label">Subject Name *</label>
                                         <select 
                                             className="form-select" 
                                             value={currentSubj.subject} 
@@ -145,15 +145,15 @@ export const AdminExamBuilderPage = () => {
                                         </select>
                                     </div>
                                     <div className="form-group">
-                                        <label className="form-label">Number of Questions</label>
+                                        <label className="form-label">Number of Questions *</label>
                                         <input type="number" className="form-input" min="1" value={currentSubj.numQuestions} onChange={e => setCurrentSubj({ ...currentSubj, numQuestions: parseInt(e.target.value) || 0 })} />
                                     </div>
                                     <div className="form-group">
-                                        <label className="form-label">Duration (minutes)</label>
+                                        <label className="form-label">Duration (minutes) *</label>
                                         <input type="number" className="form-input" min="1" value={currentSubj.durationMinutes} onChange={e => setCurrentSubj({ ...currentSubj, durationMinutes: parseInt(e.target.value) || 0 })} />
                                     </div>
                                     <div className="form-group">
-                                        <label className="form-label">Passing %</label>
+                                        <label className="form-label">Passing % *</label>
                                         <input type="number" className="form-input" min="1" max="100" value={currentSubj.passingPercentage} onChange={e => setCurrentSubj({ ...currentSubj, passingPercentage: parseInt(e.target.value) || 0 })} />
                                     </div>
                                 </div>

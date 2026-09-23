@@ -198,6 +198,12 @@ export const getExamById = async (req, res) => {
             })
         }
 
+        if (exam.status !== "Live") {
+            return res.status(403).json({
+                message: "This exam is not currently active."
+            });
+        }
+
         // Protected exams must have a Merkle root
         if (!exam.questionMerkleRoot) {
             return res.status(403).json({
@@ -354,6 +360,12 @@ export const submitExamResult = async (req, res) => {
             return res.status(404).json({
                 message: "Exam not found."
             })
+        }
+
+        if (exam.status !== "Live") {
+            return res.status(403).json({
+                message: "This exam is no longer active."
+            });
         }
 
         // Protected exams must contain a Merkle root

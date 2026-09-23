@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, BarChart, Bar, Cell } from 'recharts';
 import { TrendingUp, TrendingDown, Target, BookOpen, Activity, ChevronRight, Award, AlertCircle } from 'lucide-react';
 
 const StudentPerformancePage = () => {
@@ -181,22 +182,13 @@ const StudentPerformancePage = () => {
         }
     }
 
-    // --- SVG Chart Calculations ---
-    const chartData = sortedResults.slice(-15); // Show up to 15 points
-    let pathD = "";
-    if (chartData.length > 1) {
-        const width = 800;
-        const height = 220;
-        const stepX = width / (chartData.length - 1);
-
-        const points = chartData.map((r, i) => {
-            const pct = (r.score / r.totalQuestions) * 100;
-            const x = i * stepX;
-            const y = height - ((pct / 100) * (height - 60) + 30); // 30px padding
-            return `${x},${y}`;
-        });
-        pathD = `M ${points.join(' L ')}`;
-    }
+    // --- Recharts Calculations ---
+    const chartData = sortedResults.slice(-15);
+    const areaData = chartData.map(r => ({
+        name: r.exam?.title || 'Assessment',
+        date: new Date(r.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+        score: Math.round((r.score / r.totalQuestions) * 100)
+    }));
 
     return (
         <div style={{ maxWidth: 1100, margin: '0 auto', paddingBottom: 64, fontFamily: 'Inter, system-ui, sans-serif' }}>
@@ -245,78 +237,34 @@ const StudentPerformancePage = () => {
             {/* MIDDLE TIER: Score Progression & Insights */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 24, marginBottom: 24, '@media (min-width: 1024px)': { gridTemplateColumns: '2fr 1fr' } }}>
 
-                {/* SVG CHART */}
+                {/* RECHARTS AREA CHART */}
                 <section style={{ display: 'flex', flexDirection: 'column' }}>
                     <h2 style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Score Progression</h2>
-                    <div style={{ flex: 1, background: 'var(--bg-card)', border: '1px solid var(--border-default)', borderRadius: 16, padding: '32px 40px', position: 'relative' }}>
-                        {chartData.length > 1 ? (
-                            <div style={{ width: '100%', height: 260, position: 'relative' }}>
-                                {/* Background Grid */}
-                                <div style={{ position: 'absolute', top: 30, left: 0, right: 0, borderTop: '1px dashed var(--border-default)', zIndex: 0 }} />
-                                <div style={{ position: 'absolute', top: 110, left: 0, right: 0, borderTop: '1px dashed var(--border-default)', zIndex: 0 }} />
-                                <div style={{ position: 'absolute', top: 190, left: 0, right: 0, borderTop: '1px dashed var(--border-default)', zIndex: 0 }} />
-
-                                <svg width="100%" height="260" viewBox="0 0 800 260" preserveAspectRatio="none" style={{ overflow: 'visible', zIndex: 1, position: 'relative' }} onMouseLeave={() => setHoveredPoint(null)}>
-                                    <path d={pathD} fill="none" stroke="var(--brand-primary)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                                    {chartData.map((r, i) => {
-                                        const pct = Math.round((r.score / r.totalQuestions) * 100);
-                                        const x = i * (800 / (chartData.length - 1));
-                                        const y = 260 - ((pct / 100) * 200 + 30);
-                                        const isHovered = hoveredPoint === i;
-
-                                        // Tooltip bounds calculation
-                                        const tooltipX = Math.max(10, Math.min(x - 100, 590));
-                                        const tooltipY = Math.max(10, y - 90);
-
-                                        // Hit area width
-                                        const hitWidth = 800 / Math.max(1, chartData.length - 1);
-                                        const hitX = Math.max(0, x - hitWidth / 2);
-
-                                        return (
-                                            <g key={i} className="chart-node">
-                                                {/* Invisible hover area spanning full height */}
-                                                <rect
-                                                    x={hitX}
-                                                    y={0}
-                                                    width={hitWidth}
-                                                    height={260}
-                                                    fill="transparent"
-                                                    onMouseEnter={() => setHoveredPoint(i)}
-                                                    style={{ cursor: 'crosshair' }}
-                                                />
-
-                                                {/* Vertical guide line on hover */}
-                                                {isHovered && <line x1={x} y1={0} x2={x} y2={260} stroke="var(--border-default)" strokeWidth="1" strokeDasharray="4 4" style={{ pointerEvents: 'none' }} />}
-
-                                                {/* Node */}
-                                                <circle cx={x} cy={y} r={isHovered ? "8" : "6"} fill={isHovered ? "var(--brand-primary)" : "var(--bg-base)"} stroke="var(--brand-primary)" strokeWidth={isHovered ? "0" : "2.5"} style={{ transition: 'all 0.2s ease', pointerEvents: 'none' }} />
-
-                                                {/* Label or Tooltip */}
-                                                {isHovered ? (
-                                                    <foreignObject x={tooltipX} y={tooltipY} width="200" height="100" style={{ pointerEvents: 'none', overflow: 'visible' }}>
-                                                        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', borderRadius: 8, padding: '12px 16px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)', width: 200 }}>
-                                                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.exam?.title || 'Assessment'}</div>
-                                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-secondary)' }}>
-                                                                <span>{new Date(r.createdAt).toLocaleDateString()}</span>
-                                                                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{pct}%</span>
-                                                            </div>
-                                                        </div>
-                                                    </foreignObject>
-                                                ) : (
-                                                    <text x={x} y={y - 16} fill="var(--text-primary)" fontSize="13" fontWeight="600" textAnchor="middle" style={{ pointerEvents: 'none' }}>{pct}%</text>
-                                                )}
-                                            </g>
-                                        )
-                                    })}
-                                </svg>
-
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 24, fontSize: 12, color: 'var(--text-tertiary)' }}>
-                                    <span>{new Date(chartData[0].createdAt).toLocaleDateString()}</span>
-                                    <span>{new Date(chartData[chartData.length - 1].createdAt).toLocaleDateString()}</span>
-                                </div>
+                    <div style={{ flex: 1, background: 'var(--bg-card)', border: '1px solid var(--border-default)', borderRadius: 16, padding: '24px', position: 'relative' }}>
+                        {areaData.length > 1 ? (
+                            <div style={{ width: '100%', height: 300 }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={areaData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                        <defs>
+                                            <linearGradient id="colorScoreStudent" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="var(--brand-primary)" stopOpacity={0.3} />
+                                                <stop offset="95%" stopColor="var(--brand-primary)" stopOpacity={0} />
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-subtle)" />
+                                        <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} dy={10} />
+                                        <YAxis tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} domain={['auto', 100]} />
+                                        <Tooltip
+                                            contentStyle={{ background: 'var(--bg-overlay)', border: '1px solid var(--border-default)', borderRadius: 8, fontSize: 13, boxShadow: 'var(--shadow-md)' }}
+                                            itemStyle={{ color: 'var(--text-primary)', fontWeight: 600 }}
+                                            cursor={{ stroke: 'var(--border-default)', strokeWidth: 1, strokeDasharray: '4 4' }}
+                                        />
+                                        <Area type="monotone" dataKey="score" name="Score (%)" stroke="var(--brand-primary)" strokeWidth={3} fillOpacity={1} fill="url(#colorScoreStudent)" activeDot={{ r: 6, strokeWidth: 0, fill: "var(--brand-primary)" }} />
+                                    </AreaChart>
+                                </ResponsiveContainer>
                             </div>
                         ) : (
-                            <div style={{ height: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)' }}>
+                            <div style={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)' }}>
                                 Not enough data to map progression.
                             </div>
                         )}
@@ -330,19 +278,27 @@ const StudentPerformancePage = () => {
                 {/* SUBJECT PERFORMANCE */}
                 <section style={{ display: 'flex', flexDirection: 'column' }}>
                     <h2 style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Subject Mastery</h2>
-                    <div style={{ flex: 1, background: 'var(--bg-card)', border: '1px solid var(--border-default)', borderRadius: 16, padding: 32, display: 'flex', flexDirection: 'column', gap: 24 }}>
+                    <div style={{ flex: 1, background: 'var(--bg-card)', border: '1px solid var(--border-default)', borderRadius: 16, padding: '24px 32px' }}>
                         {lifetimeSubjects.length > 0 ? (
-                            lifetimeSubjects.map((sub, i) => (
-                                <div key={i}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 12 }}>
-                                        <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{sub.name}</span>
-                                        <span style={{ fontWeight: 600, color: sub.avg >= 80 ? 'var(--success)' : sub.avg >= 60 ? 'var(--warning)' : 'var(--danger)' }}>{sub.avg}%</span>
-                                    </div>
-                                    <div style={{ height: 6, background: 'var(--bg-body)', borderRadius: 3, overflow: 'hidden' }}>
-                                        <div style={{ height: '100%', width: `${sub.avg}%`, background: 'var(--brand-primary)', borderRadius: 3 }} />
-                                    </div>
-                                </div>
-                            ))
+                            <div style={{ width: '100%', height: Math.max(200, lifetimeSubjects.length * 45) }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={lifetimeSubjects} layout="vertical" margin={{ top: 0, right: 10, left: -20, bottom: 0 }}>
+                                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--border-subtle)" />
+                                        <XAxis type="number" domain={[0, 100]} hide />
+                                        <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-primary)', fontWeight: 500 }} width={110} />
+                                        <Tooltip
+                                            cursor={{ fill: 'var(--bg-body)' }}
+                                            contentStyle={{ background: 'var(--bg-overlay)', border: '1px solid var(--border-default)', borderRadius: 8, fontSize: 13, boxShadow: 'var(--shadow-md)' }}
+                                            itemStyle={{ color: 'var(--text-primary)', fontWeight: 600 }}
+                                        />
+                                        <Bar dataKey="avg" name="Average (%)" radius={[0, 4, 4, 0]} barSize={20}>
+                                            {lifetimeSubjects.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.avg >= 80 ? 'var(--success)' : entry.avg >= 60 ? 'var(--warning)' : 'var(--danger)'} />
+                                            ))}
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
                         ) : (
                             <div style={{ color: 'var(--text-tertiary)', fontSize: 14, textAlign: 'center', padding: '20px 0' }}>No subject data available.</div>
                         )}

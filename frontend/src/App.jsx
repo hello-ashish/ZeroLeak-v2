@@ -1,116 +1,125 @@
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom"
 import { ToastProvider } from './components/Toast.jsx'
 import GlobalThemeSlider from './components/GlobalThemeSlider.jsx'
+import { Loader2 } from 'lucide-react'
 import './index.css'
 
-// Auth pages (preserved)
-import Home from './Home'
-import AdminLogin from './AdminLogin'
-import AdminProfile from "./AdminProfile"
-import ProfessorLogin from './professorLogin'
+// Layouts are kept static to ensure the app shell loads instantly
 import { ProfessorLayout } from './pages/professor/ProfessorLayout.jsx'
-import ProfessorDashboardPage from './pages/professor/ProfessorDashboardPage.jsx'
-import ProfessorBatchesPage from './pages/professor/ProfessorBatchesPage.jsx'
-import ProfessorCreateBatchPage from './pages/professor/ProfessorCreateBatchPage.jsx'
-import ProfessorProfile from "./ProfessorProfile"
-import StudentLogin from './StudentLogin'
-import TakeExam from './TakeExam'
-import StudentProfile from "./StudentProfile"
-
-// New Student Command Center pages
 import { StudentLayout } from './pages/student/StudentLayout.jsx'
-import StudentDashboardPage from './pages/student/StudentDashboardPage.jsx'
-import StudentExamsPage from './pages/student/StudentExamsPage.jsx'
-import StudentResultsPage from './pages/student/StudentResultsPage.jsx'
-import StudentPerformancePage from './pages/student/StudentPerformancePage.jsx'
-import StudentSettingsPage from './pages/student/StudentSettingsPage.jsx'
 
-// New Admin Command Center pages
-import AdminDashboardPage from './pages/admin/AdminDashboardPage.jsx'
-import AdminExamsPage from './pages/admin/AdminExamsPage.jsx'
-import { AdminExamBuilderPage } from './pages/admin/AdminExamBuilderPage.jsx'
-import { AdminExamDetailPage } from './pages/admin/AdminExamDetailPage.jsx'
-import AdminQuestionsPage from './pages/admin/AdminQuestionsPage.jsx'
-import AdminStudentsPage from './pages/admin/AdminStudentsPage.jsx'
-import AdminProfessorsPage from './pages/admin/AdminProfessorsPage.jsx'
-import AdminBatchesPage from './pages/admin/AdminBatchesPage.jsx'
-import AdminGradebookPage from './pages/admin/AdminGradebookPage.jsx'
-import AdminActivityPage from './pages/admin/AdminActivityPage.jsx'
-import AdminBlockchainCenter from './pages/admin/AdminBlockchainCenter.jsx'
-import AdminSettingsPage from './pages/admin/AdminSettingsPage.jsx'
-import AdminCheatingDetection from './pages/admin/AdminCheatingDetection.jsx'
+// Auth & Public pages
+const Home = lazy(() => import('./Home'))
+const AdminLogin = lazy(() => import('./AdminLogin'))
+const AdminProfile = lazy(() => import('./AdminProfile'))
+const ProfessorLogin = lazy(() => import('./professorLogin'))
+const ProfessorProfile = lazy(() => import('./ProfessorProfile'))
+const StudentLogin = lazy(() => import('./StudentLogin'))
+const TakeExam = lazy(() => import('./TakeExam'))
+const StudentProfile = lazy(() => import('./StudentProfile'))
 
-// Auditor Console pages
-import AuditorLogin from './pages/auditor/AuditorLogin.jsx'
-import AuditorDashboardPage from './pages/auditor/AuditorDashboardPage.jsx'
-import AuditorAuditExplorerPage from './pages/auditor/AuditorAuditExplorerPage.jsx'
-import AuditorAnomaliesPage from './pages/auditor/AuditorAnomaliesPage.jsx'
-import AuditorExamsPage from './pages/auditor/AuditorExamsPage.jsx'
-import AuditorPeoplePage from './pages/auditor/AuditorPeoplePage.jsx'
-import AuditorBlockchainCenter from './pages/auditor/AuditorBlockchainCenter.jsx'
+// Student pages
+const StudentDashboardPage = lazy(() => import('./pages/student/StudentDashboardPage.jsx'))
+const StudentExamsPage = lazy(() => import('./pages/student/StudentExamsPage.jsx'))
+const StudentResultsPage = lazy(() => import('./pages/student/StudentResultsPage.jsx'))
+const StudentPerformancePage = lazy(() => import('./pages/student/StudentPerformancePage.jsx'))
+const StudentSettingsPage = lazy(() => import('./pages/student/StudentSettingsPage.jsx'))
+
+// Admin pages
+const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage.jsx'))
+const AdminExamsPage = lazy(() => import('./pages/admin/AdminExamsPage.jsx'))
+const AdminExamBuilderPage = lazy(() => import('./pages/admin/AdminExamBuilderPage.jsx').then(m => ({ default: m.AdminExamBuilderPage })))
+const AdminExamDetailPage = lazy(() => import('./pages/admin/AdminExamDetailPage.jsx').then(m => ({ default: m.AdminExamDetailPage })))
+const AdminQuestionsPage = lazy(() => import('./pages/admin/AdminQuestionsPage.jsx'))
+const AdminStudentsPage = lazy(() => import('./pages/admin/AdminStudentsPage.jsx'))
+const AdminProfessorsPage = lazy(() => import('./pages/admin/AdminProfessorsPage.jsx'))
+const AdminBatchesPage = lazy(() => import('./pages/admin/AdminBatchesPage.jsx'))
+const AdminGradebookPage = lazy(() => import('./pages/admin/AdminGradebookPage.jsx'))
+const AdminActivityPage = lazy(() => import('./pages/admin/AdminActivityPage.jsx'))
+const AdminBlockchainCenter = lazy(() => import('./pages/admin/AdminBlockchainCenter.jsx'))
+const AdminSettingsPage = lazy(() => import('./pages/admin/AdminSettingsPage.jsx'))
+const AdminCheatingDetection = lazy(() => import('./pages/admin/AdminCheatingDetection.jsx'))
+
+// Professor pages
+const ProfessorDashboardPage = lazy(() => import('./pages/professor/ProfessorDashboardPage.jsx'))
+const ProfessorBatchesPage = lazy(() => import('./pages/professor/ProfessorBatchesPage.jsx'))
+const ProfessorCreateBatchPage = lazy(() => import('./pages/professor/ProfessorCreateBatchPage.jsx'))
+
+// Auditor pages
+const AuditorLogin = lazy(() => import('./pages/auditor/AuditorLogin.jsx'))
+const AuditorDashboardPage = lazy(() => import('./pages/auditor/AuditorDashboardPage.jsx'))
+const AuditorAuditExplorerPage = lazy(() => import('./pages/auditor/AuditorAuditExplorerPage.jsx'))
+const AuditorAnomaliesPage = lazy(() => import('./pages/auditor/AuditorAnomaliesPage.jsx'))
+const AuditorExamsPage = lazy(() => import('./pages/auditor/AuditorExamsPage.jsx'))
+const AuditorPeoplePage = lazy(() => import('./pages/auditor/AuditorPeoplePage.jsx'))
+const AuditorBlockchainCenter = lazy(() => import('./pages/auditor/AuditorBlockchainCenter.jsx'))
+
+const PageLoader = () => (
+  <div style={{ display: 'flex', height: '100vh', width: '100vw', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-base)' }}>
+    <Loader2 size={32} color="var(--brand-primary)" className="spin" />
+  </div>
+)
 
 function App() {
   return (
     <ToastProvider>
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Home />} />
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            <Route path="/" element={<Home />} />
 
-          {/* ── Admin Routes (New Command Center) ── */}
-          <Route path="/admin/login" element={<AdminLogin />} />
-          <Route path="/admin/profile" element={<AdminProfile />} />
+            {/* ── Admin Routes ── */}
+            <Route path="/admin/login" element={<AdminLogin />} />
+            <Route path="/admin/profile" element={<AdminProfile />} />
+            <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+            <Route path="/admin/exams" element={<AdminExamsPage />} />
+            <Route path="/admin/exams/create" element={<AdminExamBuilderPage />} />
+            <Route path="/admin/exams/:id" element={<AdminExamDetailPage />} />
+            <Route path="/admin/questions" element={<AdminQuestionsPage />} />
+            <Route path="/admin/students" element={<AdminStudentsPage />} />
+            <Route path="/admin/professors" element={<AdminProfessorsPage />} />
+            <Route path="/admin/batches" element={<AdminBatchesPage />} />
+            <Route path="/admin/gradebook" element={<AdminGradebookPage />} />
+            <Route path="/admin/activity" element={<AdminActivityPage />} />
+            <Route path="/admin/cheating" element={<AdminCheatingDetection />} />
+            <Route path="/admin/blockchain" element={<AdminBlockchainCenter />} />
+            <Route path="/admin/settings" element={<AdminSettingsPage />} />
 
-          {/* New dashboard pages */}
-          <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
-          <Route path="/admin/exams" element={<AdminExamsPage />} />
-          <Route path="/admin/exams/create" element={<AdminExamBuilderPage />} />
-          <Route path="/admin/exams/:id" element={<AdminExamDetailPage />} />
-          <Route path="/admin/questions" element={<AdminQuestionsPage />} />
-          <Route path="/admin/students" element={<AdminStudentsPage />} />
-          <Route path="/admin/professors" element={<AdminProfessorsPage />} />
-          <Route path="/admin/batches" element={<AdminBatchesPage />} />
-          <Route path="/admin/gradebook" element={<AdminGradebookPage />} />
-          <Route path="/admin/activity" element={<AdminActivityPage />} />
-          <Route path="/admin/cheating" element={<AdminCheatingDetection />} />
-          <Route path="/admin/blockchain" element={<AdminBlockchainCenter />} />
-          <Route path="/admin/settings" element={<AdminSettingsPage />} />
+            {/* ── Professor Routes ── */}
+            <Route path="/professor/login" element={<ProfessorLogin />} />
+            <Route element={<ProfessorLayout />}>
+              <Route path="/professor/dashboard" element={<ProfessorDashboardPage />} />
+              <Route path="/professor/batches" element={<ProfessorBatchesPage />} />
+              <Route path="/professor/batches/create" element={<ProfessorCreateBatchPage />} />
+              <Route path="/professor/batches/:id/edit" element={<ProfessorCreateBatchPage />} />
+              <Route path="/professor/profile" element={<ProfessorProfile />} />
+            </Route>
 
-          {/* Redirect old /admin/dashboard stub if someone navigates there directly */}
+            {/* ── Student Routes ── */}
+            <Route path="/student/login" element={<StudentLogin />} />
+            <Route path="/student/take-exam/:id" element={<TakeExam />} />
+            <Route element={<StudentLayout />}>
+              <Route path="/student/dashboard" element={<StudentDashboardPage />} />
+              <Route path="/student/exams" element={<StudentExamsPage />} />
+              <Route path="/student/results" element={<StudentResultsPage />} />
+              <Route path="/student/performance" element={<StudentPerformancePage />} />
+              <Route path="/student/profile" element={<StudentProfile />} />
+              <Route path="/student/settings" element={<StudentSettingsPage />} />
+            </Route>
 
-          {/* ── Professor Routes ── */}
-          <Route path="/professor/login" element={<ProfessorLogin />} />
-          <Route element={<ProfessorLayout />}>
-            <Route path="/professor/dashboard" element={<ProfessorDashboardPage />} />
-            <Route path="/professor/batches" element={<ProfessorBatchesPage />} />
-            <Route path="/professor/batches/create" element={<ProfessorCreateBatchPage />} />
-            <Route path="/professor/batches/:id/edit" element={<ProfessorCreateBatchPage />} />
-            <Route path="/professor/profile" element={<ProfessorProfile />} />
-          </Route>
+            {/* ── Auditor Routes ── */}
+            <Route path="/auditor/login" element={<AuditorLogin />} />
+            <Route path="/auditor/dashboard" element={<AuditorDashboardPage />} />
+            <Route path="/auditor/audit" element={<AuditorAuditExplorerPage />} />
+            <Route path="/auditor/anomalies" element={<AuditorAnomaliesPage />} />
+            <Route path="/auditor/exams" element={<AuditorExamsPage />} />
+            <Route path="/auditor/students" element={<AuditorPeoplePage />} />
+            <Route path="/auditor/professors" element={<AuditorPeoplePage />} />
+            <Route path="/auditor/blockchain" element={<AuditorBlockchainCenter />} />
 
-          {/* ── Student Routes ── */}
-          <Route path="/student/login" element={<StudentLogin />} />
-          <Route path="/student/take-exam/:id" element={<TakeExam />} />
-          <Route element={<StudentLayout />}>
-            <Route path="/student/dashboard" element={<StudentDashboardPage />} />
-            <Route path="/student/exams" element={<StudentExamsPage />} />
-            <Route path="/student/results" element={<StudentResultsPage />} />
-            <Route path="/student/performance" element={<StudentPerformancePage />} />
-            <Route path="/student/profile" element={<StudentProfile />} />
-            <Route path="/student/settings" element={<StudentSettingsPage />} />
-          </Route>
-
-          {/* ── Auditor Routes ── */}
-          <Route path="/auditor/login" element={<AuditorLogin />} />
-          <Route path="/auditor/dashboard" element={<AuditorDashboardPage />} />
-          <Route path="/auditor/audit" element={<AuditorAuditExplorerPage />} />
-          <Route path="/auditor/anomalies" element={<AuditorAnomaliesPage />} />
-          <Route path="/auditor/exams" element={<AuditorExamsPage />} />
-          <Route path="/auditor/students" element={<AuditorPeoplePage />} />
-          <Route path="/auditor/professors" element={<AuditorPeoplePage />} />
-          <Route path="/auditor/blockchain" element={<AuditorBlockchainCenter />} />
-
-        </Routes>
+          </Routes>
+        </Suspense>
         <GlobalThemeSlider />
       </BrowserRouter>
     </ToastProvider>
