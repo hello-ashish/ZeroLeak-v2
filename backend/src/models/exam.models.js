@@ -50,6 +50,17 @@ const examSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
+    mode: {
+        type: String,
+        enum: ["Normal", "Zeroleak"],
+        default: "Normal",
+    },
+    zeroleakConfig: {
+        numQuestions: {
+            type: Number,
+            default: 0
+        }
+    },
     questions: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Question',

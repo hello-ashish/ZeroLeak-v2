@@ -6,6 +6,7 @@ import { DifficultyBadge } from '../../components/StatusBadge.jsx'
 import { SkeletonTable, EmptyState } from '../../components/SkeletonLoader.jsx'
 import { useToast } from '../../components/Toast.jsx'
 import { Database, CircleDot, Search, PackageOpen, X, BarChart3, Clock, AlertTriangle, CheckCircle2, Trash2 } from 'lucide-react'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 const API = 'http://localhost:4000/api'
 const getToken = () => localStorage.getItem('adminToken')
@@ -16,6 +17,7 @@ export default function AdminQuestionsPage() {
     const [search, setSearch] = useState('')
     const [filterDiff, setFilterDiff] = useState('')
     const [filterSubject, setFilterSubject] = useState('')
+    const [chartFilter, setChartFilter] = useState('All')
     const [selectedQuestion, setSelectedQuestion] = useState(null)
     const navigate = useNavigate()
     const toast = useToast()
@@ -59,6 +61,32 @@ export default function AdminQuestionsPage() {
         }
     }, [questions])
 
+    const chartData = useMemo(() => {
+        if (chartFilter === 'All') {
+            return subjects.map(sub => {
+                const subQs = questions.filter(q => q.subject === sub);
+                return {
+                    name: sub,
+                    Easy: subQs.filter(q => q.difficultyLevel === 'easy').length,
+                    Medium: subQs.filter(q => q.difficultyLevel === 'medium').length,
+                    Hard: subQs.filter(q => q.difficultyLevel === 'hard').length,
+                }
+            })
+        } else {
+            const subjectQs = questions.filter(q => q.subject === chartFilter);
+            const topics = [...new Set(subjectQs.map(q => q.topic).filter(Boolean))];
+            return topics.map(top => {
+                const topQs = subjectQs.filter(q => q.topic === top);
+                return {
+                    name: top,
+                    Easy: topQs.filter(q => q.difficultyLevel === 'easy').length,
+                    Medium: topQs.filter(q => q.difficultyLevel === 'medium').length,
+                    Hard: topQs.filter(q => q.difficultyLevel === 'hard').length,
+                }
+            })
+        }
+    }, [subjects, questions, chartFilter])
+
     const handleEditQuestion = () => {
         toast.info('Edit question functionality coming soon')
     }
@@ -98,6 +126,39 @@ export default function AdminQuestionsPage() {
                     </div>
                 ))}
             </div>
+
+            {/* Subject Difficulty Breakdown */}
+            {!loading && subjects.length > 0 && (
+                <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', padding: '24px', marginBottom: 24, boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                        <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
+                            {chartFilter === 'All' ? 'Subject Difficulty Distribution' : `${chartFilter} - Topic Breakdown`}
+                        </h3>
+                        <select className="form-select" style={{ width: 180, padding: '6px 12px', fontSize: 13 }} value={chartFilter} onChange={e => setChartFilter(e.target.value)}>
+                            <option value="All">All Subjects</option>
+                            {subjects.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                    </div>
+                    <div style={{ width: '100%', height: 260 }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }} barSize={32}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-subtle)" />
+                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-secondary)' }} dy={10} />
+                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-secondary)' }} />
+                                <Tooltip 
+                                    cursor={{ fill: 'var(--bg-active)' }}
+                                    contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: '12px', boxShadow: '0 8px 30px rgba(0,0,0,0.12)' }}
+                                    itemStyle={{ fontSize: 13, fontWeight: 600 }}
+                                />
+                                <Legend wrapperStyle={{ fontSize: 13, paddingTop: 20, fontWeight: 500 }} />
+                                <Bar dataKey="Easy" stackId="a" fill="var(--success)" radius={[0, 0, 4, 4]} />
+                                <Bar dataKey="Medium" stackId="a" fill="var(--warning)" />
+                                <Bar dataKey="Hard" stackId="a" fill="var(--danger)" radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+            )}
 
             <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
 
@@ -258,21 +319,25 @@ export default function AdminQuestionsPage() {
 
                             <h4 style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', marginBottom: 12 }}>Options</h4>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
-                                {selectedQuestion.options?.map((opt, i) => (
-                                    <div key={i} style={{
-                                        padding: '10px 14px',
-                                        borderRadius: 'var(--radius-sm)',
-                                        border: opt.isCorrect ? '1px solid var(--success-border)' : '1px solid var(--border-subtle)',
-                                        background: opt.isCorrect ? 'var(--success-subtle)' : 'var(--bg-surface)',
-                                        display: 'flex', gap: 12, alignItems: 'center',
-                                        fontSize: 13
-                                    }}>
-                                        <div style={{ width: 24, height: 24, borderRadius: '50%', background: opt.isCorrect ? 'var(--success)' : 'var(--bg-elevated)', color: opt.isCorrect ? '#fff' : 'var(--text-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600 }}>
-                                            {String.fromCharCode(65 + i)}
+                                {selectedQuestion.options?.map((opt, i) => {
+                                    const isCorrect = selectedQuestion.correctAnswerIndex === i;
+                                    const text = typeof opt === 'string' ? opt : (opt.text || '');
+                                    return (
+                                        <div key={i} style={{
+                                            padding: '10px 14px',
+                                            borderRadius: 'var(--radius-sm)',
+                                            border: isCorrect ? '1px solid var(--success-border)' : '1px solid var(--border-subtle)',
+                                            background: isCorrect ? 'var(--success-subtle)' : 'var(--bg-surface)',
+                                            display: 'flex', gap: 12, alignItems: 'center',
+                                            fontSize: 13
+                                        }}>
+                                            <div style={{ width: 24, height: 24, borderRadius: '50%', background: isCorrect ? 'var(--success)' : 'var(--bg-elevated)', color: isCorrect ? '#fff' : 'var(--text-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600 }}>
+                                                {String.fromCharCode(65 + i)}
+                                            </div>
+                                            <span style={{ color: isCorrect ? 'var(--success)' : 'var(--text-primary)', fontWeight: isCorrect ? 600 : 400 }}>{text}</span>
                                         </div>
-                                        <span style={{ color: opt.isCorrect ? 'var(--success)' : 'var(--text-primary)', fontWeight: opt.isCorrect ? 600 : 400 }}>{opt.text}</span>
-                                    </div>
-                                ))}
+                                    )
+                                })}
                             </div>
 
                             <h4 style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', marginBottom: 12 }}>Health & Usage</h4>

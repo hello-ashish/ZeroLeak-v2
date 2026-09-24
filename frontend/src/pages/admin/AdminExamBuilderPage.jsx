@@ -10,7 +10,7 @@ const getToken = () => localStorage.getItem('adminToken')
 
 export const AdminExamBuilderPage = () => {
     const [step, setStep] = useState(1)
-    const [form, setForm] = useState({ title: '', description: '' })
+    const [form, setForm] = useState({ title: '', description: '', mode: 'Normal' })
     const [subjects, setSubjects] = useState([])
     const [allQuestions, setAllQuestions] = useState([])
     const [currentSubj, setCurrentSubj] = useState({ subject: '', numQuestions: 10, durationMinutes: 60, passingPercentage: 50 })
@@ -43,6 +43,7 @@ export const AdminExamBuilderPage = () => {
             await axios.post(`${API}/admin/examinations`, {
                 title: form.title,
                 description: form.description,
+                mode: form.mode,
                 subjects: subjects
             }, { headers: { Authorization: `Bearer ${getToken()}` } })
 
@@ -99,9 +100,25 @@ export const AdminExamBuilderPage = () => {
                                 <label className="form-label">Examination Title *</label>
                                 <input className="form-input" placeholder="e.g. JEE Mains 2026" autoFocus value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
                             </div>
-                            <div className="form-group">
+                            <div className="form-group mb-4">
                                 <label className="form-label">Description *</label>
                                 <textarea className="form-textarea" style={{ minHeight: 120 }} placeholder="General instructions for the examination..." value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Exam Mode *</label>
+                                <div style={{ display: 'flex', gap: '16px', marginTop: '8px' }}>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                                        <input type="radio" name="examMode" value="Normal" checked={form.mode === 'Normal'} onChange={(e) => setForm(f => ({ ...f, mode: e.target.value }))} />
+                                        <span style={{ fontWeight: form.mode === 'Normal' ? 600 : 400 }}>Normal</span>
+                                    </label>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                                        <input type="radio" name="examMode" value="Zeroleak" checked={form.mode === 'Zeroleak'} onChange={(e) => setForm(f => ({ ...f, mode: e.target.value }))} />
+                                        <span style={{ fontWeight: form.mode === 'Zeroleak' ? 600 : 400, color: 'var(--brand-primary)' }}>Zeroleak Mode</span>
+                                    </label>
+                                </div>
+                                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '8px' }}>
+                                    {form.mode === 'Normal' ? 'Questions are generated and locked immediately upon creation.' : 'No questions are stored in the exam. Each student gets a uniquely generated set of questions when they start.'}
+                                </p>
                             </div>
                         </div>
                     )}
@@ -181,7 +198,7 @@ export const AdminExamBuilderPage = () => {
                                     ))}
                                 </div>
                                 <div style={{ marginTop: 24, padding: 16, background: 'var(--warning-subtle)', border: '1px solid var(--warning-border)', borderRadius: 'var(--radius-md)', color: 'var(--warning)', fontSize: 13 }}>
-                                    <strong>Note:</strong> Generating this examination will automatically pick random questions from the question bank for each subject. You can manage the schedule for each subject individually after generation.
+                                    <strong>Note:</strong> {form.mode === 'Normal' ? 'Generating this examination will automatically pick random questions from the question bank for each subject.' : 'In Zeroleak mode, no questions will be picked now. Questions will be dynamically generated for each student when they start the exam.'} You can manage the schedule for each subject individually after generation.
                                 </div>
                             </div>
                         </div>

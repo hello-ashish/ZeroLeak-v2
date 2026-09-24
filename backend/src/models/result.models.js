@@ -22,9 +22,13 @@ const resultSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ["Completed", "Terminated"],
+        enum: ["InProgress", "Completed", "Terminated"],
         default: "Completed"
     },
+    assignedQuestions: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Question"
+    }],
     isTerminated: {
         type: Boolean,
         default: false

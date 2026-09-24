@@ -4,17 +4,21 @@ import { Question } from "../models/question.models.js";
 import { buildMerkleRoot } from "../Services/merkle.service.js";
 import { createCommitment } from "../blockchain/commitment.service.js";
 import mongoose from "mongoose";
+import crypto from "crypto";
+import { selectQuestionsByDifficultyRatio } from "../Services/question.service.js";
 
 export const createExamination = async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
 
     try {
-        const { title, description, subjects } = req.body;
+        const { title, description, subjects, mode } = req.body;
 
         if (!title || !description || !subjects || subjects.length === 0) {
             return res.status(400).json({ message: "Title, description, and at least one subject are required." });
         }
+        
+        const examMode = mode === "Zeroleak" ? "Zeroleak" : "Normal";
 
         // 1. Create Examination
         const examination = new Examination({
@@ -30,19 +34,23 @@ export const createExamination = async (req, res) => {
         for (const subj of subjects) {
             const { subject, numQuestions, durationMinutes, passingPercentage } = subj;
 
-            // Randomly select questions
-            const selectedQuestions = await Question.aggregate([
-                { $match: { subject: subject } },
-                { $sample: { size: Number(numQuestions) || 10 } }
-            ]).session(session);
+            let questionIds = [];
+            let questionMerkleRoot = null;
 
-            if (selectedQuestions.length === 0) {
-                throw new Error(`No questions available in the question bank for subject: ${subject}`);
+            if (examMode === "Normal") {
+                // Randomly select questions using difficulty ratio rules
+                const allQuestions = await Question.find({ subject: subject }).session(session);
+                
+                const selectedQuestions = selectQuestionsByDifficultyRatio(allQuestions, Number(numQuestions) || 10);
+
+                if (selectedQuestions.length === 0) {
+                    throw new Error(`No questions available in the question bank for subject: ${subject}`);
+                }
+
+                const questionHashes = selectedQuestions.map(q => q.contentHash);
+                questionIds = selectedQuestions.map(q => q._id);
+                questionMerkleRoot = buildMerkleRoot(questionHashes);
             }
-
-            const questionHashes = selectedQuestions.map(q => q.contentHash);
-            const questionIds = selectedQuestions.map(q => q._id);
-            const questionMerkleRoot = buildMerkleRoot(questionHashes);
 
             const exam = new Exam({
                 title: `${title} - ${subject}`,
@@ -53,6 +61,8 @@ export const createExamination = async (req, res) => {
                 createdBy: req.admin?._id || req.user?._id,
                 examinationId: examination._id,
                 subject: subject,
+                mode: examMode,
+                zeroleakConfig: examMode === "Zeroleak" ? { numQuestions: Number(numQuestions) || 10 } : { numQuestions: 0 },
                 questions: questionIds,
                 questionMerkleRoot
             });

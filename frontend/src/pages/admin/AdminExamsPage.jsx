@@ -4,7 +4,7 @@ import axios from 'axios'
 import { AdminLayout } from './AdminLayout.jsx'
 import { StatusBadge } from '../../components/StatusBadge.jsx'
 import { ConfirmDialog } from '../../components/Modal.jsx'
-import { SkeletonTable, EmptyState } from '../../components/SkeletonLoader.jsx'
+import { SkeletonCard, EmptyState } from '../../components/SkeletonLoader.jsx'
 import { useToast } from '../../components/Toast.jsx'
 import { Search, ClipboardList, Play, Square, Trash2, Plus, ChevronDown, ChevronRight, Check } from 'lucide-react'
 
@@ -144,7 +144,9 @@ export default function AdminExamsPage() {
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                         {loading ? (
-                            <SkeletonTable rows={5} />
+                            <>
+                                {[...Array(3)].map((_, i) => <SkeletonCard key={i} />)}
+                            </>
                         ) : filtered.length === 0 ? (
                             <EmptyState
                                 icon={<ClipboardList size={32} color="var(--text-tertiary)" />}

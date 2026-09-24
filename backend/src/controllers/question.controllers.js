@@ -103,6 +103,8 @@ export const getProfessorQuestions = async (req, res) => {
                     "[Protected Question]",
                 options:
                     decryptedContent.options || [],
+                correctAnswerIndex:
+                    decryptedContent.correctAnswerIndex,
                 difficultyLevel:
                     question.difficultyLevel,
                 subject: question.subject,
@@ -169,6 +171,7 @@ export const getAllQuestions = async (req, res) => {
                 _id: question._id,
                 title: decryptedContent.title || "[Protected Question]",
                 options: decryptedContent.options || [],
+                correctAnswerIndex: decryptedContent.correctAnswerIndex,
                 difficultyLevel:
                     question.difficultyLevel,
                 subject: question.subject,

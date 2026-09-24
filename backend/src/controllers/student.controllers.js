@@ -3,7 +3,7 @@ import { Exam } from "../models/exam.models.js"
 import { Result } from "../models/result.models.js";
 import { CheatingIncident } from "../models/cheatingIncident.models.js";
 import { AuditLog } from "../models/auditlog.models.js";
-
+import { Question } from "../models/question.models.js";
 import {
     decryptQuestionContent,
     verifyQuestionIntegrity,
@@ -12,6 +12,8 @@ import {
 import { buildMerkleRoot } from "../Services/merkle.service.js"
 import { canonicalize, sha256 } from "../blockchain/commitment.service.js"
 import { createCommitment } from "../blockchain/commitment.service.js"
+import crypto from "crypto";
+import { selectQuestionsByDifficultyRatio } from "../Services/question.service.js";
 
 // 1. Register Student
 export const registerStudent = async (req, res) => {
@@ -205,14 +207,49 @@ export const getExamById = async (req, res) => {
         }
 
         // Protected exams must have a Merkle root
-        if (!exam.questionMerkleRoot) {
+        if (!exam.questionMerkleRoot && exam.mode !== "Zeroleak") {
             return res.status(403).json({
                 message:
                     "This exam is not protected and cannot be accessed."
             })
         }
 
-        if (exam.questions.length === 0) {
+        let examQuestions = exam.questions;
+
+        if (exam.mode === "Zeroleak") {
+            let result = await Result.findOne({
+                student: req.student._id,
+                exam: exam._id,
+                status: "InProgress",
+                resetByAdmin: { $ne: true }
+            }).populate("assignedQuestions");
+
+            if (result) {
+                examQuestions = result.assignedQuestions;
+            } else {
+                const allQuestions = await Question.find({ subject: exam.subject });
+                const selectedQuestions = selectQuestionsByDifficultyRatio(allQuestions, Number(exam.zeroleakConfig?.numQuestions) || 10);
+
+                if (selectedQuestions.length === 0) {
+                    return res.status(400).json({ message: "No questions available for this subject." });
+                }
+
+                const questionIds = selectedQuestions.map(q => q._id);
+                
+                result = await Result.create({
+                    student: req.student._id,
+                    exam: exam._id,
+                    score: 0,
+                    totalQuestions: questionIds.length,
+                    status: "InProgress",
+                    assignedQuestions: questionIds
+                });
+                
+                examQuestions = selectedQuestions;
+            }
+        }
+
+        if (examQuestions.length === 0) {
             return res.status(400).json({
                 message: "Exam contains no questions."
             })
@@ -221,7 +258,7 @@ export const getExamById = async (req, res) => {
         const questionHashes = []
         const safeQuestions = []
 
-        for (const question of exam.questions) {
+        for (const question of examQuestions) {
 
             // Every question must contain encrypted content
             if (
@@ -278,18 +315,20 @@ export const getExamById = async (req, res) => {
             buildMerkleRoot(questionHashes)
 
         // Verify the complete exam
-        if (
-            calculatedMerkleRoot !==
-            exam.questionMerkleRoot
-        ) {
-            console.error(
-                "Exam Merkle root verification failed."
-            )
+        if (exam.mode !== "Zeroleak") {
+            if (
+                calculatedMerkleRoot !==
+                exam.questionMerkleRoot
+            ) {
+                console.error(
+                    "Exam Merkle root verification failed."
+                )
 
-            return res.status(403).json({
-                message:
-                    "Exam integrity verification failed."
-            })
+                return res.status(403).json({
+                    message:
+                        "Exam integrity verification failed."
+                })
+            }
         }
 
         // Convert mongoose document to plain object
@@ -339,13 +378,13 @@ export const submitExamResult = async (req, res) => {
 
         // Prevent duplicate submissions.
         // Skip results marked resetByAdmin=true — those are audit records for terminated/authorized attempts.
-        const existingResult = await Result.findOne({
+        let existingResult = await Result.findOne({
             student: req.student._id,
             exam: examId,
             resetByAdmin: { $ne: true }
-        })
+        }).populate("assignedQuestions")
 
-        if (existingResult) {
+        if (existingResult && existingResult.status !== "InProgress") {
             return res.status(400).json({
                 message:
                     "You have already submitted this exam."
@@ -376,17 +415,29 @@ export const submitExamResult = async (req, res) => {
             })
         }
 
-        if (exam.questions.length === 0) {
+        if (exam.questions.length === 0 && exam.mode !== "Zeroleak") {
             return res.status(400).json({
                 message: "Exam contains no questions."
             })
+        }
+
+        let examQuestions = exam.questions;
+        if (exam.mode === "Zeroleak") {
+            if (!existingResult || existingResult.status !== "InProgress") {
+                return res.status(400).json({ message: "Exam session not found or already completed." });
+            }
+            examQuestions = existingResult.assignedQuestions;
+        }
+        
+        if (examQuestions.length === 0) {
+            return res.status(400).json({ message: "Exam contains no questions." });
         }
 
         const questionHashes = []
         const decryptedQuestions = []
 
         // Verify and decrypt every question
-        for (const question of exam.questions) {
+        for (const question of examQuestions) {
 
             if (
                 !question.encryptedContent ||
@@ -435,18 +486,20 @@ export const submitExamResult = async (req, res) => {
         const calculatedMerkleRoot =
             buildMerkleRoot(questionHashes)
 
-        if (
-            calculatedMerkleRoot !==
-            exam.questionMerkleRoot
-        ) {
-            console.error(
-                "Exam Merkle root verification failed during submission."
-            )
-
-            return res.status(403).json({
-                message:
-                    "Exam integrity verification failed."
-            })
+        if (exam.mode !== "Zeroleak") {
+            if (
+                calculatedMerkleRoot !==
+                exam.questionMerkleRoot
+            ) {
+                console.error(
+                    "Exam Merkle root verification failed during submission."
+                )
+    
+                return res.status(403).json({
+                    message:
+                        "Exam integrity verification failed."
+                })
+            }
         }
 
         // Create a lookup map for submitted answers
@@ -485,12 +538,21 @@ export const submitExamResult = async (req, res) => {
         const totalQuestions =
             decryptedQuestions.length
 
-        const result = await Result.create({
-            student: req.student._id,
-            exam: examId,
-            score,
-            totalQuestions
-        })
+        let result;
+        if (existingResult) {
+            existingResult.score = score;
+            existingResult.totalQuestions = totalQuestions;
+            existingResult.status = "Completed";
+            result = await existingResult.save();
+        } else {
+            result = await Result.create({
+                student: req.student._id,
+                exam: examId,
+                score,
+                totalQuestions,
+                status: "Completed"
+            })
+        }
 
         // Generate Submission Hash & Result Commitment
         const submissionPayload = canonicalize({

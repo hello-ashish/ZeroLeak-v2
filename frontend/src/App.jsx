@@ -31,6 +31,7 @@ const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage.j
 const AdminExamsPage = lazy(() => import('./pages/admin/AdminExamsPage.jsx'))
 const AdminExamBuilderPage = lazy(() => import('./pages/admin/AdminExamBuilderPage.jsx').then(m => ({ default: m.AdminExamBuilderPage })))
 const AdminExamDetailPage = lazy(() => import('./pages/admin/AdminExamDetailPage.jsx').then(m => ({ default: m.AdminExamDetailPage })))
+const AdminPaperSimulatorPage = lazy(() => import('./pages/admin/AdminPaperSimulatorPage.jsx').then(m => ({ default: m.AdminPaperSimulatorPage })))
 const AdminQuestionsPage = lazy(() => import('./pages/admin/AdminQuestionsPage.jsx'))
 const AdminStudentsPage = lazy(() => import('./pages/admin/AdminStudentsPage.jsx'))
 const AdminProfessorsPage = lazy(() => import('./pages/admin/AdminProfessorsPage.jsx'))
@@ -76,6 +77,7 @@ function App() {
             <Route path="/admin/exams" element={<AdminExamsPage />} />
             <Route path="/admin/exams/create" element={<AdminExamBuilderPage />} />
             <Route path="/admin/exams/:id" element={<AdminExamDetailPage />} />
+            <Route path="/admin/simulator" element={<AdminPaperSimulatorPage />} />
             <Route path="/admin/questions" element={<AdminQuestionsPage />} />
             <Route path="/admin/students" element={<AdminStudentsPage />} />
             <Route path="/admin/professors" element={<AdminProfessorsPage />} />

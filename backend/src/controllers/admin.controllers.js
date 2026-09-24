@@ -143,7 +143,7 @@ export const getBatches = async (req, res) => {
     try {
         const { status } = req.query;
         const query = status ? { status, isDeletedByAdmin: { $ne: true } } : { isDeletedByAdmin: { $ne: true } };
-        const batches = await Batch.find(query).populate('createdBy', 'name email');
+        const batches = await Batch.find(query).sort({ createdAt: -1 }).populate('createdBy', 'name email');
         res.status(200).json({ batches });
     } catch (error) {
         res.status(500).json({ message: error.message });

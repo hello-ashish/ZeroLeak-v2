@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
-import { LayoutDashboard, ClipboardList, Database, BarChart3, GraduationCap, Users, PackageOpen, ScrollText, Blocks, Settings, Search, LogOut, ChevronDown, Command, Bell, Plus, RefreshCw, ShieldAlert, Map } from 'lucide-react'
+import { LayoutDashboard, ClipboardList, Database, BarChart3, GraduationCap, Users, PackageOpen, ScrollText, Blocks, Settings, Search, LogOut, ChevronDown, Command, Bell, Plus, RefreshCw, ShieldAlert, Map, Beaker } from 'lucide-react'
 import { CommandPalette } from '../../components/CommandPalette.jsx'
 import { HeaderThemeSlider } from '../../components/HeaderThemeSlider.jsx'
 
@@ -15,6 +15,7 @@ const NAV = [
         section: 'Academic',
         items: [
             { label: 'Exams', icon: <ClipboardList size={18} />, path: '/admin/exams' },
+            { label: 'Paper Simulator', icon: <Beaker size={18} />, path: '/admin/simulator' },
             { label: 'Question Bank', icon: <Database size={18} />, path: '/admin/questions' },
             { label: 'Gradebook', icon: <BarChart3 size={18} />, path: '/admin/gradebook' },
         ]
