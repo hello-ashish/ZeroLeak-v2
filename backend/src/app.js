@@ -4,6 +4,7 @@ import questionRouter from "./routes/question.routes.js"
 import examRouter from "./routes/exam.routes.js"
 import examinationRouter from "./routes/examination.routes.js"
 import studentRouter from "./routes/student.routes.js"
+import { setupSwagger } from "./swagger.js"
 
 const app = express()
 
@@ -50,5 +51,7 @@ app.use("/api/anti-cheating", cheatingRouter);
 
 // Blockchain ledger route
 app.use("/api/blockchain", blockchainRouter);
+
+setupSwagger(app);
 
 export { app }

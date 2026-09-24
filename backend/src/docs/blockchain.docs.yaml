@@ -1,0 +1,28 @@
+paths:
+  /api/blockchain/ledger:
+    get:
+      summary: Retrieve the immutable blockchain ledger logs
+      tags: [Blockchain]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Ledger logs retrieved
+  /api/blockchain/status:
+    get:
+      summary: Check Hyperledger Fabric connection status
+      tags: [Blockchain]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Status ok
+  /api/blockchain/verify:
+    get:
+      summary: Verify the integrity of the ledger
+      tags: [Blockchain]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Verification complete

@@ -319,6 +319,25 @@ const TakeExam = () => {
             try {
                 const token = localStorage.getItem('studentToken');
                 if (!token) return;
+
+                // --- Background Sync for Final Submission ---
+                const pendingSubmitKey = `zl_pending_submit_${id}`;
+                const pendingSubmit = localStorage.getItem(pendingSubmitKey);
+                if (pendingSubmit && score === null && !isSubmitting) {
+                    try {
+                        const payload = JSON.parse(pendingSubmit);
+                        const response = await axios.post('http://localhost:4000/api/students/results', payload, { headers: { Authorization: `Bearer ${token}` } });
+                        setScore(response.data.result.score);
+                        localStorage.removeItem(sessionKey);
+                        localStorage.removeItem(pendingSubmitKey);
+                        setShowPreSubmit(false);
+                        return; // Auto-submit succeeded, stop this ping cycle
+                    } catch (e) {
+                        console.warn("Background auto-submit failed, will retry...", e);
+                    }
+                }
+                // --------------------------------------------
+
                 await axios.post('http://localhost:4000/api/students/ping', {
                     currentExamId: id,
                     warningCount: warningCountRef.current
@@ -456,22 +475,30 @@ const TakeExam = () => {
         if (isTerminated) return;
         setIsSubmitting(true);
         if (timerRef.current) clearInterval(timerRef.current);
+        
+        const payload = {
+            examId: exam._id,
+            answers: Object.entries(answers).map(([questionId, selectedOptionIndex]) => ({
+                questionId,
+                selectedOptionIndex
+            }))
+        };
+
         try {
             const token = localStorage.getItem('studentToken');
-            const response = await axios.post('http://localhost:4000/api/students/results', {
-                examId: exam._id,
-                answers: Object.entries(answers).map(([questionId, selectedOptionIndex]) => ({
-                    questionId,
-                    selectedOptionIndex
-                }))
-            }, { headers: { Authorization: `Bearer ${token}` } });
+            const response = await axios.post('http://localhost:4000/api/students/results', payload, { headers: { Authorization: `Bearer ${token}` } });
             
             setScore(response.data.result.score);
             localStorage.removeItem(sessionKey);
             setShowPreSubmit(false);
         } catch (error) {
             console.error("Failed to submit exam result", error);
-            alert("Failed to save results. Please check your connection.");
+            if (!error.response || error.code === 'ERR_NETWORK') {
+                localStorage.setItem(`zl_pending_submit_${id}`, JSON.stringify(payload));
+                alert("You are offline. Your exam has been saved locally and will auto-submit when your connection is restored. Please do not close this window.");
+            } else {
+                alert("Failed to save results. " + (error.response?.data?.message || ""));
+            }
             setIsSubmitting(false);
         }
     };

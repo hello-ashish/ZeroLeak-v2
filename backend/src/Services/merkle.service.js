@@ -10,9 +10,7 @@ function hashPair(left, right) {
 
 export function buildMerkleRoot(hashes) {
     if (!Array.isArray(hashes) || hashes.length === 0) {
-        throw new Error(
-            "At least one hash is required to build a Merkle tree."
-        );
+        return null;
     }
 
     const invalidHashes = hashes.filter(

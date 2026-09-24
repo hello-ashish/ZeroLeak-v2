@@ -31,7 +31,34 @@ import { verifyAdminJWT } from "../middlewares/auth.middleware.js"
 const router = Router()
 
 // ─── Public Routes ────────────────────────────────────────────────────────────
+
+/**
+ * @swagger
+ * /api/admin/register:
+ *   post:
+ *     summary: Register a new admin
+ *     tags: [Admin]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               adminId:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Admin registered successfully
+ *       400:
+ *         description: Bad request
+ */
 router.route("/register").post(registerAdmin)
+
 router.route("/login").post(loginAdmin)
 
 // ─── Protected Routes ─────────────────────────────────────────────────────────
