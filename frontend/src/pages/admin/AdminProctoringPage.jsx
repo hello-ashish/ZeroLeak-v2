@@ -115,6 +115,11 @@ export const AdminProctoringPage = () => {
     
     // For WebRTC: map of studentId -> { peerConnection, stream }
     const rtcMapRef = useRef(new Map());
+    const sessionsRef = useRef(sessions);
+
+    useEffect(() => {
+        sessionsRef.current = sessions;
+    }, [sessions]);
 
     useEffect(() => {
         const token = localStorage.getItem('adminToken');
@@ -213,7 +218,7 @@ export const AdminProctoringPage = () => {
                 const stream = event.streams[0];
                 
                 setSessions(prev => prev.map(s => {
-                    if (s.studentId._id === studentId) {
+                    if (String(s.studentId._id) === String(studentId)) {
                         return { ...s, stream };
                     }
                     return s;
@@ -255,16 +260,19 @@ export const AdminProctoringPage = () => {
     useEffect(() => {
         if (!socket) return;
         
-        const interval = setInterval(() => {
-            sessions.forEach(session => {
+        const requestStreams = () => {
+            sessionsRef.current.forEach(session => {
                 if (session.connectionStatus === 'ONLINE' && session.socketId && !session.stream) {
                     socket.emit('proctoring:request-stream', { studentSocketId: session.socketId });
                 }
             });
-        }, 10000); // Ask every 10s if we don't have the stream
+        };
+
+        const interval = setInterval(requestStreams, 5000); // Ask every 5s if we don't have the stream
+        requestStreams(); // Initial check
 
         return () => clearInterval(interval);
-    }, [sessions, socket]);
+    }, [socket]);
 
 
     const handleListen = (studentId) => {

@@ -1,0 +1,39 @@
+1. Add Docker Setup - Vikhyat
+2. AntiCheating Features, Proctoring/Real-Time Monitoring - Himanshu
+3. AI integration - Ashish
+4. Redis - Yashwant
+5. End-to-End Encryption
+6. Notes in cbt
+7. Disaster Recovery
+8. auto suggession while Creating the question. prof write a question. ai auto detects and fills topics in the form.
+9. AI automatic completes the incomplete data. prof imports csv file which contain null or missing columns, ai automatically checks and fills the data.
+
+1. Exam Blueprint Engine
+
+Let the professor define exactly what kind of paper should be generated:
+
+Subject: DBMS
+Questions: 20
+
+Difficulty:
+Easy     30%
+Medium   50%
+Hard     20%
+
+Topics:
+Normalization  25%
+SQL            35%
+Transactions   40%
+
+2. Secure Exam Session
+
+Create a dedicated ExamSession:
+
+examSessionId
+studentId
+examId
+assignedQuestionIds
+startTime
+expiryTime
+attempt
+status
