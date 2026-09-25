@@ -1,8 +1,11 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation, Link, Outlet } from 'react-router-dom'
 import { LayoutDashboard, PackageOpen, Settings, Search, LogOut, ChevronDown, Bell, Plus, FileText, RefreshCw } from 'lucide-react'
 import { CommandPalette } from '../../components/CommandPalette.jsx'
-import { HeaderThemeSlider } from '../../components/HeaderThemeSlider.jsx'
+import { HeaderThemeToggle } from '../../components/HeaderThemeToggle.jsx'
+import { NotificationDropdown } from '../../components/NotificationDropdown.jsx'
+import { SkeletonCard, Skeleton, SkeletonTable } from '../../components/SkeletonLoader.jsx'
+import { useNotifications } from '../../hooks/useNotifications.jsx'
 
 const NAV = [
     {
@@ -33,10 +36,36 @@ export const ProfessorLayout = () => {
     const [showProfile, setShowProfile] = useState(false)
     const [showCreate, setShowCreate] = useState(false)
     const [showNotifications, setShowNotifications] = useState(false)
+    const [isRefreshing, setIsRefreshing] = useState(false)
+    const [refreshKey, setRefreshKey] = useState(0)
+    const notifRef = useRef(null)
+    const profileRef = useRef(null)
     const navigate = useNavigate()
     const location = useLocation()
+    const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications('professor');
 
     const profData = JSON.parse(localStorage.getItem('profData') || '{}')
+
+    const handleRefresh = () => {
+        setIsRefreshing(true);
+        if (typeof fetchNotifications === 'function') fetchNotifications();
+        setRefreshKey(prev => prev + 1);
+        setTimeout(() => setIsRefreshing(false), 800);
+    };
+
+    // Close dropdowns on click outside
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (notifRef.current && !notifRef.current.contains(e.target)) {
+                setShowNotifications(false)
+            }
+            if (profileRef.current && !profileRef.current.contains(e.target)) {
+                setShowProfile(false)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
 
     // Cmd+K
     useEffect(() => {
@@ -148,12 +177,12 @@ export const ProfessorLayout = () => {
                     </div>
 
                     <div className="topbar-actions">
-                        <HeaderThemeSlider />
+                        <HeaderThemeToggle />
 
                         {/* Refresh Button */}
                         <button
                             className="topbar-btn"
-                            onClick={() => window.refreshCurrentPage && window.refreshCurrentPage()}
+                            onClick={handleRefresh}
                             title="Refresh Page"
                             aria-label="Refresh Page"
                         >
@@ -162,31 +191,22 @@ export const ProfessorLayout = () => {
 
 
                         {/* Notifications Dropdown */}
-                        <div className="dropdown">
-                            <button
-                                className="topbar-btn"
-                                onClick={() => setShowNotifications(v => !v)}
-                                aria-expanded={showNotifications}
-                                aria-label="Notifications"
-                            >
-                                <Bell size={18} />
-                                <span className="topbar-btn-badge" />
-                            </button>
-                            {showNotifications && (
-                                <div className="dropdown-menu" style={{ minWidth: 280, right: 0 }}>
-                                    <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)', fontWeight: 600 }}>Notifications</div>
-                                    <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
-                                        No new notifications
-                                    </div>
-                                </div>
-                            )}
-                        </div>
+                        <NotificationDropdown
+                            notifications={notifications}
+                            unreadCount={unreadCount}
+                            markAsRead={markAsRead}
+                            markAllAsRead={markAllAsRead}
+                            showNotifications={showNotifications}
+                            setShowNotifications={setShowNotifications}
+                            setShowProfile={setShowProfile}
+                            dropdownRef={notifRef}
+                        />
 
                         {/* Profile */}
-                        <div className="dropdown">
+                        <div className="dropdown" ref={profileRef}>
                             <button
                                 className="topbar-profile"
-                                onClick={() => setShowProfile(v => !v)}
+                                onClick={() => { setShowProfile(v => !v); setShowNotifications(false) }}
                                 aria-expanded={showProfile}
                                 aria-label="Professor profile menu"
                             >
@@ -215,7 +235,27 @@ export const ProfessorLayout = () => {
 
                 {/* Content */}
                 <main className="page-content" id="main-content">
-                    <Outlet />
+                    {isRefreshing ? (
+                        <div style={{ padding: '24px', display: 'grid', gap: '24px' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
+                                <SkeletonCard />
+                                <SkeletonCard />
+                                <SkeletonCard />
+                            </div>
+                            <div className="card">
+                                <div style={{ padding: '20px', borderBottom: '1px solid var(--border-subtle)' }}>
+                                    <Skeleton width="200px" height={20} />
+                                </div>
+                                <div style={{ overflowX: 'auto' }}>
+                                    <table className="table">
+                                        <SkeletonTable rows={5} />
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <Outlet key={refreshKey} />
+                    )}
                 </main>
             </div>
 

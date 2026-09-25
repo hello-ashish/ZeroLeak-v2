@@ -24,6 +24,7 @@ import professorRouter from "./routes/professor.routes.js"
 import auditorRouter from "./routes/auditor.routes.js"
 import cheatingRouter from "./routes/cheating.routes.js"
 import blockchainRouter from "./routes/blockchain.routes.js"
+import searchRouter from "./routes/search.routes.js"
 
 // this says: any request starting with /api/admin goes to the adminRouter
 app.use("/api/admin", adminRouter)
@@ -51,6 +52,9 @@ app.use("/api/anti-cheating", cheatingRouter);
 
 // Blockchain ledger route
 app.use("/api/blockchain", blockchainRouter);
+
+// Global search route
+app.use("/api/search", searchRouter);
 
 setupSwagger(app);
 

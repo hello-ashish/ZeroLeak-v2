@@ -12,6 +12,7 @@ import {
     getProfessors
 } from "../controllers/auditor.controllers.js";
 import { verifyAuditorJWT } from "../middlewares/auth.middleware.js";
+import notificationRouter from "./notification.routes.js";
 
 const router = Router();
 
@@ -21,6 +22,8 @@ router.route("/login").post(loginAuditor);
 
 // ─── Protected Routes (Read-Only & Auditor Specific) ──────────────────────────
 router.use(verifyAuditorJWT); // Apply to all below
+
+router.use("/notifications", notificationRouter);
 
 router.route("/metrics").get(getDashboardMetrics);
 router.route("/logs").get(getAuditLogs);

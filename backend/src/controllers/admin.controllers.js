@@ -12,6 +12,7 @@ import {
     encryptQuestionContent,
     hashQuestionContent,
 } from "../Services/crypto.service.js";
+import { createNotification } from "./notification.controllers.js";
 
 // ─── Audit Log Helper ────────────────────────────────────────────────────────
 const logAction = async ({ actor, actorRole = "Admin", action, targetType, targetId, targetLabel, details, status = "success" }) => {
@@ -235,15 +236,45 @@ export const reviewBatch = async (req, res) => {
             batch.status = 'Accepted';
             batch.adminMessage = 'Batch Approved, integrity committed to blockchain ledger';
             await logAction({ actor: req.admin?.email, action: "BATCH_APPROVED", targetType: "Batch", targetId: batch._id, targetLabel: batch.title });
+            
+            // Notify Professor
+            await createNotification({
+                userId: batch.createdBy,
+                userRole: "Professor",
+                title: "Batch Approved",
+                message: `Your batch "${batch.title}" has been approved by admin.`,
+                type: "SUCCESS",
+                relatedLink: "/professor/batches"
+            });
         } else if (action === 'Reject') {
             batch.status = 'Rejected';
             batch.adminMessage = adminMessage || 'Rejected without specific reason.';
             batch.questions = [];
             await logAction({ actor: req.admin?.email, action: "BATCH_REJECTED", targetType: "Batch", targetId: batch._id, targetLabel: batch.title, details: adminMessage });
+            
+            // Notify Professor
+            await createNotification({
+                userId: batch.createdBy,
+                userRole: "Professor",
+                title: "Batch Rejected",
+                message: `Your batch "${batch.title}" was rejected. Reason: ${adminMessage}`,
+                type: "ERROR",
+                relatedLink: "/professor/batches"
+            });
         } else if (action === 'MarkForReview') {
             batch.status = 'MarkForReview';
             batch.adminMessage = adminMessage || 'Please revise these questions.';
             await logAction({ actor: req.admin?.email, action: "BATCH_MARKED_FOR_REVIEW", targetType: "Batch", targetId: batch._id, targetLabel: batch.title, details: adminMessage });
+            
+            // Notify Professor
+            await createNotification({
+                userId: batch.createdBy,
+                userRole: "Professor",
+                title: "Batch Needs Revision",
+                message: `Your batch "${batch.title}" needs revision. Reason: ${adminMessage}`,
+                type: "WARNING",
+                relatedLink: "/professor/batches"
+            });
         }
 
         await batch.save();
@@ -546,6 +577,15 @@ export const toggleBlockStudent = async (req, res) => {
             targetLabel: student.name 
         });
 
+        // Notify Student
+        await createNotification({
+            userId: student._id,
+            userRole: "Student",
+            title: student.isBlocked ? "Account Restricted" : "Account Restored",
+            message: student.isBlocked ? "Your account has been restricted by an administrator." : "Your account access has been restored.",
+            type: student.isBlocked ? "ERROR" : "SUCCESS"
+        });
+
         return res.status(200).json({ 
             message: `Student successfully ${student.isBlocked ? 'blocked' : 'unblocked'}`,
             isBlocked: student.isBlocked
@@ -574,6 +614,15 @@ export const toggleBlockProfessor = async (req, res) => {
             targetType: "Professor", 
             targetId: professor._id, 
             targetLabel: professor.name 
+        });
+
+        // Notify Professor
+        await createNotification({
+            userId: professor._id,
+            userRole: "Professor",
+            title: professor.isBlocked ? "Account Restricted" : "Account Restored",
+            message: professor.isBlocked ? "Your account has been restricted by an administrator." : "Your account access has been restored.",
+            type: professor.isBlocked ? "ERROR" : "SUCCESS"
         });
 
         return res.status(200).json({ 

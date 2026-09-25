@@ -1,8 +1,11 @@
 import { Router } from "express";
 import { registerStudent, loginStudent, getAvailableExams, getAllStudents, getExamById, submitExamResult, getStudentResults, updateStudentProfile, changeStudentPassword, pingSession } from "../controllers/student.controllers.js";
 import { verifyStudentJWT, verifyAdminJWT } from "../middlewares/auth.middleware.js";
+import notificationRouter from "./notification.routes.js";
 
 const router = Router();
+
+router.use("/notifications", verifyStudentJWT, notificationRouter);
 
 // Public Routes
 router.route("/login").post(loginStudent);

@@ -7,6 +7,7 @@ import { AuditLog } from "../models/auditlog.models.js";
 import { Anomaly } from "../models/anomaly.models.js";
 import { canonicalize, sha256 } from "../blockchain/commitment.service.js";
 import { createCommitment } from "../blockchain/commitment.service.js";
+import { createNotification, notifyAdmins, notifyAuditors } from "./notification.controllers.js";
 
 // Helper to check valid ObjectId
 const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
@@ -58,6 +59,20 @@ export const recordIncident = async (req, res) => {
             actionTaken: finalAction,
             evidenceData: evidenceData || {},
             reviewStatus: "Pending"
+        });
+
+        // Notify Admins and Auditors
+        const alertMsg = `Cheating Incident: ${student.name || student.email} - ${violationType} on exam "${exam.title}"`;
+        await notifyAdmins({ title: "Security Alert", message: alertMsg, type: "WARNING", relatedLink: "/admin/cheating" });
+        await notifyAuditors({ title: "Security Alert", message: alertMsg, type: "WARNING", relatedLink: "/auditor/anomalies" });
+        
+        // Notify Student
+        await createNotification({
+            userId: student._id,
+            userRole: "Student",
+            title: "Security Warning",
+            message: `A security violation was logged during your exam: ${violationType}.`,
+            type: "WARNING"
         });
 
         // ── SERVER-SIDE 3-STRIKE ENFORCEMENT ────────────────────────────────────
@@ -116,6 +131,23 @@ export const recordIncident = async (req, res) => {
                 await studentDoc.save();
             }
             isNowBlocked = true;
+
+            // Notify Student of Block
+            await createNotification({
+                userId: student._id,
+                userRole: "Student",
+                title: "Exam Terminated & Account Restricted",
+                message: `You exceeded the maximum allowed security violations. Your exam was terminated and your account is restricted.`,
+                type: "ERROR"
+            });
+
+            // Notify Admins of Block
+            await notifyAdmins({ 
+                title: "Student Auto-Blocked", 
+                message: `${student.name || student.email} was auto-blocked for exceeding violations on "${exam.title}".`, 
+                type: "ERROR", 
+                relatedLink: "/admin/cheating" 
+            });
 
             // Audit log for auto-block
             try {

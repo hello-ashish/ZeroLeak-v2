@@ -131,3 +131,43 @@ export const verifyAdminOrAuditorJWT = async (req, res, next) => {
         return res.status(401).json({ message: "Invalid or Expired Access Token", code: "TOKEN_EXPIRED" })
     }
 }
+
+export const verifyAnyJWT = async (req, res, next) => {
+    try {
+        const authHeader = req.header("Authorization")
+        const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : authHeader
+
+        if (!token) {
+            return res.status(401).json({ message: "Unauthorized request: No token provided" })
+        }
+
+        const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET)
+
+        const [admin, professor, student, auditor] = await Promise.all([
+            Admin.findById(decodedToken.id).select("-password"),
+            Professor.findById(decodedToken.id).select("-password"),
+            Student.findById(decodedToken.id).select("-password"),
+            Auditor.findById(decodedToken.id).select("-password")
+        ])
+
+        if (admin) {
+            req.user = admin
+            req.userRole = "Admin"
+        } else if (professor) {
+            req.user = professor
+            req.userRole = "Professor"
+        } else if (student) {
+            req.user = student
+            req.userRole = "Student"
+        } else if (auditor) {
+            req.user = auditor
+            req.userRole = "Auditor"
+        } else {
+            return res.status(401).json({ message: "User not found" })
+        }
+
+        next()
+    } catch (error) {
+        return res.status(401).json({ message: "Invalid or Expired Access Token", code: "TOKEN_EXPIRED" })
+    }
+}

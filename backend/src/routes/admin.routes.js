@@ -27,8 +27,11 @@ import {
     bulkImportStudents
 } from "../controllers/admin.controllers.js"
 import { verifyAdminJWT } from "../middlewares/auth.middleware.js"
+import notificationRouter from "./notification.routes.js"
 
 const router = Router()
+
+router.use("/notifications", verifyAdminJWT, notificationRouter)
 
 // ─── Public Routes ────────────────────────────────────────────────────────────
 

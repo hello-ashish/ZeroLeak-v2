@@ -1,5 +1,6 @@
 import { Professor } from "../models/professor.models.js";
 import { Batch } from "../models/batch.models.js"
+import { notifyAdmins } from "./notification.controllers.js";
 
 export const loginProfessor = async (req, res) => {
 
@@ -181,6 +182,14 @@ export const submitBatch = async (req, res) => {
         const { batchId } = req.params
         const batch = await Batch.findByIdAndUpdate(batchId, {
             status: "Submitted" }, {new: true})
+            
+        await notifyAdmins({
+            title: "New Batch Submitted",
+            message: `A new batch "${batch.title}" has been submitted for review.`,
+            type: "INFO",
+            relatedLink: "/admin/batches"
+        });
+
         res.status(200).json({ message: "Batch submitted to Admin", batch })
     } catch (error) {
         res.status(500).json({ message: error.message })

@@ -1,7 +1,10 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
-import { LayoutDashboard, FileText, Database, Users, LogOut, ChevronDown, Search, Activity, ShieldAlert, GraduationCap, ClipboardList, RefreshCw, Map } from 'lucide-react'
-import { HeaderThemeSlider } from '../../components/HeaderThemeSlider.jsx'
+import { LayoutDashboard, FileText, Database, Users, LogOut, ChevronDown, Search, Activity, ShieldAlert, GraduationCap, ClipboardList, RefreshCw, Map, Bell } from 'lucide-react'
+import { HeaderThemeToggle } from '../../components/HeaderThemeToggle.jsx'
+import { NotificationDropdown } from '../../components/NotificationDropdown.jsx'
+import { SkeletonCard, Skeleton, SkeletonTable } from '../../components/SkeletonLoader.jsx'
+import { useNotifications } from '../../hooks/useNotifications.jsx'
 
 const NAV = [
     {
@@ -33,10 +36,36 @@ export const AuditorLayout = ({ children, openAnomaliesCount = 0 }) => {
     const [mobileOpen, setMobileOpen] = useState(false)
     const [showProfile, setShowProfile] = useState(false)
     const [showNotifications, setShowNotifications] = useState(false)
+    const [isRefreshing, setIsRefreshing] = useState(false)
+    const [refreshKey, setRefreshKey] = useState(0)
+    const notifRef = useRef(null)
+    const profileRef = useRef(null)
     const navigate = useNavigate()
     const location = useLocation()
+    const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications('auditor');
 
     const auditorData = JSON.parse(localStorage.getItem('auditorData') || '{}')
+
+    const handleRefresh = () => {
+        setIsRefreshing(true);
+        if (typeof fetchNotifications === 'function') fetchNotifications();
+        setRefreshKey(prev => prev + 1);
+        setTimeout(() => setIsRefreshing(false), 800);
+    };
+
+    // Close dropdowns on click outside
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (notifRef.current && !notifRef.current.contains(e.target)) {
+                setShowNotifications(false)
+            }
+            if (profileRef.current && !profileRef.current.contains(e.target)) {
+                setShowProfile(false)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
 
     const handleLogout = () => {
         localStorage.removeItem('auditorToken')
@@ -128,24 +157,35 @@ export const AuditorLayout = ({ children, openAnomaliesCount = 0 }) => {
                         <div className="badge" style={{ background: 'var(--brand-primary-subtle)', color: 'var(--brand-primary)', border: '1px solid var(--brand-primary-subtle)', fontWeight: 600, fontSize: 12 }}>
                             VIEW ONLY MODE
                         </div>
-                        <HeaderThemeSlider />
+                        <HeaderThemeToggle />
 
                         {/* Refresh Button */}
                         <button
                             className="topbar-btn"
-                            onClick={() => window.refreshCurrentPage && window.refreshCurrentPage()}
+                            onClick={handleRefresh}
                             title="Refresh Page"
                             aria-label="Refresh Page"
                         >
                             <RefreshCw size={18} />
                         </button>
 
+                        {/* Notifications Dropdown */}
+                        <NotificationDropdown
+                            notifications={notifications}
+                            unreadCount={unreadCount}
+                            markAsRead={markAsRead}
+                            markAllAsRead={markAllAsRead}
+                            showNotifications={showNotifications}
+                            setShowNotifications={setShowNotifications}
+                            setShowProfile={setShowProfile}
+                            dropdownRef={notifRef}
+                        />
 
                         {/* Profile */}
-                        <div className="dropdown">
+                        <div className="dropdown" ref={profileRef}>
                             <button
                                 className="topbar-profile"
-                                onClick={() => setShowProfile(v => !v)}
+                                onClick={() => { setShowProfile(v => !v); setShowNotifications(false) }}
                             >
                                 <span className="avatar avatar-sm">{initials}</span>
                                 <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
@@ -171,7 +211,29 @@ export const AuditorLayout = ({ children, openAnomaliesCount = 0 }) => {
 
                 {/* Content */}
                 <main className="page-content">
-                    {children}
+                    {isRefreshing ? (
+                        <div style={{ padding: '24px', display: 'grid', gap: '24px' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
+                                <SkeletonCard />
+                                <SkeletonCard />
+                                <SkeletonCard />
+                            </div>
+                            <div className="card">
+                                <div style={{ padding: '20px', borderBottom: '1px solid var(--border-subtle)' }}>
+                                    <Skeleton width="200px" height={20} />
+                                </div>
+                                <div style={{ overflowX: 'auto' }}>
+                                    <table className="table">
+                                        <SkeletonTable rows={5} />
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <React.Fragment key={refreshKey}>
+                            {children}
+                        </React.Fragment>
+                    )}
                 </main>
             </div>
         </div>
