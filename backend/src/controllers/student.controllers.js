@@ -214,18 +214,23 @@ export const getExamById = async (req, res) => {
             })
         }
 
+        let existingResult = await Result.findOne({
+            student: req.student._id,
+            exam: exam._id,
+            resetByAdmin: { $ne: true }
+        }).populate("assignedQuestions");
+
+        if (existingResult && existingResult.status !== "InProgress") {
+            return res.status(403).json({
+                message: "You have already completed or been terminated from this exam."
+            });
+        }
+
         let examQuestions = exam.questions;
 
         if (exam.mode === "Zeroleak") {
-            let result = await Result.findOne({
-                student: req.student._id,
-                exam: exam._id,
-                status: "InProgress",
-                resetByAdmin: { $ne: true }
-            }).populate("assignedQuestions");
-
-            if (result) {
-                examQuestions = result.assignedQuestions;
+            if (existingResult) {
+                examQuestions = existingResult.assignedQuestions;
             } else {
                 const allQuestions = await Question.find({ subject: exam.subject });
                 const selectedQuestions = selectQuestionsByDifficultyRatio(allQuestions, Number(exam.zeroleakConfig?.numQuestions) || 10);
@@ -236,7 +241,7 @@ export const getExamById = async (req, res) => {
 
                 const questionIds = selectedQuestions.map(q => q._id);
                 
-                result = await Result.create({
+                existingResult = await Result.create({
                     student: req.student._id,
                     exam: exam._id,
                     score: 0,
@@ -246,6 +251,17 @@ export const getExamById = async (req, res) => {
                 });
                 
                 examQuestions = selectedQuestions;
+            }
+        } else {
+            if (!existingResult) {
+                existingResult = await Result.create({
+                    student: req.student._id,
+                    exam: exam._id,
+                    score: 0,
+                    totalQuestions: examQuestions.length,
+                    status: "InProgress",
+                    assignedQuestions: examQuestions.map(q => q._id)
+                });
             }
         }
 
@@ -384,16 +400,16 @@ export const submitExamResult = async (req, res) => {
             resetByAdmin: { $ne: true }
         }).populate("assignedQuestions")
 
-        if (existingResult && existingResult.status !== "InProgress") {
+        if (!existingResult || existingResult.status !== "InProgress") {
             return res.status(400).json({
-                message:
-                    "You have already submitted this exam."
+                message: "Exam session not found or already completed."
             })
         }
 
         // Load exam and its protected questions
         const exam = await Exam.findById(examId)
             .populate("questions")
+            .populate("examinationId")
 
         if (!exam) {
             return res.status(404).json({
@@ -421,11 +437,27 @@ export const submitExamResult = async (req, res) => {
             })
         }
 
+        // --- ENFORCE EXAM TIMING ---
+        const now = new Date();
+        const examStartTime = existingResult.createdAt;
+        const durationMs = (exam.durationMinutes || 60) * 60 * 1000;
+        const gracePeriodMs = 5 * 60 * 1000; // 5 minutes grace period
+
+        if (now.getTime() - examStartTime.getTime() > durationMs + gracePeriodMs) {
+            // Auto-terminate the exam for exceeding time
+            existingResult.status = "Terminated";
+            existingResult.isTerminated = true;
+            existingResult.terminationReason = "Exam duration exceeded.";
+            await existingResult.save();
+
+            return res.status(400).json({
+                message: "Exam duration exceeded."
+            });
+        }
+        // ---------------------------
+
         let examQuestions = exam.questions;
         if (exam.mode === "Zeroleak") {
-            if (!existingResult || existingResult.status !== "InProgress") {
-                return res.status(400).json({ message: "Exam session not found or already completed." });
-            }
             examQuestions = existingResult.assignedQuestions;
         }
         
@@ -538,21 +570,10 @@ export const submitExamResult = async (req, res) => {
         const totalQuestions =
             decryptedQuestions.length
 
-        let result;
-        if (existingResult) {
-            existingResult.score = score;
-            existingResult.totalQuestions = totalQuestions;
-            existingResult.status = "Completed";
-            result = await existingResult.save();
-        } else {
-            result = await Result.create({
-                student: req.student._id,
-                exam: examId,
-                score,
-                totalQuestions,
-                status: "Completed"
-            })
-        }
+        existingResult.score = score;
+        existingResult.totalQuestions = totalQuestions;
+        existingResult.status = "Completed";
+        const result = await existingResult.save();
 
         // Generate Submission Hash & Result Commitment
         const submissionPayload = canonicalize({
@@ -579,10 +600,21 @@ export const submitExamResult = async (req, res) => {
         result.commitmentHash = commitment.canonicalHash;
         await result.save();
 
+        // --- ENFORCE RESULT-RELEASE POLICY ON RETURN ---
+        const isReleased = exam.examinationId 
+            ? exam.examinationId.isResultReleased === true 
+            : exam.isResultReleased === true;
+
+        const returnedResult = result.toObject();
+        if (!isReleased) {
+            returnedResult.score = null;
+        }
+        // -----------------------------------------------
+
         return res.status(201).json({
             message:
                 "Exam submitted successfully.",
-            result
+            result: returnedResult
         })
 
     } catch (error) {
@@ -611,7 +643,23 @@ export const getStudentResults = async (req, res) => {
                 }
             })
             .sort({ createdAt: -1 })
-        return res.status(200).json({ results })
+            .lean()
+            
+        // Scrub scores for unreleased exams
+        const scrubbedResults = results.map(result => {
+            if (result.exam) {
+                const isReleased = result.exam.examinationId 
+                    ? result.exam.examinationId.isResultReleased === true 
+                    : result.exam.isResultReleased === true;
+                
+                if (!isReleased && result.status !== "InProgress") {
+                    result.score = null;
+                }
+            }
+            return result;
+        });
+
+        return res.status(200).json({ results: scrubbedResults })
     } catch (error) {
         return res.status(500).json({ message: "Error fetching results", error: error.message })
     }

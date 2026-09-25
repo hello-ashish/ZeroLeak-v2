@@ -1,11 +1,61 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import axios from 'axios'
-import { Plus, Send, Edit2, Trash2, Download, Upload, Loader2, ArrowLeft, Eye, EyeOff } from 'lucide-react'
+import { Plus, Send, Edit2, Trash2, Download, Upload, Loader2, ArrowLeft, Eye, EyeOff, Sparkles, CheckCircle, AlertTriangle, XCircle, RefreshCw } from 'lucide-react'
 import Papa from 'papaparse'
 import { StatusBadge } from '../../components/StatusBadge.jsx'
 import { Modal } from '../../components/Modal.jsx'
 import { useToast } from '../../components/Toast.jsx'
+
+// ── AI Confidence thresholds (mirrors backend ai.policy.js) ──────────
+const CONFIDENCE = { HIGH: 0.85, MEDIUM: 0.60 }
+
+function getConfidenceStyle(confidence) {
+    if (confidence >= CONFIDENCE.HIGH) return { color: 'var(--success)', label: 'High confidence' }
+    if (confidence >= CONFIDENCE.MEDIUM) return { color: 'var(--warning, #f59e0b)', label: 'Review recommended' }
+    return { color: 'var(--danger)', label: 'Manual review required' }
+}
+
+// ── CSV row validation helper ────────────────────────────────────────
+const VALID_DIFFICULTIES = ['easy', 'medium', 'hard']
+
+function validateCsvRow(q) {
+    const issues = []
+    if (!q.title || !q.title.trim()) issues.push('Question text')
+    if (!q.topic || !q.topic.trim()) issues.push('Topic')
+    if (!q.difficultyLevel || !VALID_DIFFICULTIES.includes(q.difficultyLevel)) issues.push('Difficulty')
+    if (!Array.isArray(q.options) || q.options.length !== 4) {
+        issues.push('Options (need exactly 4)')
+    } else {
+        q.options.forEach((opt, i) => {
+            if (!opt || !opt.trim()) issues.push(`Option ${i + 1}`)
+        })
+    }
+    const idx = parseInt(q.correctAnswerIndex)
+    if (isNaN(idx) || idx < 0 || idx > 3) issues.push('Correct Answer')
+    return issues
+}
+
+function getRowStatus(issues) {
+    if (issues.length === 0) return 'valid'
+    // If the question text itself is missing, it's invalid (can't repair without context)
+    if (issues.includes('Question text')) return 'invalid'
+    return 'incomplete'
+}
+
+function getMissingFields(issues) {
+    const fieldMap = {
+        'Topic': 'topic',
+        'Difficulty': 'difficultyLevel',
+        'Correct Answer': 'correctAnswerIndex',
+        'Option 1': 'option0',
+        'Option 2': 'option1',
+        'Option 3': 'option2',
+        'Option 4': 'option3',
+        'Options (need exactly 4)': 'options',
+    }
+    return issues.map(i => fieldMap[i]).filter(Boolean)
+}
 
 const ProfessorCreateBatchPage = () => {
     const { id } = useParams()
@@ -39,21 +89,20 @@ const ProfessorCreateBatchPage = () => {
     const [isImporting, setIsImporting] = useState(false)
     const [submittingBatchId, setSubmittingBatchId] = useState(null)
 
-    useEffect(() => {
-        if (isEditMode) {
-            fetchBatchData()
-        } else {
-            setBatchTitle('')
-            setBatchSubject('')
-            setBatchDescription('')
-            setBatch(null)
-        }
-    }, [id])
+    // ── AI States ────────────────────────────────────────────────────
+    const [aiBatchLoading, setAiBatchLoading] = useState(false)
+    const [aiBatchResult, setAiBatchResult] = useState(null) // { subject, description, confidence, ... }
+    const [aiQuestionLoading, setAiQuestionLoading] = useState(false)
+    const [aiQuestionResult, setAiQuestionResult] = useState(null)
+    const [csvRowAiLoading, setCsvRowAiLoading] = useState({}) // { [rowIndex]: true }
+    const [csvRowAiResults, setCsvRowAiResults] = useState({}) // { [rowIndex]: { data, ... } }
+    const [aiClarification, setAiClarification] = useState('')
+    const [editingCsvRow, setEditingCsvRow] = useState(null)
+    const [csvEditForm, setCsvEditForm] = useState(null)
 
     const fetchBatchData = async () => {
         try {
             const token = localStorage.getItem('profToken')
-            // Fetch all batches because there isn't a specific get batch by id endpoint
             const response = await axios.get('http://localhost:4000/api/professor/batches', {
                 headers: { Authorization: `Bearer ${token}` }
             })
@@ -76,10 +125,20 @@ const ProfessorCreateBatchPage = () => {
         }
     }
 
+    useEffect(() => {
+        if (isEditMode) {
+            fetchBatchData()
+        } else {
+            setBatchTitle('')
+            setBatchSubject('')
+            setBatchDescription('')
+            setBatch(null)
+        }
+    }, [id])
+
     const handleCreateBatch = async (e) => {
         e.preventDefault()
         if (isEditMode) {
-            // Right now we don't have an endpoint to update batch details in the controller, so we just skip.
             toast.success("Batch details updated (mock)")
             return
         }
@@ -105,6 +164,108 @@ const ProfessorCreateBatchPage = () => {
             toast.error("Error creating batch: " + (error.response?.data?.message || "Server Error"))
         } finally {
             setIsCreatingBatch(false)
+        }
+    }
+
+    // ── AI: Generate Batch Details ────────────────────────────────────
+    const handleAiGenerateBatch = async (forceRegenerate = false) => {
+        if (!batchTitle || batchTitle.trim().length < 3) {
+            toast.error("Enter a batch title (at least 3 characters) before generating.")
+            return
+        }
+
+        // Safety: don't overwrite if fields are filled (unless regenerating)
+        if (!forceRegenerate && (batchSubject.trim() || batchDescription.trim())) {
+            // Fields already have content — show regenerate mode
+            setAiBatchResult({ showOverwriteWarning: true })
+            return
+        }
+
+        setAiBatchLoading(true)
+        setAiBatchResult(null)
+        try {
+            const token = localStorage.getItem('profToken')
+            const response = await axios.post('http://localhost:4000/api/professor/ai/generate-batch', {
+                name: batchTitle.trim()
+            }, {
+                headers: { Authorization: `Bearer ${token}` }
+            })
+
+            if (response.data.success) {
+                const data = response.data.data
+                setAiBatchResult(data)
+
+                if (!data.needsReview) {
+                    // Only fill empty fields (safer behavior)
+                    if (!batchSubject.trim() || forceRegenerate) setBatchSubject(data.subject)
+                    if (!batchDescription.trim() || forceRegenerate) setBatchDescription(data.description)
+                    toast.success("✨ AI generated batch details")
+                } else {
+                    toast.error(data.reason || "AI needs more context to generate details.")
+                }
+            } else {
+                toast.error(response.data.message || "AI generation failed.")
+            }
+        } catch (error) {
+            if (error.response?.status === 429) {
+                toast.error("Rate limit reached. Please wait a moment.")
+            } else {
+                toast.error("Unable to generate AI content. Please try again.")
+            }
+        } finally {
+            setAiBatchLoading(false)
+        }
+    }
+
+    // ── AI: Generate Question Details ─────────────────────────────────
+    const handleAiGenerateQuestion = async () => {
+        if (!title || title.trim().length < 10) {
+            toast.error("Enter a question (at least 10 characters) before generating.")
+            return
+        }
+
+        setAiQuestionLoading(true)
+        setAiQuestionResult(null)
+        try {
+            const token = localStorage.getItem('profToken')
+            const response = await axios.post('http://localhost:4000/api/professor/ai/generate-question', {
+                question: title.trim(),
+                subject: batchSubject,
+                topic: topic || undefined,
+                clarification: aiClarification.trim() || undefined,
+            }, {
+                headers: { Authorization: `Bearer ${token}` }
+            })
+
+            if (response.data.success) {
+                const data = response.data.data
+                setAiQuestionResult(data)
+
+                if (!data.needsReview) {
+                    // Fill the form fields
+                    if (data.topic && !topic.trim()) setTopic(data.topic)
+                    if (data.difficultyLevel) setDifficultyLevel(data.difficultyLevel)
+                    if (data.options && data.options.length === 4) {
+                        setOptions(data.options)
+                        setCorrectAnswerIndex(data.correctAnswerIndex)
+                        setCorrectAnswer(data.correctAnswer || data.options[data.correctAnswerIndex])
+                    }
+                    toast.success("✨ AI generated question details")
+                    setAiClarification('') // Clear clarification on success
+                } else {
+                    toast.error(data.reason || "AI needs more information to generate reliable options.")
+                }
+            } else {
+                toast.error(response.data.message || "AI generation failed.")
+            }
+        } catch (error) {
+            if (error.response?.status === 429) {
+                toast.error("Rate limit reached. Please wait a moment.")
+            } else {
+                toast.error("Unable to generate AI content. Please try again.")
+            }
+        } finally {
+            setAiQuestionLoading(false)
         }
     }
 
@@ -134,7 +295,9 @@ const ProfessorCreateBatchPage = () => {
             setTitle(''); setOptions(['', '', '', '']); setCorrectAnswer(''); setCorrectAnswerIndex(0); setTopic('');
             setEditingQuestionId(null);
             setIsQuestionModalOpen(false);
-            fetchBatchData(); // Refresh the batch data
+            setAiQuestionResult(null);
+            setAiClarification('');
+            fetchBatchData();
             toast.success(editingQuestionId ? "Question updated" : "Question added");
         } catch (error) {
             toast.error("Error: " + (error.response?.data?.message || "Server Error"));
@@ -149,6 +312,8 @@ const ProfessorCreateBatchPage = () => {
         setCorrectAnswerIndex(q.correctAnswerIndex || 0);
         setDifficultyLevel(q.difficultyLevel || 'easy');
         setTopic(q.topic || '');
+        setAiQuestionResult(null);
+        setAiClarification('');
         setIsQuestionModalOpen(true);
     };
 
@@ -248,21 +413,182 @@ const ProfessorCreateBatchPage = () => {
                 }
 
                 setPreviewQuestions(questions);
+                setCsvRowAiResults({});
+                setCsvRowAiLoading({});
             }
         });
         e.target.value = null;
     };
 
+    // ── AI: Fix single CSV row ───────────────────────────────────────
+    const handleAiFixRow = async (rowIndex) => {
+        const q = previewQuestions[rowIndex]
+        const issues = validateCsvRow(q)
+        const missing = getMissingFields(issues)
+
+        if (missing.length === 0) return
+
+        setCsvRowAiLoading(prev => ({ ...prev, [rowIndex]: true }))
+        try {
+            const token = localStorage.getItem('profToken')
+            const response = await axios.post('http://localhost:4000/api/professor/ai/fix-question-import', {
+                row: q,
+                missingFields: missing,
+                context: { subject: batchSubject }
+            }, {
+                headers: { Authorization: `Bearer ${token}` }
+            })
+
+            if (response.data.success) {
+                const repaired = response.data.data
+                setCsvRowAiResults(prev => ({ ...prev, [rowIndex]: repaired }))
+
+                if (!repaired.needsReview) {
+                    // Apply the fix to the preview
+                    const updated = [...previewQuestions]
+                    updated[rowIndex] = {
+                        title: repaired.title || q.title,
+                        options: repaired.options || q.options,
+                        correctAnswer: repaired.correctAnswer || q.correctAnswer,
+                        correctAnswerIndex: repaired.correctAnswerIndex ?? q.correctAnswerIndex,
+                        difficultyLevel: repaired.difficultyLevel || q.difficultyLevel,
+                        topic: repaired.topic || q.topic,
+                    }
+                    setPreviewQuestions(updated)
+                    toast.success(`✨ Row ${rowIndex + 1} repaired by AI`)
+                } else {
+                    toast.error(repaired.reason || `Row ${rowIndex + 1} needs manual review.`)
+                }
+            }
+        } catch (error) {
+            if (error.response?.status === 429) {
+                toast.error("Rate limit reached. Please wait a moment.")
+            } else {
+                toast.error("AI repair failed. Please fix manually.")
+            }
+        } finally {
+            setCsvRowAiLoading(prev => ({ ...prev, [rowIndex]: false }))
+        }
+    }
+
+    // ── AI: Fix all incomplete CSV rows in batch ─────────────────────
+    const handleAiFixAll = async () => {
+        if (!previewQuestions) return
+        const incompleteRows = []
+        previewQuestions.forEach((q, idx) => {
+            const issues = validateCsvRow(q)
+            const status = getRowStatus(issues)
+            if (status === 'incomplete') {
+                incompleteRows.push({
+                    rowIndex: idx,
+                    row: q,
+                    missingFields: getMissingFields(issues),
+                })
+            }
+        })
+
+        if (incompleteRows.length === 0) {
+            toast.success("All rows are valid!")
+            return
+        }
+
+        // Set loading for all incomplete rows
+        const loadingState = {}
+        incompleteRows.forEach(r => { loadingState[r.rowIndex] = true })
+        setCsvRowAiLoading(prev => ({ ...prev, ...loadingState }))
+
+        try {
+            const token = localStorage.getItem('profToken')
+            const response = await axios.post('http://localhost:4000/api/professor/ai/fix-question-import', {
+                rows: incompleteRows,
+                context: { subject: batchSubject }
+            }, {
+                headers: { Authorization: `Bearer ${token}` }
+            })
+
+            if (response.data.success) {
+                const results = response.data.data
+                const updated = [...previewQuestions]
+                const newAiResults = { ...csvRowAiResults }
+                let fixedCount = 0
+
+                for (const item of results) {
+                    newAiResults[item.rowIndex] = item.data
+                    if (!item.data.needsReview) {
+                        updated[item.rowIndex] = {
+                            title: item.data.title || updated[item.rowIndex].title,
+                            options: item.data.options || updated[item.rowIndex].options,
+                            correctAnswer: item.data.correctAnswer || updated[item.rowIndex].correctAnswer,
+                            correctAnswerIndex: item.data.correctAnswerIndex ?? updated[item.rowIndex].correctAnswerIndex,
+                            difficultyLevel: item.data.difficultyLevel || updated[item.rowIndex].difficultyLevel,
+                            topic: item.data.topic || updated[item.rowIndex].topic,
+                        }
+                        fixedCount++
+                    }
+                }
+
+                setPreviewQuestions(updated)
+                setCsvRowAiResults(newAiResults)
+                toast.success(`✨ ${fixedCount}/${incompleteRows.length} rows repaired by AI`)
+            }
+        } catch (error) {
+            if (error.response?.status === 429) {
+                toast.error("Rate limit reached. Please wait a moment.")
+            } else {
+                toast.error("Batch AI repair failed. Try fixing rows individually.")
+            }
+        } finally {
+            const resetLoading = {}
+            incompleteRows.forEach(r => { resetLoading[r.rowIndex] = false })
+            setCsvRowAiLoading(prev => ({ ...prev, ...resetLoading }))
+        }
+    }
+
+    const handleEditCsvRow = (idx, q) => {
+        setEditingCsvRow(idx)
+        setCsvEditForm({ ...q, options: [...q.options], correctAnswerIndex: q.correctAnswerIndex ?? 0 })
+    }
+
+    const handleSaveCsvRow = () => {
+        const updated = [...previewQuestions]
+        updated[editingCsvRow] = {
+            ...csvEditForm,
+            correctAnswerIndex: parseInt(csvEditForm.correctAnswerIndex),
+            correctAnswer: csvEditForm.options[parseInt(csvEditForm.correctAnswerIndex)] || ''
+        }
+        setPreviewQuestions(updated)
+        
+        // Clear AI error since we edited manually
+        const newAiResults = { ...csvRowAiResults }
+        delete newAiResults[editingCsvRow]
+        setCsvRowAiResults(newAiResults)
+        
+        setEditingCsvRow(null)
+        setCsvEditForm(null)
+    }
+
     const confirmImport = async () => {
+        // Only import valid rows
+        const validQuestions = previewQuestions.filter(q => {
+            const issues = validateCsvRow(q)
+            return issues.length === 0
+        })
+
+        if (validQuestions.length === 0) {
+            toast.error("No valid questions to import. Please fix all issues first.")
+            return
+        }
+
         setIsImporting(true);
         try {
             const token = localStorage.getItem('profToken');
-            await axios.post(`http://localhost:4000/api/professor/batches/${id}/questions/bulk`, { questions: previewQuestions }, {
+            await axios.post(`http://localhost:4000/api/professor/batches/${id}/questions/bulk`, { questions: validQuestions }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             fetchBatchData();
-            toast.success(`${previewQuestions.length} questions imported successfully!`);
+            toast.success(`${validQuestions.length} questions imported successfully!`);
             setPreviewQuestions(null);
+            setCsvRowAiResults({});
         } catch (error) {
             toast.error("Error importing questions: " + (error.response?.data?.message || error.message));
         } finally {
@@ -273,6 +599,19 @@ const ProfessorCreateBatchPage = () => {
     if (loading) {
         return <div style={{ padding: 40, textAlign: 'center' }}><Loader2 className="spin" size={32} /></div>
     }
+
+    // ── Count valid/incomplete/invalid rows for CSV preview ──────────
+    const csvStats = previewQuestions ? (() => {
+        let valid = 0, incomplete = 0, invalid = 0
+        previewQuestions.forEach(q => {
+            const issues = validateCsvRow(q)
+            const status = getRowStatus(issues)
+            if (status === 'valid') valid++
+            else if (status === 'incomplete') incomplete++
+            else invalid++
+        })
+        return { valid, incomplete, invalid }
+    })() : null
 
     return (
         <>
@@ -319,44 +658,206 @@ const ProfessorCreateBatchPage = () => {
                 </div>
             </Modal>
 
-            {/* Import Preview Modal */}
+            {/* ── Enhanced Import Preview Modal with AI Repair ────────── */}
             <Modal
                 open={!!previewQuestions}
-                onClose={() => setPreviewQuestions(null)}
+                onClose={() => { setPreviewQuestions(null); setCsvRowAiResults({}); setEditingCsvRow(null); setCsvEditForm(null); }}
                 title={`Preview Imported Questions (${previewQuestions?.length || 0})`}
                 size="full"
                 footer={
                     <>
-                        <button className="btn btn-secondary" onClick={() => setPreviewQuestions(null)} disabled={isImporting}>Cancel</button>
-                        <button className="btn btn-primary" onClick={confirmImport} disabled={isImporting}>
+                        <button className="btn btn-secondary" onClick={() => { setPreviewQuestions(null); setCsvRowAiResults({}); setEditingCsvRow(null); setCsvEditForm(null); }} disabled={isImporting}>Cancel</button>
+                        <button className="btn btn-primary" onClick={confirmImport} disabled={isImporting || (csvStats && csvStats.valid === 0)}>
                             {isImporting ? <Loader2 size={16} className="spin" style={{ marginRight: 6 }} /> : <Upload size={16} style={{ marginRight: 6 }} />}
-                            {isImporting ? 'Importing...' : 'Confirm Import'}
+                            {isImporting ? 'Importing...' : `Import ${csvStats?.valid || 0} Valid Questions`}
                         </button>
                     </>
                 }
             >
                 <div style={{ padding: '0px 0', overflowY: 'auto' }}>
-                    <div style={{ display: 'grid', gap: 16 }}>
-                        {previewQuestions?.map((q, idx) => (
-                            <div key={idx} style={{ padding: 16, border: '1px solid var(--border-subtle)', borderRadius: 8, background: 'var(--bg-surface)' }}>
-                                <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
-                                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', background: 'var(--bg-elevated)', padding: '4px 8px', borderRadius: 4 }}>Q{idx + 1}</span>
-                                    <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.5 }}>{q.title}</div>
-                                </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, paddingLeft: 40, marginBottom: 16 }}>
-                                    {q.options.map((opt, i) => (
-                                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 6, border: i === q.correctAnswerIndex ? '1px solid var(--success-border)' : '1px solid var(--border-subtle)', background: i === q.correctAnswerIndex ? 'var(--success-subtle)' : 'var(--bg-elevated)' }}>
-                                            <span style={{ width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: i === q.correctAnswerIndex ? 'var(--success)' : 'var(--bg-surface)', color: i === q.correctAnswerIndex ? 'white' : 'var(--text-secondary)', fontSize: 12, fontWeight: 600 }}>{String.fromCharCode(65 + i)}</span>
-                                            <span style={{ fontSize: 14, color: i === q.correctAnswerIndex ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{opt}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                                <div style={{ display: 'flex', gap: 12, paddingLeft: 40 }}>
-                                    <StatusBadge status={q.difficultyLevel} />
-                                    {q.topic && <span style={{ fontSize: 12, color: 'var(--brand-primary)', background: 'var(--brand-primary-subtle)', padding: '2px 8px', borderRadius: 12, fontWeight: 500 }}>{q.topic}</span>}
-                                </div>
+                    {/* Stats bar */}
+                    {csvStats && (
+                        <div style={{ display: 'flex', gap: 16, marginBottom: 16, padding: '12px 16px', background: 'var(--bg-elevated)', borderRadius: 8, border: '1px solid var(--border-subtle)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <CheckCircle size={14} style={{ color: 'var(--success)' }} />
+                                <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{csvStats.valid} Valid</span>
                             </div>
-                        ))}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <AlertTriangle size={14} style={{ color: 'var(--warning, #f59e0b)' }} />
+                                <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{csvStats.incomplete} Incomplete</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <XCircle size={14} style={{ color: 'var(--danger)' }} />
+                                <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{csvStats.invalid} Invalid</span>
+                            </div>
+                            {csvStats.incomplete > 0 && (
+                                <button
+                                    className="btn btn-ghost btn-sm"
+                                    style={{ marginLeft: 'auto', color: 'var(--brand-primary)', gap: 6 }}
+                                    onClick={handleAiFixAll}
+                                    disabled={Object.values(csvRowAiLoading).some(Boolean)}
+                                >
+                                    <Sparkles size={14} /> Fix All with AI
+                                </button>
+                            )}
+                        </div>
+                    )}
+
+                    <div style={{ display: 'grid', gap: 16 }}>
+                        {previewQuestions?.map((q, idx) => {
+                            const issues = validateCsvRow(q)
+                            const status = getRowStatus(issues)
+                            const aiResult = csvRowAiResults[idx]
+                            const isAiLoading = csvRowAiLoading[idx]
+
+                            return (
+                                <div key={idx} style={{
+                                    padding: 16,
+                                    border: `1px solid ${status === 'valid' ? 'var(--border-subtle)' : status === 'incomplete' ? 'var(--warning, #f59e0b)' : 'var(--danger)'}`,
+                                    borderRadius: 8,
+                                    background: 'var(--bg-surface)',
+                                    borderLeft: `4px solid ${status === 'valid' ? 'var(--success)' : status === 'incomplete' ? 'var(--warning, #f59e0b)' : 'var(--danger)'}`,
+                                }}>
+                                    <div style={{ display: 'flex', gap: 12, marginBottom: 12, justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', flex: 1 }}>
+                                            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', background: 'var(--bg-elevated)', padding: '4px 8px', borderRadius: 4, flexShrink: 0 }}>Q{idx + 1}</span>
+                                            <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.5 }}>{q.title || <em style={{ color: 'var(--text-tertiary)' }}>No question text</em>}</div>
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                                            {/* Status badge */}
+                                            {status === 'valid' && (
+                                                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--success)', background: 'var(--success-subtle)', padding: '3px 10px', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                    <CheckCircle size={12} /> Valid
+                                                </span>
+                                            )}
+                                            {status === 'incomplete' && (
+                                                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--warning, #f59e0b)', background: 'rgba(245,158,11,0.1)', padding: '3px 10px', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                    <AlertTriangle size={12} /> Incomplete
+                                                </span>
+                                            )}
+                                            {status === 'invalid' && (
+                                                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--danger)', background: 'var(--danger-subtle)', padding: '3px 10px', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                    <XCircle size={12} /> Invalid
+                                                </span>
+                                            )}
+
+                                            {/* AI Fix button for incomplete rows */}
+                                            {status === 'incomplete' && !aiResult && (
+                                                <button
+                                                    className="btn btn-ghost btn-sm"
+                                                    style={{ color: 'var(--brand-primary)', gap: 4, fontSize: 12 }}
+                                                    onClick={() => handleAiFixRow(idx)}
+                                                    disabled={isAiLoading}
+                                                >
+                                                    {isAiLoading ? <Loader2 size={14} className="spin" /> : <Sparkles size={14} />}
+                                                    {isAiLoading ? 'Fixing...' : 'Fix with AI'}
+                                                </button>
+                                            )}
+                                            
+                                            {/* Edit button */}
+                                            <button
+                                                className="btn btn-ghost btn-sm btn-icon"
+                                                onClick={() => handleEditCsvRow(idx, q)}
+                                                title="Edit Row Manually"
+                                            >
+                                                <Edit2 size={14} />
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Inline Edit Form */}
+                                    {editingCsvRow === idx && csvEditForm ? (
+                                        <div style={{ padding: '16px', background: 'var(--bg-elevated)', borderRadius: 8, border: '1px solid var(--border-default)', marginBottom: 16 }}>
+                                            <div style={{ display: 'grid', gap: 12 }}>
+                                                <div>
+                                                    <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)' }}>Question Title</label>
+                                                    <input className="form-input" style={{ background: 'var(--bg-surface)', padding: '6px 10px', fontSize: 13, marginTop: 4 }} value={csvEditForm.title} onChange={e => setCsvEditForm({...csvEditForm, title: e.target.value})} />
+                                                </div>
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                                    {[0,1,2,3].map(i => (
+                                                        <div key={i}>
+                                                            <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)' }}>Option {String.fromCharCode(65 + i)}</label>
+                                                            <input className="form-input" style={{ background: 'var(--bg-surface)', padding: '6px 10px', fontSize: 13, marginTop: 4 }} value={csvEditForm.options[i]} onChange={e => { const newOpts = [...csvEditForm.options]; newOpts[i] = e.target.value; setCsvEditForm({...csvEditForm, options: newOpts}) }} />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                                                    <div>
+                                                        <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)' }}>Correct Option</label>
+                                                        <select className="form-input" style={{ background: 'var(--bg-surface)', padding: '6px 10px', fontSize: 13, marginTop: 4 }} value={csvEditForm.correctAnswerIndex} onChange={e => setCsvEditForm({...csvEditForm, correctAnswerIndex: parseInt(e.target.value)})}>
+                                                            <option value={0}>A</option><option value={1}>B</option><option value={2}>C</option><option value={3}>D</option>
+                                                        </select>
+                                                    </div>
+                                                    <div>
+                                                        <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)' }}>Difficulty</label>
+                                                        <select className="form-input" style={{ background: 'var(--bg-surface)', padding: '6px 10px', fontSize: 13, marginTop: 4 }} value={csvEditForm.difficultyLevel} onChange={e => setCsvEditForm({...csvEditForm, difficultyLevel: e.target.value})}>
+                                                            <option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option>
+                                                        </select>
+                                                    </div>
+                                                    <div>
+                                                        <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)' }}>Topic</label>
+                                                        <input className="form-input" style={{ background: 'var(--bg-surface)', padding: '6px 10px', fontSize: 13, marginTop: 4 }} value={csvEditForm.topic} onChange={e => setCsvEditForm({...csvEditForm, topic: e.target.value})} />
+                                                    </div>
+                                                </div>
+                                                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
+                                                    <button className="btn btn-ghost btn-sm" onClick={() => { setEditingCsvRow(null); setCsvEditForm(null); }}>Cancel</button>
+                                                    <button className="btn btn-primary btn-sm" onClick={handleSaveCsvRow}>Save Row</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            {/* Show missing fields for incomplete rows */}
+                                    {status !== 'valid' && issues.length > 0 && !aiResult && (
+                                        <div style={{ padding: '8px 12px', background: 'rgba(245,158,11,0.06)', borderRadius: 6, marginBottom: 12, marginLeft: 40 }}>
+                                            <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 500 }}>Missing: </span>
+                                            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{issues.join(', ')}</span>
+                                        </div>
+                                    )}
+
+                                    {/* AI fix result */}
+                                    {aiResult && !aiResult.needsReview && (
+                                        <div style={{ padding: '8px 12px', background: 'var(--success-subtle)', borderRadius: 6, marginBottom: 12, marginLeft: 40, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                            <CheckCircle size={14} style={{ color: 'var(--success)' }} />
+                                            <span style={{ fontSize: 12, color: 'var(--success)', fontWeight: 600 }}>AI Fixed</span>
+                                            {aiResult.fixedFields?.length > 0 && (
+                                                <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>({aiResult.fixedFields.join(', ')})</span>
+                                            )}
+                                            {aiResult.confidence && (
+                                                <span style={{ fontSize: 11, color: getConfidenceStyle(aiResult.confidence).color, marginLeft: 'auto' }}>
+                                                    {Math.round(aiResult.confidence * 100)}% confidence
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
+                                    {aiResult && aiResult.needsReview && (
+                                        <div style={{ padding: '8px 12px', background: 'var(--danger-subtle)', borderRadius: 6, marginBottom: 12, marginLeft: 40, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                            <AlertTriangle size={14} style={{ color: 'var(--danger)' }} />
+                                            <span style={{ fontSize: 12, color: 'var(--danger)', fontWeight: 600 }}>Manual review required</span>
+                                            <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{aiResult.reason}</span>
+                                        </div>
+                                    )}
+
+                                    {/* Options grid */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, paddingLeft: 40, marginBottom: 16 }}>
+                                        {q.options.map((opt, i) => (
+                                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 6, border: i === q.correctAnswerIndex ? '1px solid var(--success-border)' : '1px solid var(--border-subtle)', background: i === q.correctAnswerIndex ? 'var(--success-subtle)' : 'var(--bg-elevated)' }}>
+                                                <span style={{ width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: i === q.correctAnswerIndex ? 'var(--success)' : 'var(--bg-surface)', color: i === q.correctAnswerIndex ? 'white' : 'var(--text-secondary)', fontSize: 12, fontWeight: 600 }}>{String.fromCharCode(65 + i)}</span>
+                                                <span style={{ fontSize: 14, color: opt ? (i === q.correctAnswerIndex ? 'var(--text-primary)' : 'var(--text-secondary)') : 'var(--danger)' }}>
+                                                    {opt || <em>Empty</em>}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div style={{ display: 'flex', gap: 12, paddingLeft: 40 }}>
+                                        <StatusBadge status={q.difficultyLevel || 'unknown'} />
+                                        {q.topic && <span style={{ fontSize: 12, color: 'var(--brand-primary)', background: 'var(--brand-primary-subtle)', padding: '2px 8px', borderRadius: 12, fontWeight: 500 }}>{q.topic}</span>}
+                                    </div>
+                                    </>
+                                    )}
+                                </div>
+                            )
+                        })}
                     </div>
                 </div>
             </Modal>
@@ -420,6 +921,50 @@ const ProfessorCreateBatchPage = () => {
                                     <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>Batch Title *</label>
                                     <input className="form-input" style={{ background: 'var(--bg-input)', border: '1px solid var(--border-default)', padding: '8px 12px', borderRadius: 6, color: 'var(--text-primary)' }} type="text" placeholder="e.g. Physics Midterm Pool" value={batchTitle} onChange={(e) => setBatchTitle(e.target.value)} required />
                                 </div>
+
+                                {/* ── AI Generate Batch Button ───────────────── */}
+                                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                    <button
+                                        type="button"
+                                        className="btn btn-ghost btn-sm"
+                                        style={{
+                                            color: 'var(--brand-primary)',
+                                            border: '1px solid var(--brand-primary)',
+                                            borderStyle: 'dashed',
+                                            gap: 6,
+                                            borderRadius: 8,
+                                            padding: '6px 14px',
+                                        }}
+                                        onClick={() => handleAiGenerateBatch(false)}
+                                        disabled={aiBatchLoading || batchTitle.trim().length < 3}
+                                    >
+                                        {aiBatchLoading ? <Loader2 size={14} className="spin" /> : <Sparkles size={14} />}
+                                        {aiBatchLoading ? 'Generating...' : 'Generate with AI'}
+                                    </button>
+
+                                    {/* Overwrite warning */}
+                                    {aiBatchResult?.showOverwriteWarning && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text-tertiary)' }}>
+                                            <span>Subject/Description already filled.</span>
+                                            <button
+                                                type="button"
+                                                className="btn btn-ghost btn-sm"
+                                                style={{ color: 'var(--brand-primary)', gap: 4, fontSize: 12, padding: '2px 8px' }}
+                                                onClick={() => { setAiBatchResult(null); handleAiGenerateBatch(true); }}
+                                            >
+                                                <RefreshCw size={12} /> Regenerate
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {/* Success indicator */}
+                                    {aiBatchResult && !aiBatchResult.needsReview && !aiBatchResult.showOverwriteWarning && (
+                                        <span style={{ fontSize: 12, color: 'var(--success)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                            <CheckCircle size={12} /> Generated with AI
+                                        </span>
+                                    )}
+                                </div>
+
                                 <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                                     <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>Subject *</label>
                                     <input className="form-input" style={{ background: 'var(--bg-input)', border: '1px solid var(--border-default)', padding: '8px 12px', borderRadius: 6, color: 'var(--text-primary)' }} type="text" placeholder="e.g. Physics" value={batchSubject} onChange={(e) => setBatchSubject(e.target.value)} required />
@@ -440,9 +985,10 @@ const ProfessorCreateBatchPage = () => {
                     </div>
                 )}
 
+                {/* ── Question Modal with AI Generation ─────────────────── */}
                 <Modal
                     open={isQuestionModalOpen}
-                    onClose={() => { setIsQuestionModalOpen(false); setEditingQuestionId(null); setTitle(''); setOptions(['', '', '', '']); setCorrectAnswer(''); setTopic(''); }}
+                    onClose={() => { setIsQuestionModalOpen(false); setEditingQuestionId(null); setTitle(''); setOptions(['', '', '', '']); setCorrectAnswer(''); setTopic(''); setAiQuestionResult(null); setAiClarification(''); }}
                     title={editingQuestionId ? 'Edit Question' : 'Add Question'}
                     size="lg"
                 >
@@ -451,6 +997,61 @@ const ProfessorCreateBatchPage = () => {
                             <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>Question Text *</label>
                             <input className="form-input" style={{ background: 'var(--bg-input)', border: '1px solid var(--border-default)', padding: '8px 12px', borderRadius: 6, color: 'var(--text-primary)' }} type="text" placeholder="e.g. What is React?" value={title} onChange={(e) => setTitle(e.target.value)} required />
                         </div>
+
+                        {/* ── AI Generate Question Button ──────────────── */}
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                            <button
+                                type="button"
+                                className="btn btn-ghost btn-sm"
+                                style={{
+                                    color: 'var(--brand-primary)',
+                                    border: '1px solid var(--brand-primary)',
+                                    borderStyle: 'dashed',
+                                    gap: 6,
+                                    borderRadius: 8,
+                                    padding: '6px 14px',
+                                }}
+                                onClick={handleAiGenerateQuestion}
+                                disabled={aiQuestionLoading || title.trim().length < 10}
+                            >
+                                {aiQuestionLoading ? <Loader2 size={14} className="spin" /> : <Sparkles size={14} />}
+                                {aiQuestionLoading ? 'Generating...' : 'Generate with AI'}
+                            </button>
+
+                            {aiQuestionResult && !aiQuestionResult.needsReview && (
+                                <span style={{ fontSize: 12, color: 'var(--success)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <CheckCircle size={12} /> AI generated — review below
+                                </span>
+                            )}
+                            {aiQuestionResult && aiQuestionResult.needsReview && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginLeft: 'auto', padding: '12px', background: 'var(--danger-subtle)', borderRadius: 8, border: '1px solid rgba(239, 68, 68, 0.2)', width: '100%' }}>
+                                    <span style={{ fontSize: 13, color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 500 }}>
+                                        <AlertTriangle size={14} /> {aiQuestionResult.reason || 'Needs more context'}
+                                    </span>
+                                    <div style={{ display: 'flex', gap: 8 }}>
+                                        <input 
+                                            className="form-input" 
+                                            style={{ flex: 1, background: 'var(--bg-surface)', border: '1px solid var(--border-default)', padding: '6px 12px', borderRadius: 6, color: 'var(--text-primary)', fontSize: 13 }} 
+                                            type="text" 
+                                            placeholder="Clarify context or provide intended option..." 
+                                            value={aiClarification} 
+                                            onChange={(e) => setAiClarification(e.target.value)} 
+                                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAiGenerateQuestion(); } }}
+                                        />
+                                        <button
+                                            type="button"
+                                            className="btn btn-primary btn-sm"
+                                            style={{ padding: '6px 14px', borderRadius: 6 }}
+                                            onClick={handleAiGenerateQuestion}
+                                            disabled={aiQuestionLoading || !aiClarification.trim()}
+                                        >
+                                            {aiQuestionLoading ? <Loader2 size={14} className="spin" /> : 'Re-generate'}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
                             <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                                 <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>Subject (Inherited) *</label>

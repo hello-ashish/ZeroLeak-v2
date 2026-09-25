@@ -120,7 +120,7 @@ const StudentDashboardPage = () => {
             </div>
 
             {/* Top Tier: Next Move & Academic Pulse */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 24, marginBottom: 24, '@media (min-width: 1024px)': { gridTemplateColumns: '2fr 1fr' } }}>
+            <div className="dashboard-grid-2-1" style={{ marginBottom: 24 }}>
 
                 {/* YOUR NEXT MOVE */}
                 <section style={{ display: 'flex', flexDirection: 'column' }}>
@@ -206,7 +206,7 @@ const StudentDashboardPage = () => {
 
 
             {/* Bottom Tier: Recent Results & Activity */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 24, '@media (min-width: 1024px)': { gridTemplateColumns: '2fr 1fr' } }}>
+            <div className="dashboard-grid-2-1">
 
 
                 {/* RECENT ACTIVITY TIMELINE */}

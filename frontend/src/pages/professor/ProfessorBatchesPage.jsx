@@ -19,6 +19,20 @@ const ProfessorBatchesPage = () => {
         setExpandedBatches(prev => ({ ...prev, [batchId]: !prev[batchId] }))
     }
 
+    const fetchMyBatches = async (token) => {
+        try {
+            const response = await axios.get('http://localhost:4000/api/professor/batches', {
+                headers: { Authorization: `Bearer ${token}` }
+            })
+            setBatches(response.data.batches || [])
+        } catch (error) {
+            console.error("Error fetching batches: ", error)
+            setBatches([])
+        } finally {
+            setLoading(false)
+        }
+    }
+
     useEffect(() => {
         const token = localStorage.getItem('profToken')
         if (!token) {
@@ -27,19 +41,6 @@ const ProfessorBatchesPage = () => {
             fetchMyBatches(token)
         }
     }, [navigate])
-
-    const fetchMyBatches = async (token) => {
-        try {
-            const response = await axios.get('http://localhost:4000/api/professor/batches', {
-                headers: { Authorization: `Bearer ${token}` }
-            })
-            setBatches(response.data.batches)
-        } catch (error) {
-            console.error("Error fetching batches: ", error)
-        } finally {
-            setLoading(false)
-        }
-    }
 
 
 

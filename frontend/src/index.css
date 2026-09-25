@@ -1955,6 +1955,27 @@ body:has(.glass-container) {
 }
 
 /* ─── Responsive ─────────────────────────────────────────────── */
+.dashboard-grid-2-1 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+
+.dashboard-grid-1-2 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+
+@media (min-width: 1024px) {
+  .dashboard-grid-2-1 {
+    grid-template-columns: 2fr 1fr;
+  }
+  .dashboard-grid-1-2 {
+    grid-template-columns: 1fr 2fr;
+  }
+}
+
 @media (max-width: 1024px) {
   :root {
     --sidebar-width: 220px;

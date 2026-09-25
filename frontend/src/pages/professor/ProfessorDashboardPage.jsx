@@ -11,19 +11,6 @@ const ProfessorDashboardPage = () => {
     const [loading, setLoading] = useState(true)
     const navigate = useNavigate()
 
-    useEffect(() => {
-        const token = localStorage.getItem('profToken')
-        const profDataString = localStorage.getItem('profData')
-
-        if (!token || !profDataString) {
-            navigate('/professor/login')
-        } else {
-            const profData = JSON.parse(profDataString)
-            setProfName(profData.name || profData.email?.split('@')[0])
-            fetchMyBatches(token)
-        }
-    }, [navigate])
-
     const fetchMyBatches = async (token) => {
         try {
             const response = await axios.get('http://localhost:4000/api/professor/batches', {
@@ -36,6 +23,19 @@ const ProfessorDashboardPage = () => {
             setLoading(false)
         }
     }
+
+    useEffect(() => {
+        const token = localStorage.getItem('profToken')
+        const profDataString = localStorage.getItem('profData')
+
+        if (!token || !profDataString) {
+            navigate('/professor/login')
+        } else {
+            const profData = JSON.parse(profDataString)
+            setProfName(profData.name || profData.email?.split('@')[0])
+            fetchMyBatches(token)
+        }
+    }, [navigate])
 
     // Calculate metrics
     const totalBatches = batches.length

@@ -26,6 +26,7 @@ import cheatingRouter from "./routes/cheating.routes.js"
 import blockchainRouter from "./routes/blockchain.routes.js"
 import searchRouter from "./routes/search.routes.js"
 import proctoringRouter from "./routes/proctoring.routes.js"
+import aiRouter from "./routes/ai.routes.js"
 
 // this says: any request starting with /api/admin goes to the adminRouter
 app.use("/api/admin", adminRouter)
@@ -35,6 +36,9 @@ app.use("/api/admin/proctoring", proctoringRouter)
 
 // this says: any request starting with /api/professor goes to the professorRouter
 app.use("/api/professor", professorRouter)
+
+// AI-assisted professor endpoints
+app.use("/api/professor/ai", aiRouter)
 
 // Tell the app to use our new question routes!
 app.use("/api/question", questionRouter)

@@ -235,7 +235,7 @@ const StudentPerformancePage = () => {
             </div>
 
             {/* MIDDLE TIER: Score Progression & Insights */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 24, marginBottom: 24, '@media (min-width: 1024px)': { gridTemplateColumns: '2fr 1fr' } }}>
+            <div className="dashboard-grid-2-1" style={{ marginBottom: 24 }}>
 
                 {/* RECHARTS AREA CHART */}
                 <section style={{ display: 'flex', flexDirection: 'column' }}>
@@ -273,7 +273,7 @@ const StudentPerformancePage = () => {
             </div>
 
             {/* LOWER TIER: Subject & Recent Lists */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 24, '@media (min-width: 1024px)': { gridTemplateColumns: '1fr 2fr' } }}>
+            <div className="dashboard-grid-1-2">
 
                 {/* SUBJECT PERFORMANCE */}
                 <section style={{ display: 'flex', flexDirection: 'column' }}>
