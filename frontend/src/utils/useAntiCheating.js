@@ -28,17 +28,30 @@ export const useAntiCheating = ({
     const [violations, setViolations] = useState([]);
     const [isFullscreen, setIsFullscreen] = useState(false);
 
-    // Refs to throttle duplicate events and maintain latest callback references
     const lastEventTimeRef = useRef({});
     const onViolationRef = useRef(onViolation);
+    const gracePeriodEndRef = useRef(Date.now() + 5000); // 5 seconds grace period on mount/enable
 
     useEffect(() => {
         onViolationRef.current = onViolation;
     }, [onViolation]);
 
+    useEffect(() => {
+        if (enabled) {
+            gracePeriodEndRef.current = Date.now() + 5000;
+        }
+    }, [enabled]);
+
     // Helper to log normalized violation event with deduplication
     const logViolation = useCallback((type, severity, description, details = {}) => {
         const now = Date.now();
+        
+        // Ignore violations during the grace period (e.g. browser permission prompts, fullscreen transition)
+        if (now < gracePeriodEndRef.current) {
+            console.log(`[AntiCheating] Ignored ${type} during grace period`);
+            return;
+        }
+
         const lastTime = lastEventTimeRef.current[type] || 0;
 
         // Deduplicate events of the same type within 600ms

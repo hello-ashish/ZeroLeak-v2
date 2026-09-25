@@ -8,6 +8,8 @@ import {
     ShieldAlert, AlertTriangle, Lock
 } from 'lucide-react';
 import { useAntiCheating } from './utils/useAntiCheating';
+import { useProctoring } from './hooks/useProctoring';
+import { ProctoringStatusPanel } from './components/ProctoringStatusPanel';
 
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 const MAX_WARNINGS = 3;
@@ -48,6 +50,14 @@ const TakeExam = () => {
     const isTerminatedRef = useRef(false);
     const sessionKey = `zl_exam_session_${id}`;
     const terminatedKey = `zl_terminated_${id}`;
+
+    // Live Proctoring Setup
+    const {
+        stream,
+        cameraStatus,
+        microphoneStatus,
+        reportIncident
+    } = useProctoring(id, isStarted && score === null && !isTerminated && !isRestricted);
 
     // Load Exam Data & Check Status
     useEffect(() => {
@@ -208,6 +218,18 @@ const TakeExam = () => {
     const handleViolation = useCallback(async (event) => {
         if (!isStarted || score !== null || isTerminatedRef.current || isRestricted) return;
 
+        // Also report live to proctoring admin via socket
+        reportIncident(event.type, event.severity, event.description, event.details);
+
+        // --- DEVELOPMENT BYPASS ---
+        // If testing on localhost, we bypass the strict warning counter and termination
+        // so you can switch between Admin and Student tabs without getting blocked.
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            console.warn(`[DEV MODE] Anti-cheating violation detected: ${event.type}. Termination bypassed for local testing.`);
+            return;
+        }
+        // --------------------------
+
         // If the counter is already at or beyond the limit (e.g. seeded from backend
         // on page load), terminate immediately without incrementing past MAX_WARNINGS.
         if (warningCountRef.current >= MAX_WARNINGS) {
@@ -274,7 +296,7 @@ const TakeExam = () => {
                 count: newCount
             });
         }
-    }, [isStarted, score, isRestricted, id, handleForceTermination]);
+    }, [isStarted, score, isRestricted, id, handleForceTermination, reportIncident]);
 
     // Initialize Anti-Cheating Hook
     const { isFullscreen, requestFullscreen } = useAntiCheating({
@@ -637,6 +659,7 @@ const TakeExam = () => {
                         <button onClick={() => navigate('/student/dashboard')} className="btn btn-secondary" style={{ flex: 1, padding: '16px', borderRadius: 12 }}>Cancel</button>
                         <button onClick={async () => {
                             setIsStarted(true);
+                            setToolsOpen(true);
                             await requestFullscreen();
                         }} className="btn btn-primary" style={{ flex: 2, padding: '16px', fontSize: 16, borderRadius: 12 }}>Begin Assessment</button>
                     </div>
@@ -1089,6 +1112,12 @@ const TakeExam = () => {
                     </div>
 
                     <div style={{ padding: 24, borderBottom: '1px solid var(--border-default)' }}>
+                        <ProctoringStatusPanel 
+                            stream={stream} 
+                            cameraStatus={cameraStatus} 
+                            microphoneStatus={microphoneStatus} 
+                            isStarted={isStarted} 
+                        />
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                             <h4 style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                 Personal Scratchpad

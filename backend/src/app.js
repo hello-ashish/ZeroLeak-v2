@@ -25,10 +25,12 @@ import auditorRouter from "./routes/auditor.routes.js"
 import cheatingRouter from "./routes/cheating.routes.js"
 import blockchainRouter from "./routes/blockchain.routes.js"
 import searchRouter from "./routes/search.routes.js"
+import proctoringRouter from "./routes/proctoring.routes.js"
 
 // this says: any request starting with /api/admin goes to the adminRouter
 app.use("/api/admin", adminRouter)
 app.use("/api/admin/examinations", examinationRouter)
+app.use("/api/admin/proctoring", proctoringRouter)
 // http://localhost:4000/api/admin/
 
 // this says: any request starting with /api/professor goes to the professorRouter

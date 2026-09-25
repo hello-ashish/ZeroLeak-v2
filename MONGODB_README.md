@@ -6,21 +6,30 @@ This document provides a comprehensive overview of how MongoDB is utilized withi
 
 In Mongoose, everything is derived from a Schema. Each schema maps to a MongoDB collection and defines the shape of the documents within that collection.
 
-### Example: Admin Schema (`admin.models.js`)
+### Example: ProctoringSession Schema (`proctoringSession.models.js`)
 ```javascript
-const adminSchema = new Schema(
+const proctoringSessionSchema = new Schema(
     {
-        adminId: { type: String, required: true, unique: true },
-        email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-        password: { type: String, required: [true, "Password is required"] }
-    }, 
-    { timestamps: true } // Automatically adds createdAt and updatedAt fields
+        examId: { type: Schema.Types.ObjectId, ref: "Exam", required: true },
+        studentId: { type: Schema.Types.ObjectId, ref: "Student", required: true },
+        status: { type: String, enum: ["INITIALIZING", "ACTIVE", "PAUSED", "ENDED", "DISCONNECTED"], default: "INITIALIZING" },
+        cameraStatus: { type: String, default: "UNKNOWN" },
+        // ... (other WebRTC/Socket statuses)
+    },
+    { timestamps: true }
+);
+
+// Uses partial indexes to ensure a student only has one active session per exam
+proctoringSessionSchema.index(
+    { examId: 1, studentId: 1, status: 1 },
+    { unique: true, partialFilterExpression: { status: { $in: ["INITIALIZING", "ACTIVE", "PAUSED"] } } }
 );
 ```
 
 ### Key Schema Features Used:
 - **Types**: `String`, `Number`, `Boolean`, `Date`, `Array`, `ObjectId` (used for referencing other models).
 - **Constraints**: `required`, `unique`, `lowercase`, `trim` ensure data integrity before it reaches the database.
+- **Partial Indexes**: `partialFilterExpression` is used in `ProctoringSession` to conditionally enforce uniqueness.
 - **Timestamps**: Setting `{ timestamps: true }` automatically manages `createdAt` and `updatedAt` properties.
 - **Middleware / Hooks**: E.g., `adminSchema.pre("save", ...)` runs logic *before* a document is saved to the database. In this project, it's heavily used to hash passwords using `bcrypt` before storing them.
 - **Instance Methods**: Custom methods like `adminSchema.methods.isPasswordCorrect` can be attached to the document directly.

@@ -7,6 +7,7 @@ It is built to serve multiple stakeholders, each with tailored interfaces and pe
 
 ### Key Features
 - **Blockchain Auditing:** Ensures data integrity using Hyperledger Fabric and cryptographic commitments.
+- **Live Proctoring:** Real-time WebRTC-based monitoring of students with Socket.IO telemetry for admins.
 - **Anti-Cheating Mechanisms:** Robust incident detection and review processes to track potential violations.
 - **Role-Based Access Control:** Distinct workflows and portals for different user roles.
 - **Data Integrity via Merkle Trees:** Cryptographic hashing of question content, batches, and test results to guarantee untampered records.

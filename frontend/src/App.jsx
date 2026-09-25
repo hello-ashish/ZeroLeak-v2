@@ -41,6 +41,7 @@ const AdminActivityPage = lazy(() => import('./pages/admin/AdminActivityPage.jsx
 const AdminBlockchainCenter = lazy(() => import('./pages/admin/AdminBlockchainCenter.jsx'))
 const AdminSettingsPage = lazy(() => import('./pages/admin/AdminSettingsPage.jsx'))
 const AdminCheatingDetection = lazy(() => import('./pages/admin/AdminCheatingDetection.jsx'))
+const AdminProctoringPage = lazy(() => import('./pages/admin/AdminProctoringPage.jsx').then(m => ({ default: m.AdminProctoringPage })))
 
 // Professor pages
 const ProfessorDashboardPage = lazy(() => import('./pages/professor/ProfessorDashboardPage.jsx'))
@@ -85,6 +86,7 @@ function App() {
             <Route path="/admin/gradebook" element={<AdminGradebookPage />} />
             <Route path="/admin/activity" element={<AdminActivityPage />} />
             <Route path="/admin/cheating" element={<AdminCheatingDetection />} />
+            <Route path="/admin/proctoring" element={<AdminProctoringPage />} />
             <Route path="/admin/blockchain" element={<AdminBlockchainCenter />} />
             <Route path="/admin/settings" element={<AdminSettingsPage />} />
 

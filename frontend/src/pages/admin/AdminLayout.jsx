@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
-import { LayoutDashboard, ClipboardList, Database, BarChart3, GraduationCap, Users, PackageOpen, ScrollText, Blocks, Settings, Search, LogOut, ChevronDown, Command, Bell, Plus, RefreshCw, ShieldAlert, Map, Beaker } from 'lucide-react'
+import { LayoutDashboard, ClipboardList, Database, BarChart3, GraduationCap, Users, PackageOpen, ScrollText, Blocks, Settings, Search, LogOut, ChevronDown, Command, Bell, Plus, RefreshCw, ShieldAlert, Map, Beaker, Activity } from 'lucide-react'
 import { CommandPalette } from '../../components/CommandPalette.jsx'
 import { HeaderThemeToggle } from '../../components/HeaderThemeToggle.jsx'
 import { NotificationDropdown } from '../../components/NotificationDropdown.jsx'
@@ -33,6 +33,7 @@ const NAV = [
     {
         section: 'Operations',
         items: [
+            { label: 'Live Proctoring', icon: <Activity size={18} />, path: '/admin/proctoring' },
             { label: 'Cheating Detection', icon: <ShieldAlert size={18} />, path: '/admin/cheating' },
             { label: 'Batch Review', icon: <PackageOpen size={18} />, path: '/admin/batches', badgeKey: 'pendingBatches' },
             { label: 'Activity & Audit', icon: <ScrollText size={18} />, path: '/admin/activity' },
