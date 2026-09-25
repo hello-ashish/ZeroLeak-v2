@@ -349,3 +349,151 @@ export async function batchRepairImportedQuestions(rows, subject, professorId) {
         throw error
     }
 }
+
+export async function adminReviewBatch(batchData, adminId) {
+    try {
+        const { ADMIN_BATCH_REVIEW_PROMPT } = await import('./ai.prompts.js');
+        const raw = await callLLM(
+            ADMIN_BATCH_REVIEW_PROMPT.system,
+            ADMIN_BATCH_REVIEW_PROMPT.user(batchData),
+            {
+                name: "admin_batch_review",
+                strict: true,
+                schema: {
+                    type: "object",
+                    properties: {
+                        isApproved: { type: "boolean" },
+                        issues: { type: "array", items: { type: "string" } },
+                        summary: { type: "string" },
+                        difficultySkew: { type: "string" }
+                    },
+                    required: ["isApproved", "issues", "summary", "difficultySkew"],
+                    additionalProperties: false
+                }
+            }
+        );
+        return { success: true, data: raw };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+export async function adminAuditSummary(logs, adminId) {
+    try {
+        const { ADMIN_AUDIT_SUMMARY_PROMPT } = await import('./ai.prompts.js');
+        const raw = await callLLM(
+            ADMIN_AUDIT_SUMMARY_PROMPT.system,
+            ADMIN_AUDIT_SUMMARY_PROMPT.user(logs),
+            {
+                name: "admin_audit_summary",
+                strict: true,
+                schema: {
+                    type: "object",
+                    properties: {
+                        status: { type: "string" },
+                        summaryMarkdown: { type: "string" }
+                    },
+                    required: ["status", "summaryMarkdown"],
+                    additionalProperties: false
+                }
+            }
+        );
+        return { success: true, data: raw };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+export async function adminCohortReport(gradebookData, adminId) {
+    try {
+        const { ADMIN_COHORT_REPORT_PROMPT } = await import('./ai.prompts.js');
+        const raw = await callLLM(
+            ADMIN_COHORT_REPORT_PROMPT.system,
+            ADMIN_COHORT_REPORT_PROMPT.user(gradebookData),
+            {
+                name: "admin_cohort_report",
+                strict: true,
+                schema: {
+                    type: "object",
+                    properties: {
+                        atRiskStudents: { type: "array", items: { type: "string" } },
+                        cohortAnalysis: { type: "string" },
+                        recommendedActions: { type: "array", items: { type: "string" } }
+                    },
+                    required: ["atRiskStudents", "cohortAnalysis", "recommendedActions"],
+                    additionalProperties: false
+                }
+            }
+        );
+        return { success: true, data: raw };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+export async function adminExamCopilot(prompt, adminId) {
+    try {
+        const { ADMIN_EXAM_COPILOT_PROMPT } = await import('./ai.prompts.js');
+        const raw = await callLLM(
+            ADMIN_EXAM_COPILOT_PROMPT.system,
+            ADMIN_EXAM_COPILOT_PROMPT.user(prompt),
+            {
+                name: "admin_exam_copilot",
+                strict: true,
+                schema: {
+                    type: "object",
+                    properties: {
+                        title: { type: "string" },
+                        description: { type: "string" },
+                        mode: { type: "string", enum: ["Normal", "Zeroleak"] },
+                        subjects: {
+                            type: "array",
+                            items: {
+                                type: "object",
+                                properties: {
+                                    subject: { type: "string" },
+                                    numQuestions: { type: "number" },
+                                    durationMinutes: { type: "number" },
+                                    passingPercentage: { type: "number" }
+                                },
+                                required: ["subject", "numQuestions", "durationMinutes", "passingPercentage"],
+                                additionalProperties: false
+                            }
+                        }
+                    },
+                    required: ["title", "description", "mode", "subjects"],
+                    additionalProperties: false
+                }
+            }
+        );
+        return { success: true, data: raw };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+export async function adminPolicyRewrite(draft, adminId) {
+    try {
+        const { ADMIN_POLICY_REWRITE_PROMPT } = await import('./ai.prompts.js');
+        const raw = await callLLM(
+            ADMIN_POLICY_REWRITE_PROMPT.system,
+            ADMIN_POLICY_REWRITE_PROMPT.user(draft),
+            {
+                name: "admin_policy_rewrite",
+                strict: true,
+                schema: {
+                    type: "object",
+                    properties: {
+                        rewrittenText: { type: "string" }
+                    },
+                    required: ["rewrittenText"],
+                    additionalProperties: false
+                }
+            }
+        );
+        return { success: true, data: raw };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+

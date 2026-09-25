@@ -39,6 +39,8 @@ app.use("/api/professor", professorRouter)
 
 // AI-assisted professor endpoints
 app.use("/api/professor/ai", aiRouter)
+// Global AI endpoints (for admin)
+app.use("/api/ai", aiRouter)
 
 // Tell the app to use our new question routes!
 app.use("/api/question", questionRouter)

@@ -150,7 +150,7 @@ export const AuditorLayout = ({ children, openAnomaliesCount = 0 }) => {
 
                     <div className="topbar-search">
                         <Search size={16} style={{ color: 'var(--text-tertiary)' }} />
-                        <span className="topbar-search-text">Search events (Read-only)</span>
+                        <span className="topbar-search-text">Search {auditorData.name ? auditorData.name.split(' ')[0] + "'s" : "your"} audit logs...</span>
                     </div>
 
                     <div className="topbar-actions">

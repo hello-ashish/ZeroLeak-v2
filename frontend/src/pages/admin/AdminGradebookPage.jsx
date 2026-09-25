@@ -8,7 +8,8 @@ import { ScorePill } from '../../components/StatusBadge.jsx'
 import { useToast } from '../../components/Toast.jsx'
 import { Download, BarChart3, TrendingUp, Trophy, Search, ChevronRight, GraduationCap, Trash2, CheckSquare } from 'lucide-react'
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar, Cell } from 'recharts'
-
+import html2canvas from 'html2canvas'
+import { jsPDF } from 'jspdf'
 const API = 'http://localhost:4000/api'
 const getToken = () => localStorage.getItem('adminToken')
 
@@ -129,6 +130,53 @@ export default function AdminGradebookPage() {
         fetchData()
     }, [fetchData])
 
+    const [aiCohortResult, setAiCohortResult] = useState(null)
+    const [aiCohortGenerating, setAiCohortGenerating] = useState(false)
+
+    const doAiCohortReport = async () => {
+        if (!results.length) return;
+        setAiCohortGenerating(true);
+        setAiCohortResult(null);
+        try {
+            const token = getToken();
+            const simplifiedData = results.slice(0, 100).map(r => ({
+                studentName: r.student?.name || 'Unknown',
+                examTitle: r.exam?.title || 'Unknown Exam',
+                score: r.score,
+                totalQuestions: r.totalQuestions,
+                status: r.status
+            }));
+            const res = await axios.post(`${API}/ai/admin/cohort-report`, { gradebookData: simplifiedData }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setAiCohortResult(res.data);
+            toast.success("AI Cohort Report generated");
+        } catch (error) {
+            toast.error("Failed to generate AI report");
+        } finally {
+            setAiCohortGenerating(false);
+        }
+    }
+
+    const handleDownloadPDF = async () => {
+        const element = document.getElementById('ai-cohort-report')
+        if (!element) return
+        
+        try {
+            const canvas = await html2canvas(element, { scale: 2 })
+            const imgData = canvas.toDataURL('image/png')
+            const pdf = new jsPDF('p', 'mm', 'a4')
+            const pdfWidth = pdf.internal.pageSize.getWidth()
+            const pdfHeight = (canvas.height * pdfWidth) / canvas.width
+            
+            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight)
+            pdf.save('AI_Cohort_Report.pdf')
+            toast.success('PDF downloaded successfully')
+        } catch (error) {
+            toast.error('Failed to generate PDF')
+        }
+    }
+
     const filtered = useMemo(() => {
         let data = results
         if (selectedExam === 'deleted') {
@@ -188,6 +236,9 @@ export default function AdminGradebookPage() {
                         <p className="page-subtitle">Academic performance records and aggregate analytics</p>
                     </div>
                     <div className="page-actions" style={{ display: 'flex', gap: '12px' }}>
+                        <button className="btn btn-secondary flex items-center gap-2" onClick={doAiCohortReport} disabled={aiCohortGenerating} style={{ background: 'var(--brand-primary)', color: '#fff', border: 'none' }}>
+                            {aiCohortGenerating ? 'Generating...' : 'AI Cohort Report'}
+                        </button>
                         <button className="btn btn-secondary flex items-center gap-2" onClick={() => {
                             const { headers, rows, content } = generateCSVData(filtered);
                             setPreviewModal({ isOpen: true, title: 'Gradebook Export Preview', content, headers, rows, filename: 'gradebook.csv' });
@@ -197,6 +248,53 @@ export default function AdminGradebookPage() {
                     </div>
                 </div>
             </div>
+
+            {aiCohortResult && (
+                <div id="ai-cohort-report" style={{ marginBottom: 32, padding: '24px 32px', background: 'var(--bg-card)', border: '1px solid var(--brand-primary)', borderRadius: 'var(--radius-lg)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                        <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--brand-primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <TrendingUp size={18} />
+                        </div>
+                        <div>
+                            <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>AI Cohort Report</h3>
+                            <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Automated insights into class performance</p>
+                        </div>
+                        <div style={{ marginLeft: 'auto' }} data-html2canvas-ignore="true">
+                            <button className="btn btn-secondary flex items-center gap-2" onClick={handleDownloadPDF} style={{ padding: '6px 12px', fontSize: 13 }}>
+                                <Download size={14} /> Download PDF
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div style={{ fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.6, whiteSpace: 'pre-line', marginBottom: 20 }}>
+                        {aiCohortResult.cohortAnalysis}
+                    </div>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+                        {aiCohortResult.atRiskStudents?.length > 0 && (
+                            <div style={{ background: 'var(--danger-subtle)', padding: '16px', borderRadius: 8, border: '1px solid var(--danger-border)' }}>
+                                <h4 style={{ fontSize: 13, fontWeight: 600, color: 'var(--danger)', textTransform: 'uppercase', marginBottom: 8 }}>At-Risk Students</h4>
+                                <ul style={{ margin: 0, paddingLeft: 20, color: 'var(--danger)', fontSize: 13 }}>
+                                    {aiCohortResult.atRiskStudents.map((student, idx) => (
+                                        <li key={idx} style={{ marginBottom: 4 }}>{student}</li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+                        
+                        {aiCohortResult.recommendedActions?.length > 0 && (
+                            <div style={{ background: 'var(--success-subtle)', padding: '16px', borderRadius: 8, border: '1px solid var(--success-border)' }}>
+                                <h4 style={{ fontSize: 13, fontWeight: 600, color: 'var(--success)', textTransform: 'uppercase', marginBottom: 8 }}>Recommended Actions</h4>
+                                <ul style={{ margin: 0, paddingLeft: 20, color: 'var(--success)', fontSize: 13 }}>
+                                    {aiCohortResult.recommendedActions.map((action, idx) => (
+                                        <li key={idx} style={{ marginBottom: 4 }}>{action}</li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* Class Summary & Distribution */}
             {classSummary && (

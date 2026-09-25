@@ -23,6 +23,8 @@ export default function AdminBatchesPage() {
     const [markReason, setMarkReason] = useState('')
     const [actionState, setActionState] = useState(null) // 'reject', 'mark', or 'delete'
     const [batchLoading, setBatchLoading] = useState(false)
+    const [aiReviewResult, setAiReviewResult] = useState(null)
+    const [aiReviewing, setAiReviewing] = useState(false)
 
     const navigate = useNavigate()
     const toast = useToast()
@@ -57,6 +59,7 @@ export default function AdminBatchesPage() {
             setActionState(null)
             setRejectReason('')
             setMarkReason('')
+            setAiReviewResult(null)
         } catch {
             toast.error('Failed to open batch')
         } finally {
@@ -98,6 +101,24 @@ export default function AdminBatchesPage() {
             toast.error('Failed to process batch')
         } finally {
             setReviewing(false)
+        }
+    }
+
+    const doAiReview = async () => {
+        if (!activeBatch) return;
+        setAiReviewing(true);
+        setAiReviewResult(null);
+        try {
+            const token = getToken();
+            const res = await axios.post(`${API}/ai/admin/review-batch`, { batchData: activeBatch }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setAiReviewResult(res.data);
+            toast.success("AI Audit complete");
+        } catch (error) {
+            toast.error("AI Review failed");
+        } finally {
+            setAiReviewing(false);
         }
     }
 
@@ -225,6 +246,9 @@ export default function AdminBatchesPage() {
                                     <div style={{ display: 'flex', gap: 8 }}>
                                         {activeBatch.status === 'Submitted' && (
                                             <>
+                                                <button className="btn btn-secondary" onClick={doAiReview} disabled={aiReviewing} style={{ background: 'var(--brand-primary)', color: '#fff', border: 'none' }}>
+                                                    {aiReviewing ? 'Analyzing...' : 'AI Pre-Review'}
+                                                </button>
                                                 <button className="btn btn-secondary" onClick={() => setActionState('mark')}>Mark for Review</button>
                                                 <button className="btn btn-danger" onClick={() => setActionState('reject')}>Reject</button>
                                                 <button className="btn btn-success" onClick={() => doReview('Accept')} disabled={reviewing}>
@@ -238,6 +262,39 @@ export default function AdminBatchesPage() {
                                     </div>
                                 )}
                             </div>
+
+                            {/* AI Review Results */}
+                            {aiReviewResult && (
+                                <div style={{ padding: '24px 32px', background: 'var(--bg-card)', borderBottom: '1px solid var(--border-default)' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                                        <div style={{ width: 32, height: 32, borderRadius: 8, background: aiReviewResult.isApproved ? 'var(--success-subtle)' : 'var(--danger-subtle)', color: aiReviewResult.isApproved ? 'var(--success)' : 'var(--danger)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            {aiReviewResult.isApproved ? <Check size={18} /> : <AlertTriangle size={18} />}
+                                        </div>
+                                        <div>
+                                            <h3 style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>AI Audit Report</h3>
+                                            <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{aiReviewResult.summary}</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}>
+                                        <div style={{ background: 'var(--bg-surface)', padding: '12px 16px', borderRadius: 8, border: '1px solid var(--border-subtle)' }}>
+                                            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 6 }}>Difficulty Skew</div>
+                                            <div style={{ fontSize: 14, color: 'var(--text-primary)' }}>{aiReviewResult.difficultySkew}</div>
+                                        </div>
+                                        
+                                        {aiReviewResult.issues && aiReviewResult.issues.length > 0 && (
+                                            <div style={{ background: 'var(--danger-subtle)', padding: '12px 16px', borderRadius: 8, border: '1px solid var(--danger-border)' }}>
+                                                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--danger)', textTransform: 'uppercase', marginBottom: 8 }}>Found Issues ({aiReviewResult.issues.length})</div>
+                                                <ul style={{ margin: 0, paddingLeft: 20, color: 'var(--danger)', fontSize: 13 }}>
+                                                    {aiReviewResult.issues.map((issue, idx) => (
+                                                        <li key={idx} style={{ marginBottom: 4 }}>{issue}</li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Action Form Overlays */}
                             {actionState === 'reject' && (

@@ -24,7 +24,8 @@ import {
     bulkImportProfessors,
     bulkDeleteStudents,
     bulkBlockStudents,
-    bulkImportStudents
+    bulkImportStudents,
+    broadcastAnnouncement
 } from "../controllers/admin.controllers.js"
 import { verifyAdminJWT } from "../middlewares/auth.middleware.js"
 import notificationRouter from "./notification.routes.js"
@@ -102,5 +103,8 @@ router.route("/batches/:batchId/review").post(verifyAdminJWT, reviewBatch)
 router.route("/exams/:id/status").patch(verifyAdminJWT, updateExamStatus)
 router.route("/exams/:id/release-results").patch(verifyAdminJWT, toggleExamResultsRelease)
 router.route("/exams/:id").delete(verifyAdminJWT, deleteExam)
+
+// Global Announcements
+router.route("/broadcast").post(verifyAdminJWT, broadcastAnnouncement)
 
 export default router

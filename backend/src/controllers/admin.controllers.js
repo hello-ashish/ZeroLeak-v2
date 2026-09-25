@@ -800,3 +800,30 @@ export const bulkImportStudents = async (req, res) => {
         return res.status(500).json({ message: "Internal server error during import" });
     }
 };
+export const broadcastAnnouncement = async (req, res) => {
+    try {
+        const { message, title } = req.body;
+        if (!message) return res.status(400).json({ message: "Message is required" });
+        
+        const { Student } = await import('../models/student.models.js');
+        const { Notification } = await import('../models/notification.models.js');
+        
+        const students = await Student.find({}).select("_id");
+        const notifications = students.map(student => ({
+            userId: student._id,
+            userRole: "Student",
+            title: title || "Global Announcement",
+            message,
+            type: "INFO"
+        }));
+        
+        if (notifications.length > 0) {
+            await Notification.insertMany(notifications);
+        }
+        
+        res.status(200).json({ message: "Broadcast successful" });
+    } catch (error) {
+        console.error("Error broadcasting:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};

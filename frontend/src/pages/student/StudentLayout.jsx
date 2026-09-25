@@ -189,7 +189,7 @@ export const StudentLayout = () => {
                         aria-label="Open command palette"
                     >
                         <Search size={16} style={{ color: 'var(--text-tertiary)' }} />
-                        <span className="topbar-search-text">Search your exams and results...</span>
+                        <span className="topbar-search-text">Search {studentData.name ? studentData.name.split(' ')[0] + "'s" : "your"} exams and results...</span>
                         <span className="topbar-search-kbd">⌘K</span>
                     </div>
 

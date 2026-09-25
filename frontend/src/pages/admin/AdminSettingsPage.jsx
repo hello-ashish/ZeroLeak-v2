@@ -65,7 +65,7 @@ export default function AdminSettingsPage() {
 
     const SECTIONS = [
         { id: 'profile', label: 'Admin Profile', icon: <User size={18} /> },
-        { id: 'appearance', label: 'Appearance', icon: <Palette size={18} /> },
+        { id: 'communications', label: 'Communications', icon: <Info size={18} /> },
         { id: 'security', label: 'Security', icon: <Lock size={18} /> },
         { id: 'about', label: 'Platform Info', icon: <Info size={18} /> },
     ]
@@ -90,8 +90,8 @@ export default function AdminSettingsPage() {
                                 key={s.id}
                                 className={`nav-item w-full ${activeSection === s.id ? 'active' : ''}`}
                                 onClick={() => setActiveSection(s.id)}
-                                style={{ 
-                                    justifyContent: 'flex-start', display: 'flex', alignItems: 'center', gap: 12, 
+                                style={{
+                                    justifyContent: 'flex-start', display: 'flex', alignItems: 'center', gap: 12,
                                     padding: '12px 16px', borderRadius: 'var(--radius-md)',
                                     fontSize: 14, fontWeight: activeSection === s.id ? 600 : 500,
                                     background: activeSection === s.id ? 'var(--bg-active)' : 'transparent',
@@ -144,42 +144,74 @@ export default function AdminSettingsPage() {
                         </div>
                     )}
 
-                    {activeSection === 'appearance' && (
+                    {activeSection === 'communications' && (
                         <div className="card">
                             <div className="card-header" style={{ padding: '24px 32px' }}>
-                                <h2 className="card-title" style={{ fontSize: 18 }}>Appearance Preferences</h2>
-                                <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>Customize the look and feel of your command center.</p>
+                                <h2 className="card-title" style={{ fontSize: 18 }}>Global Communications</h2>
+                                <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>Draft and send platform-wide announcements.</p>
                             </div>
                             <div className="card-body" style={{ padding: '0 32px 32px' }}>
-                                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 12 }}>Interface Theme</p>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, maxWidth: 600 }}>
-                                    {[
-                                        { id: 'dark', label: 'Dark Mode', icon: <Moon size={24} />, desc: 'Deep, immersive background.' },
-                                        { id: 'light', label: 'Light Mode', icon: <Sun size={24} />, desc: 'Bright, high-contrast design.' },
-                                    ].map(t => (
-                                        <div
-                                            key={t.id}
-                                            onClick={() => handleThemeChange(t.id)}
-                                            style={{
-                                                padding: '24px', borderRadius: 'var(--radius-lg)', cursor: 'pointer',
-                                                border: `2px solid ${theme === t.id ? 'var(--brand-primary)' : 'var(--border-default)'}`,
-                                                background: theme === t.id ? 'var(--bg-active)' : 'var(--bg-surface)',
-                                                display: 'flex', flexDirection: 'column', gap: 12,
-                                                transition: 'all 0.15s'
-                                            }}
-                                        >
-                                            <div style={{ width: 48, height: 48, borderRadius: '50%', background: theme === t.id ? 'var(--brand-primary)' : 'var(--bg-elevated)', color: theme === t.id ? '#fff' : 'var(--text-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                {t.icon}
-                                            </div>
-                                            <div>
-                                                <p style={{ fontWeight: 600, fontSize: 15, color: 'var(--text-primary)' }}>{t.label}</p>
-                                                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>{t.desc}</p>
-                                            </div>
-                                            <div style={{ width: 20, height: 20, borderRadius: '50%', border: `2px solid ${theme === t.id ? 'var(--brand-primary)' : 'var(--border-strong)'}`, background: theme === t.id ? 'var(--brand-primary)' : 'transparent', marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                {theme === t.id && <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#fff' }} />}
-                                            </div>
-                                        </div>
-                                    ))}
+                                <div style={{ background: 'var(--brand-primary-subtle)', padding: 16, borderRadius: 8, border: '1px solid var(--brand-primary-border)', marginBottom: 24 }}>
+                                    <h4 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>AI Policy Writer</h4>
+                                    <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12 }}>Jot down a rough idea and let the AI rewrite it into a professional, policy-compliant announcement.</p>
+
+                                    <textarea
+                                        className="form-textarea"
+                                        style={{ minHeight: 80, background: 'var(--bg-surface)', marginBottom: 12 }}
+                                        placeholder="e.g. tell students no cheating allowed or we block them"
+                                        id="draft-text"
+                                    />
+
+                                    <button
+                                        className="btn btn-secondary"
+                                        style={{ background: 'var(--brand-primary)', color: '#fff', border: 'none' }}
+                                        onClick={async () => {
+                                            const draft = document.getElementById('draft-text').value;
+                                            if (!draft.trim()) return;
+                                            try {
+                                                document.getElementById('ai-rewrite-result').innerText = 'Generating...';
+                                                const res = await axios.post(`${API}/ai/admin/policy-rewrite`, { draft }, { headers: { Authorization: `Bearer ${getToken()}` } });
+                                                document.getElementById('ai-rewrite-result').innerText = res.data.rewrittenText;
+                                            } catch {
+                                                toast.error('AI Rewrite failed');
+                                            }
+                                        }}
+                                    >
+                                        Auto-Rewrite
+                                    </button>
+                                </div>
+
+                                <div className="form-group">
+                                    <label className="form-label">Final Announcement Text</label>
+                                    <textarea
+                                        id="ai-rewrite-result"
+                                        className="form-textarea"
+                                        style={{ minHeight: 160 }}
+                                        placeholder="The professional announcement will appear here..."
+                                    />
+                                </div>
+
+                                <div style={{ marginTop: 24, display: 'flex', gap: 12 }}>
+                                    <button 
+                                        className="btn btn-primary" 
+                                        onClick={async () => {
+                                            const message = document.getElementById('ai-rewrite-result').value;
+                                            if (!message.trim()) {
+                                                toast.error('Announcement text is empty');
+                                                return;
+                                            }
+                                            try {
+                                                await axios.post(`${API}/admin/broadcast`, { message }, { headers: { Authorization: `Bearer ${getToken()}` } });
+                                                toast.success('Announcement broadcasted to all students!');
+                                                document.getElementById('draft-text').value = '';
+                                                document.getElementById('ai-rewrite-result').value = '';
+                                            } catch (error) {
+                                                toast.error('Failed to broadcast announcement');
+                                            }
+                                        }}
+                                    >
+                                        Broadcast Announcement
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -231,7 +263,7 @@ export default function AdminSettingsPage() {
                                         <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginTop: 4 }}>Academic Command Center · Edition 2.0</p>
                                     </div>
                                 </div>
-                                
+
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
                                     {[
                                         { icon: <Globe size={18} />, k: 'Platform', v: 'Zero Trust Academic System' },

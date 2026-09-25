@@ -191,3 +191,117 @@ export const fixQuestionImport = async (req, res) => {
         })
     }
 }
+
+export const reviewBatchAdmin = async (req, res) => {
+    try {
+        const { batchData } = req.body
+        if (!batchData) {
+            return res.status(400).json({ message: "batchData is required" })
+        }
+
+        const { adminReviewBatch } = await import('../Services/ai/ai.service.js')
+        const result = await adminReviewBatch(batchData, req.admin._id)
+
+        if (!result.success) {
+            return res.status(400).json({
+                message: result.error || "Unable to review batch."
+            })
+        }
+
+        return res.status(200).json(result.data)
+    } catch (error) {
+        return res.status(500).json({ message: "Internal server error", error: error.message })
+    }
+}
+
+export const auditSummaryAdmin = async (req, res) => {
+    try {
+        const { logs } = req.body
+        if (!logs) {
+            return res.status(400).json({ message: "logs array is required" })
+        }
+
+        const { adminAuditSummary } = await import('../Services/ai/ai.service.js')
+        const result = await adminAuditSummary(logs, req.admin._id)
+
+        if (!result.success) {
+            console.error("AI Audit Summary Error:", result.error);
+            return res.status(400).json({
+                message: result.error || "Unable to summarize logs."
+            })
+        }
+
+        return res.status(200).json(result.data)
+    } catch (error) {
+        console.error("AI Audit Summary Exception:", error);
+        return res.status(500).json({ message: "Internal server error", error: error.message })
+    }
+}
+
+export const cohortReportAdmin = async (req, res) => {
+    try {
+        const { gradebookData } = req.body
+        if (!gradebookData) {
+            return res.status(400).json({ message: "gradebookData is required" })
+        }
+
+        const { adminCohortReport } = await import('../Services/ai/ai.service.js')
+        const result = await adminCohortReport(gradebookData, req.admin._id)
+
+        if (!result.success) {
+            console.error("AI Cohort Report Error:", result.error);
+            return res.status(400).json({
+                message: result.error || "Unable to generate report."
+            })
+        }
+
+        return res.status(200).json(result.data)
+    } catch (error) {
+        console.error("AI Cohort Report Exception:", error);
+        return res.status(500).json({ message: "Internal server error", error: error.message })
+    }
+}
+
+export const examCopilotAdmin = async (req, res) => {
+    try {
+        const { prompt } = req.body
+        if (!prompt) {
+            return res.status(400).json({ message: "prompt is required" })
+        }
+
+        const { adminExamCopilot } = await import('../Services/ai/ai.service.js')
+        const result = await adminExamCopilot(prompt, req.admin._id)
+
+        if (!result.success) {
+            return res.status(400).json({
+                message: result.error || "Unable to parse copilot prompt."
+            })
+        }
+
+        return res.status(200).json(result.data)
+    } catch (error) {
+        return res.status(500).json({ message: "Internal server error", error: error.message })
+    }
+}
+
+export const policyRewriteAdmin = async (req, res) => {
+    try {
+        const { draft } = req.body
+        if (!draft) {
+            return res.status(400).json({ message: "draft text is required" })
+        }
+
+        const { adminPolicyRewrite } = await import('../Services/ai/ai.service.js')
+        const result = await adminPolicyRewrite(draft, req.admin._id)
+
+        if (!result.success) {
+            return res.status(400).json({
+                message: result.error || "Unable to rewrite policy."
+            })
+        }
+
+        return res.status(200).json(result.data)
+    } catch (error) {
+        return res.status(500).json({ message: "Internal server error", error: error.message })
+    }
+}

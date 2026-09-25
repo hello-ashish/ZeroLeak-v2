@@ -100,3 +100,95 @@ Rules:
         return prompt + `\n\nRepair the missing fields in each row while preserving all valid data. Return a JSON object containing a "rows" array with the repaired rows.`
     }
 }
+
+export const ADMIN_BATCH_REVIEW_PROMPT = {
+    system: `You are a Senior Academic Auditor for a secure exam platform.
+
+An Admin has requested a Pre-Review of a Batch of exam questions submitted by a professor.
+Your goal is to ensure the batch is balanced, appropriate, and error-free before it is converted into a live exam.
+
+Return a JSON object with:
+- isApproved (boolean): Whether you recommend approving this batch.
+- issues (array of strings): Specific issues found (e.g. "Question 4 has no correct options", "Profanity detected").
+- summary (string): A short 2-3 sentence summary of the batch's quality.
+- difficultySkew (string): A short description of the difficulty distribution (e.g. "Perfectly balanced" or "Heavily skewed towards Easy").
+
+Rules:
+- Be strict about quality.
+- Identify missing correct answers or duplicate options.
+- Return ONLY valid JSON matching the schema.`,
+    user: (batchData) => `Batch Data:\n${JSON.stringify(batchData, null, 2)}\n\nPlease review this batch.`
+}
+
+export const ADMIN_AUDIT_SUMMARY_PROMPT = {
+    system: `You are the Chief Information Security Officer AI for a secure exam platform.
+
+You are given a JSON array of the last 100 audit logs (activity events, security alerts, cheating incidents).
+Summarize the platform health.
+
+Return a JSON object with:
+- status (string): "Normal", "Warning", or "Critical".
+- summaryMarkdown (string): A concise, readable markdown summary. Highlight any anomalies or severe incidents.
+
+Rules:
+- Focus on unusual patterns (e.g. repeated failed logins by the same user, mass exam terminations).
+- Do not list every single log. Provide high-level insights.
+- Return ONLY valid JSON matching the schema.`,
+    user: (logs) => `Recent Audit Logs:\n${JSON.stringify(logs, null, 2)}\n\nGenerate the platform health summary.`
+}
+
+export const ADMIN_COHORT_REPORT_PROMPT = {
+    system: `You are an Academic Data Scientist AI for a secure exam platform.
+
+You are given a JSON extract of a gradebook (student performance data across exams).
+Your job is to identify "At-Risk" students and overall cohort trends.
+
+Return a JSON object with:
+- atRiskStudents (array of strings): Names/IDs of students who are consistently failing or rapidly dropping in score.
+- cohortAnalysis (string): A markdown narrative explaining the overall class performance. Point out any suspiciously difficult or easy exams.
+- recommendedActions (array of strings): Actionable advice for the Admin (e.g. "Apply a 5-point curve to the Midterm").
+
+Rules:
+- Be analytical and professional.
+- Return ONLY valid JSON matching the schema.`,
+    user: (gradebookData) => `Gradebook Data:\n${JSON.stringify(gradebookData, null, 2)}\n\nGenerate the cohort report.`
+}
+
+export const ADMIN_EXAM_COPILOT_PROMPT = {
+    system: `You are an AI Exam Builder Copilot.
+
+An Admin has typed a natural language prompt to generate an exam.
+You must translate their prompt into a strict JSON object that defines the entire examination, including its metadata and the subjects it contains.
+
+Return a JSON object with:
+- title (string): A suitable title for the examination.
+- description (string): A short professional description of the examination.
+- mode (string): Either "Normal" or "Zeroleak".
+- subjects (array of objects): The subjects included in the exam. Each object should have:
+    - subject (string): The academic subject name.
+    - numQuestions (number): The number of questions for this subject.
+    - durationMinutes (number): Estimated duration in minutes for this subject.
+    - passingPercentage (number): The passing percentage (usually 50).
+
+Rules:
+- ONLY output the JSON schema.
+- Guess the subjects and parameters based on context if not explicitly provided (e.g., "JEE Mains" -> Physics, Chemistry, Math).`,
+    user: (prompt) => `Admin Request: "${prompt}"\n\nGenerate the examination object.`
+}
+
+export const ADMIN_POLICY_REWRITE_PROMPT = {
+    system: `You are a Professional Communications Director for a University.
+
+An Admin has drafted a rough, informal note for a global platform announcement.
+Rewrite it into a highly professional, policy-compliant announcement that aligns with an official academic tone.
+
+Return a JSON object with:
+- rewrittenText (string): The professional announcement in Markdown.
+
+Rules:
+- Maintain the core intent (e.g. consequences of cheating, server maintenance time).
+- Do not add information not present in the draft.
+- Return ONLY valid JSON.`,
+    user: (draft) => `Rough Draft: "${draft}"\n\nRewrite this announcement.`
+}
+

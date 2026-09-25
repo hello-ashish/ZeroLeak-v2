@@ -7,35 +7,116 @@ import { Activity, Video, Mic, MicOff, MonitorPlay, AlertTriangle, Search, Filte
 const API = 'http://localhost:4000/api';
 const SOCKET_URL = 'http://localhost:4000/proctoring';
 
+const pageStyles = `
+    .proctor-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.3s ease;
+        border: 1px solid var(--border-default);
+    }
+    .proctor-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4);
+        border-color: var(--border-subtle);
+    }
+    .pulse-dot {
+        animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 213, 115, 0.7); }
+        70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(46, 213, 115, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 213, 115, 0); }
+    }
+    .pulse-dot.danger {
+        animation: pulse-danger 2s infinite;
+    }
+    @keyframes pulse-danger {
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); }
+        70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(255, 71, 87, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); }
+    }
+    .video-placeholder {
+        background: linear-gradient(135deg, var(--bg-surface) 0%, var(--bg-elevated) 100%);
+        animation: shimmer 3s infinite linear;
+        background-size: 200% 200%;
+    }
+    @keyframes shimmer {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+    .stat-card-rich {
+        background: linear-gradient(145deg, var(--bg-elevated), var(--bg-surface));
+        border: 1px solid var(--border-default);
+        border-radius: 12px;
+        padding: 24px;
+        position: relative;
+        overflow: hidden;
+    }
+    .stat-card-rich::after {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: radial-gradient(circle at top right, rgba(255,255,255,0.03), transparent 60%);
+        pointer-events: none;
+    }
+`;
+
 const StudentMonitorCard = ({ session, onListen, listeningTo, onOpenDetails }) => {
     const peerConnectionRef = useRef(null);
     const [connecting, setConnecting] = useState(false);
 
     const isListening = listeningTo === session.studentId._id;
     const isOnline = session.connectionStatus === 'ONLINE';
+    const hasIncidents = session.incidentCount > 0;
 
     return (
-        <div className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div className="card proctor-card" style={{ 
+            padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px',
+            borderColor: hasIncidents ? 'rgba(255, 71, 87, 0.5)' : undefined,
+            boxShadow: hasIncidents ? '0 0 15px rgba(255, 71, 87, 0.15)' : undefined
+        }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                    <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>{session.studentId.name}</h4>
-                    <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{session.studentId.studentId}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ 
+                        width: '40px', height: '40px', borderRadius: '50%', 
+                        background: 'var(--brand-primary-subtle)', color: 'var(--brand-primary)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontWeight: 'bold', fontSize: '16px'
+                    }}>
+                        {session.studentId.name.charAt(0)}
+                    </div>
+                    <div>
+                        <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>{session.studentId.name}</h4>
+                        <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', letterSpacing: '0.05em' }}>{session.studentId.studentId}</span>
+                    </div>
                 </div>
-                <div style={{ display: 'flex', gap: '4px' }}>
-                    <div className={`status-dot ${isOnline ? 'bg-success' : 'bg-danger'}`} title={session.connectionStatus} />
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+                    <div style={{ 
+                        display: 'flex', alignItems: 'center', gap: '6px', 
+                        padding: '4px 8px', borderRadius: '20px', 
+                        background: isOnline ? 'rgba(46, 213, 115, 0.1)' : 'rgba(255, 71, 87, 0.1)',
+                        border: `1px solid ${isOnline ? 'rgba(46, 213, 115, 0.2)' : 'rgba(255, 71, 87, 0.2)'}`
+                    }}>
+                        <div className={`status-dot pulse-dot ${!isOnline ? 'danger' : ''}`} style={{ backgroundColor: isOnline ? 'var(--success)' : 'var(--danger)', width: 8, height: 8 }} />
+                        <span style={{ fontSize: '11px', fontWeight: 600, color: isOnline ? 'var(--success)' : 'var(--danger)' }}>{isOnline ? 'ONLINE' : 'OFFLINE'}</span>
+                    </div>
+                    {hasIncidents && (
+                        <div style={{ fontSize: '11px', color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 500 }}>
+                            <AlertTriangle size={12} /> {session.incidentCount} Incident{session.incidentCount > 1 ? 's' : ''}
+                        </div>
+                    )}
                 </div>
             </div>
 
-            <div style={{ 
+            <div className="video-placeholder" style={{ 
                 width: '100%', 
-                aspectRatio: '4/3', 
-                backgroundColor: 'var(--bg-elevated)', 
+                aspectRatio: '16/9', 
                 borderRadius: '8px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 overflow: 'hidden',
-                position: 'relative'
+                position: 'relative',
+                border: '1px solid var(--border-subtle)'
             }}>
                 {session.stream ? (
                     <video 
@@ -56,48 +137,61 @@ const StudentMonitorCard = ({ session, onListen, listeningTo, onOpenDetails }) =
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />
                 ) : (
-                    <div style={{ color: 'var(--text-tertiary)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        <Video size={32} style={{ marginBottom: '8px', opacity: 0.5 }} />
-                        <span style={{ fontSize: '12px' }}>{session.cameraStatus === 'CONNECTED' ? 'Connecting stream...' : session.cameraStatus}</span>
+                    <div style={{ color: 'var(--text-tertiary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ 
+                            width: '48px', height: '48px', borderRadius: '50%', 
+                            background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' 
+                        }}>
+                            <Video size={24} style={{ opacity: 0.7 }} />
+                        </div>
+                        <div style={{ fontSize: '13px', fontWeight: 500, letterSpacing: '0.02em' }}>
+                            {session.cameraStatus === 'CONNECTED' ? 'Establishing secure stream...' : 'Camera disconnected'}
+                        </div>
                     </div>
                 )}
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <Video size={14} color={session.cameraStatus === 'CONNECTED' ? 'var(--success)' : 'var(--danger)'} /> 
+            <div style={{ background: 'var(--bg-surface)', padding: '10px 12px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 500 }}>
+                    <div style={{ padding: '4px', borderRadius: '4px', background: session.cameraStatus === 'CONNECTED' ? 'rgba(46, 213, 115, 0.1)' : 'rgba(255, 71, 87, 0.1)' }}>
+                        <Video size={14} color={session.cameraStatus === 'CONNECTED' ? 'var(--success)' : 'var(--danger)'} /> 
+                    </div>
                     Cam
                 </span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    {session.microphoneStatus === 'CONNECTED' ? (
-                        <Mic size={14} color="var(--success)" />
-                    ) : (
-                        <MicOff size={14} color="var(--danger)" />
-                    )} 
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 500 }}>
+                    <div style={{ padding: '4px', borderRadius: '4px', background: session.microphoneStatus === 'CONNECTED' ? 'rgba(46, 213, 115, 0.1)' : 'rgba(255, 71, 87, 0.1)' }}>
+                        {session.microphoneStatus === 'CONNECTED' ? (
+                            <Mic size={14} color="var(--success)" />
+                        ) : (
+                            <MicOff size={14} color="var(--danger)" />
+                        )} 
+                    </div>
                     Mic
                 </span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <MonitorPlay size={14} color={session.fullscreenStatus === 'ACTIVE' ? 'var(--success)' : 'var(--danger)'} /> 
-                    Full
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 500 }}>
+                    <div style={{ padding: '4px', borderRadius: '4px', background: session.fullscreenStatus === 'ACTIVE' ? 'rgba(46, 213, 115, 0.1)' : 'rgba(255, 71, 87, 0.1)' }}>
+                        <MonitorPlay size={14} color={session.fullscreenStatus === 'ACTIVE' ? 'var(--success)' : 'var(--danger)'} /> 
+                    </div>
+                    Screen
                 </span>
             </div>
 
-            <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+            <div style={{ display: 'flex', gap: '8px' }}>
                 <button 
                     className={`btn ${isListening ? 'btn-primary' : 'btn-outline'}`} 
-                    style={{ flex: 1, padding: '6px', fontSize: '12px' }}
+                    style={{ flex: 1, padding: '8px', fontSize: '13px', transition: 'all 0.2s', background: isListening ? 'var(--danger)' : undefined, borderColor: isListening ? 'var(--danger)' : undefined, color: isListening ? '#fff' : undefined }}
                     onClick={() => onListen(session.studentId._id)}
                     disabled={session.microphoneStatus !== 'CONNECTED' || !session.stream}
                 >
-                    {isListening ? <Mic size={14} style={{ marginRight: 4 }}/> : <MicOff size={14} style={{ marginRight: 4 }}/>}
-                    {isListening ? 'Listening' : 'Listen'}
+                    {isListening ? <Mic size={16} style={{ marginRight: 6, animation: 'pulse-danger 1.5s infinite' }}/> : <MicOff size={16} style={{ marginRight: 6 }}/>}
+                    {isListening ? 'Mute' : 'Listen'}
                 </button>
                 <button 
                     className="btn btn-outline" 
-                    style={{ flex: 1, padding: '6px', fontSize: '12px' }}
+                    style={{ flex: 1, padding: '8px', fontSize: '13px', transition: 'all 0.2s' }}
                     onClick={() => onOpenDetails(session)}
                 >
-                    Details
+                    View Details
                 </button>
             </div>
         </div>
@@ -312,22 +406,37 @@ export const AdminProctoringPage = () => {
             </div>
 
             {summary && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '24px' }}>
-                    <div className="card stat-card">
-                        <div className="stat-label">Active Students</div>
-                        <div className="stat-value">{summary.total}</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', marginBottom: '32px' }}>
+                    <div className="stat-card-rich">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                            <div style={{ color: 'var(--text-secondary)', fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Active Students</div>
+                            <div style={{ padding: 8, background: 'rgba(255,255,255,0.05)', borderRadius: 8 }}><MonitorPlay size={18} color="var(--brand-primary)" /></div>
+                        </div>
+                        <div style={{ fontSize: 32, fontWeight: 700, color: 'var(--text-primary)' }}>{summary.total}</div>
                     </div>
-                    <div className="card stat-card">
-                        <div className="stat-label">Online</div>
-                        <div className="stat-value" style={{ color: 'var(--success)' }}>{summary.online}</div>
+                    
+                    <div className="stat-card-rich">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                            <div style={{ color: 'var(--text-secondary)', fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Online</div>
+                            <div style={{ padding: 8, background: 'rgba(46, 213, 115, 0.1)', borderRadius: 8 }}><Activity size={18} color="var(--success)" /></div>
+                        </div>
+                        <div style={{ fontSize: 32, fontWeight: 700, color: 'var(--success)' }}>{summary.online}</div>
                     </div>
-                    <div className="card stat-card">
-                        <div className="stat-label">Unstable / Offline</div>
-                        <div className="stat-value" style={{ color: 'var(--warning)' }}>{summary.unstable + summary.offline}</div>
+
+                    <div className="stat-card-rich">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                            <div style={{ color: 'var(--text-secondary)', fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Unstable / Offline</div>
+                            <div style={{ padding: 8, background: 'rgba(255, 171, 0, 0.1)', borderRadius: 8 }}><Video size={18} color="var(--warning)" /></div>
+                        </div>
+                        <div style={{ fontSize: 32, fontWeight: 700, color: 'var(--warning)' }}>{summary.unstable + summary.offline}</div>
                     </div>
-                    <div className="card stat-card">
-                        <div className="stat-label">Pending Incidents</div>
-                        <div className="stat-value" style={{ color: 'var(--danger)' }}>{summary.pendingIncidents}</div>
+
+                    <div className="stat-card-rich">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                            <div style={{ color: 'var(--text-secondary)', fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Pending Incidents</div>
+                            <div style={{ padding: 8, background: 'rgba(255, 71, 87, 0.1)', borderRadius: 8 }}><ShieldAlert size={18} color="var(--danger)" /></div>
+                        </div>
+                        <div style={{ fontSize: 32, fontWeight: 700, color: 'var(--danger)' }}>{summary.pendingIncidents}</div>
                     </div>
                 </div>
             )}

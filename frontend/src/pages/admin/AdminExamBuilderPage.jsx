@@ -13,10 +13,50 @@ export const AdminExamBuilderPage = () => {
     const [form, setForm] = useState({ title: '', description: '', mode: 'Normal' })
     const [subjects, setSubjects] = useState([])
     const [allQuestions, setAllQuestions] = useState([])
-    const [currentSubj, setCurrentSubj] = useState({ subject: '', numQuestions: 10, durationMinutes: 60, passingPercentage: 50 })
+    const [currentSubj, setCurrentSubj] = useState({ subject: '', numQuestions: 10, durationMinutes: 60, passingPercentage: 50, easy: 30, medium: 50, hard: 20 })
     const [creating, setCreating] = useState(false)
+    const [aiCopilotPrompt, setAiCopilotPrompt] = useState('')
+    const [aiCopilotLoading, setAiCopilotLoading] = useState(false)
     const navigate = useNavigate()
     const toast = useToast()
+
+    const handleAiCopilot = async () => {
+        if (!aiCopilotPrompt.trim()) return
+        setAiCopilotLoading(true)
+        try {
+            const token = getToken()
+            const res = await axios.post(`${API}/ai/admin/exam-copilot`, { prompt: aiCopilotPrompt }, {
+                headers: { Authorization: `Bearer ${token}` }
+            })
+            const result = res.data
+            if (result.title) {
+                // Auto-configure the exam
+                setForm({
+                    title: result.title,
+                    description: result.description || '',
+                    mode: result.mode === 'Zeroleak' ? 'Zeroleak' : 'Normal'
+                })
+                
+                if (result.subjects && result.subjects.length > 0) {
+                    setSubjects(result.subjects.map(s => ({
+                        subject: s.subject,
+                        numQuestions: s.numQuestions || 10,
+                        durationMinutes: s.durationMinutes || Math.round((s.numQuestions || 10) * 1.5),
+                        passingPercentage: s.passingPercentage || 50
+                    })))
+                }
+                toast.success('AI Copilot successfully configured the exam!')
+                setAiCopilotPrompt('')
+                setStep(3)
+            } else {
+                toast.error('AI could not determine the exam structure.')
+            }
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'AI Copilot failed')
+        } finally {
+            setAiCopilotLoading(false)
+        }
+    }
 
     React.useEffect(() => {
         axios.get(`${API}/questions`, { headers: { Authorization: `Bearer ${getToken()}` } })
@@ -29,8 +69,11 @@ export const AdminExamBuilderPage = () => {
         if (subjects.some(s => s.subject.toLowerCase() === currentSubj.subject.toLowerCase())) {
             return toast.error('Subject already added')
         }
+        if (currentSubj.easy + currentSubj.medium + currentSubj.hard !== 100) {
+            return toast.error('Difficulty percentages must sum to 100')
+        }
         setSubjects([...subjects, { ...currentSubj }])
-        setCurrentSubj({ subject: '', numQuestions: 10, durationMinutes: 60, passingPercentage: 50 })
+        setCurrentSubj({ subject: '', numQuestions: 10, durationMinutes: 60, passingPercentage: 50, easy: 30, medium: 50, hard: 20 })
     }
 
     const removeSubject = (idx) => {
@@ -70,7 +113,7 @@ export const AdminExamBuilderPage = () => {
                 </div>
             </div>
 
-            <div style={{ maxWidth: 800, margin: '0 auto' }}>
+            <div style={{ width: '100%' }}>
                 <div style={{ display: 'flex', gap: 12, marginBottom: 32 }}>
                     {[
                         { num: 1, label: 'Details', icon: <BookOpen size={16} /> },
@@ -95,6 +138,27 @@ export const AdminExamBuilderPage = () => {
                 <div className="card" style={{ padding: 32 }}>
                     {step === 1 && (
                         <div>
+                            {/* AI Copilot Section */}
+                            <div style={{ background: 'var(--brand-primary-subtle)', border: '1px solid var(--brand-primary-border)', padding: 16, borderRadius: 'var(--radius-md)', marginBottom: 32 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                                    <div style={{ width: 24, height: 24, borderRadius: 6, background: 'var(--brand-primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Search size={14} /></div>
+                                    <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>AI Exam Copilot</h3>
+                                </div>
+                                <div style={{ display: 'flex', gap: 12 }}>
+                                    <input 
+                                        type="text" 
+                                        className="form-input" 
+                                        placeholder="e.g. Build me a midterm on Operating Systems and Computer Networks." 
+                                        value={aiCopilotPrompt} 
+                                        onChange={e => setAiCopilotPrompt(e.target.value)}
+                                        style={{ flex: 1, background: 'var(--bg-surface)' }}
+                                    />
+                                    <button className="btn btn-secondary" onClick={handleAiCopilot} disabled={aiCopilotLoading || !aiCopilotPrompt.trim()} style={{ background: 'var(--brand-primary)', color: '#fff', border: 'none', whiteSpace: 'nowrap' }}>
+                                        {aiCopilotLoading ? 'Generating...' : 'Auto-Build'}
+                                    </button>
+                                </div>
+                            </div>
+
                             <h2 style={{ fontSize: 18, marginBottom: 24 }}>Examination Details</h2>
                             <div className="form-group mb-4">
                                 <label className="form-label">Examination Title *</label>
@@ -125,7 +189,10 @@ export const AdminExamBuilderPage = () => {
 
                     {step === 2 && (
                         <div>
-                            <h2 style={{ fontSize: 18, marginBottom: 24 }}>Configure Subjects</h2>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                                <h2 style={{ fontSize: 18, margin: 0 }}>Configure Subjects</h2>
+                            </div>
+                            
 
                             {/* Subject List */}
                             {subjects.length > 0 && (
@@ -134,7 +201,9 @@ export const AdminExamBuilderPage = () => {
                                         <div key={idx} style={{ padding: 16, border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', background: 'var(--bg-surface)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                             <div>
                                                 <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{s.subject}</div>
-                                                <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{s.numQuestions} Qs • {s.durationMinutes} mins • {s.passingPercentage}% Pass</div>
+                                                <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                                                    {s.numQuestions} Qs • {s.durationMinutes} mins • {s.passingPercentage}% Pass • {s.easy !== undefined ? `${s.easy}% E / ${s.medium}% M / ${s.hard}% H` : '30% E / 50% M / 20% H'}
+                                                </div>
                                             </div>
                                             <button className="btn btn-sm btn-ghost" style={{ color: 'var(--danger)' }} onClick={() => removeSubject(idx)}>
                                                 <Trash2 size={16} />
@@ -173,8 +242,25 @@ export const AdminExamBuilderPage = () => {
                                         <label className="form-label">Passing % *</label>
                                         <input type="number" className="form-input" min="1" max="100" value={currentSubj.passingPercentage} onChange={e => setCurrentSubj({ ...currentSubj, passingPercentage: parseInt(e.target.value) || 0 })} />
                                     </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Easy % *</label>
+                                        <input type="number" className="form-input" min="0" max="100" value={currentSubj.easy} onChange={e => setCurrentSubj({ ...currentSubj, easy: parseInt(e.target.value) || 0 })} />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Medium % *</label>
+                                        <input type="number" className="form-input" min="0" max="100" value={currentSubj.medium} onChange={e => setCurrentSubj({ ...currentSubj, medium: parseInt(e.target.value) || 0 })} />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Hard % *</label>
+                                        <input type="number" className="form-input" min="0" max="100" value={currentSubj.hard} onChange={e => setCurrentSubj({ ...currentSubj, hard: parseInt(e.target.value) || 0 })} />
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'flex-end', height: '100%', paddingBottom: '12px' }}>
+                                        <div style={{ fontSize: 13, color: (currentSubj.easy + currentSubj.medium + currentSubj.hard === 100) ? 'var(--success)' : 'var(--danger)', fontWeight: 600 }}>
+                                            Total: {currentSubj.easy + currentSubj.medium + currentSubj.hard}% {currentSubj.easy + currentSubj.medium + currentSubj.hard !== 100 && '(Must be 100%)'}
+                                        </div>
+                                    </div>
                                 </div>
-                                <button className="btn btn-sm btn-secondary mt-4 w-full" onClick={handleAddSubject}>
+                                <button className="btn btn-sm btn-secondary mt-4 w-full" onClick={handleAddSubject} disabled={currentSubj.easy + currentSubj.medium + currentSubj.hard !== 100}>
                                     <Plus size={16} style={{ marginRight: 6 }} /> Add Subject
                                 </button>
                             </div>

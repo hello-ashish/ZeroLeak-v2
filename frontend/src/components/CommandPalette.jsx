@@ -287,7 +287,7 @@ const NavOnlyPalette = ({ open, onClose, role }) => {
 const SearchPalette = ({ open, onClose, role }) => {
     const navigate = useNavigate()
     const [query, setQuery]               = useState('')
-    const [searchResults, setSearchResults] = useState({ students: [], professors: [] })
+    const [searchResults, setSearchResults] = useState({ students: [], professors: [], batches: [], exams: [] })
     const [isSearching, setIsSearching]   = useState(false)
 
     useEffect(() => {
@@ -296,8 +296,11 @@ const SearchPalette = ({ open, onClose, role }) => {
             setIsSearching(true)
             try {
                 const token =
-                    localStorage.getItem('adminToken')    ||
-                    localStorage.getItem('auditorToken')
+                    localStorage.getItem(`${role}Token`) ||
+                    localStorage.getItem('adminToken') ||
+                    localStorage.getItem('auditorToken') ||
+                    localStorage.getItem('profToken') ||
+                    localStorage.getItem('studentToken')
                 const res = await axios.get(`http://localhost:4000/api/search?q=${encodeURIComponent(query)}`, {
                     headers: { Authorization: `Bearer ${token}` }
                 })
@@ -313,7 +316,7 @@ const SearchPalette = ({ open, onClose, role }) => {
 
     const handleClose = () => { onClose(); setQuery('') }
     const handleSelect = (path) => { navigate(path); handleClose() }
-    const hasResults = searchResults.students.length > 0 || searchResults.professors.length > 0
+    const hasResults = searchResults.students?.length > 0 || searchResults.professors?.length > 0 || searchResults.batches?.length > 0 || searchResults.exams?.length > 0
 
     return (
         <Command.Dialog
@@ -332,7 +335,13 @@ const SearchPalette = ({ open, onClose, role }) => {
                 }}>
                     <Search size={17} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
                     <input
-                        placeholder="Search students, professors, or navigate…"
+                        placeholder={
+                            role === 'admin' ? "Search admin workspace or navigate…" :
+                            role === 'professor' ? "Search your batches, exams, or navigate…" :
+                            role === 'student' ? "Search your exams, results, or navigate…" :
+                            role === 'auditor' ? "Search audit logs or navigate…" :
+                            "Search or navigate…"
+                        }
                         className="command-input"
                         autoFocus
                         value={query}
@@ -446,6 +455,74 @@ const SearchPalette = ({ open, onClose, role }) => {
                                 ))}
                             </Command.Group>
                         )}
+                        {searchResults.batches?.length > 0 && (
+                            <Command.Group heading="Batches">
+                                {searchResults.batches.map(b => (
+                                    <Command.Item key={b._id} onSelect={() => handleSelect(`/${role}/batches`)}
+                                        style={{ borderRadius: 10, margin: '2px 0' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%' }}>
+                                            <div style={{
+                                                width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
+                                                background: 'rgba(245,158,11,0.12)', color: '#f59e0b',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                fontSize: 12, fontWeight: 700
+                                            }}>
+                                                {b.name?.substring(0, 2).toUpperCase() || 'BA'}
+                                            </div>
+                                            <div style={{ flex: 1, overflow: 'hidden' }}>
+                                                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)',
+                                                               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                    {b.name}
+                                                </div>
+                                                <div style={{ fontSize: 12, color: 'var(--text-tertiary)',
+                                                               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                    {b.subject} {b.status ? `• ${b.status}` : ''}
+                                                </div>
+                                            </div>
+                                            <span style={{
+                                                fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20,
+                                                background: 'rgba(245,158,11,0.1)', color: '#f59e0b',
+                                                border: '1px solid rgba(245,158,11,0.3)', whiteSpace: 'nowrap'
+                                            }}>Batch</span>
+                                        </div>
+                                    </Command.Item>
+                                ))}
+                            </Command.Group>
+                        )}
+                        {searchResults.exams?.length > 0 && (
+                            <Command.Group heading="Exams">
+                                {searchResults.exams.map(e => (
+                                    <Command.Item key={e._id} onSelect={() => handleSelect(`/${role}/exams`)}
+                                        style={{ borderRadius: 10, margin: '2px 0' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%' }}>
+                                            <div style={{
+                                                width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
+                                                background: 'rgba(236,72,153,0.12)', color: '#ec4899',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                fontSize: 12, fontWeight: 700
+                                            }}>
+                                                {e.title?.substring(0, 2).toUpperCase() || 'EX'}
+                                            </div>
+                                            <div style={{ flex: 1, overflow: 'hidden' }}>
+                                                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)',
+                                                               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                    {e.title}
+                                                </div>
+                                                <div style={{ fontSize: 12, color: 'var(--text-tertiary)',
+                                                               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                    {e.status}
+                                                </div>
+                                            </div>
+                                            <span style={{
+                                                fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20,
+                                                background: 'rgba(236,72,153,0.1)', color: '#ec4899',
+                                                border: '1px solid rgba(236,72,153,0.3)', whiteSpace: 'nowrap'
+                                            }}>Exam</span>
+                                        </div>
+                                    </Command.Item>
+                                ))}
+                            </Command.Group>
+                        )}
                     </Command.List>
                 )}
 
@@ -459,10 +536,6 @@ const SearchPalette = ({ open, onClose, role }) => {
 export const CommandPalette = ({ open, onClose }) => {
     const location = useLocation()
     const role = location.pathname.split('/')[1] || 'student'
-    const canSearch = role === 'admin' || role === 'auditor'
 
-    if (canSearch) {
-        return <SearchPalette open={open} onClose={onClose} role={role} />
-    }
-    return <NavOnlyPalette open={open} onClose={onClose} role={role} />
+    return <SearchPalette open={open} onClose={onClose} role={role} />
 }

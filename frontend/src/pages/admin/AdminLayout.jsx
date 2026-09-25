@@ -201,7 +201,7 @@ export const AdminLayout = ({ children, pendingBatchCount = 0 }) => {
                         aria-label="Open command palette"
                     >
                         <Search size={16} style={{ color: 'var(--text-tertiary)' }} />
-                        <span className="topbar-search-text">Search students, exams, questions...</span>
+                        <span className="topbar-search-text">Search {adminData.name ? adminData.name.split(' ')[0] + "'s" : "your"} admin workspace...</span>
                         <span className="topbar-search-kbd">⌘K</span>
                     </div>
 

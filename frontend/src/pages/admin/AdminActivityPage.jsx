@@ -33,6 +33,8 @@ export default function AdminActivityPage() {
     const [loading, setLoading] = useState(true)
     const [page, setPage] = useState(1)
     const [previewModal, setPreviewModal] = useState({ isOpen: false, title: '', content: '', headers: [], rows: [], filename: '' })
+    const [aiSummaryResult, setAiSummaryResult] = useState(null)
+    const [aiSummarizing, setAiSummarizing] = useState(false)
     const LIMIT = 20
     const navigate = useNavigate()
     const toast = useToast()
@@ -52,6 +54,24 @@ export default function AdminActivityPage() {
             toast.error('Failed to load activity log')
         } finally {
             setLoading(false)
+        }
+    }
+
+    const doAiSummary = async () => {
+        if (!logs.length) return
+        setAiSummarizing(true)
+        setAiSummaryResult(null)
+        try {
+            const token = getToken()
+            const res = await axios.post(`${API}/ai/admin/audit-summary`, { logs: logs.slice(0, 30) }, {
+                headers: { Authorization: `Bearer ${token}` }
+            })
+            setAiSummaryResult(res.data)
+            toast.success("AI Daily Summary complete")
+        } catch (error) {
+            toast.error("AI Summary failed")
+        } finally {
+            setAiSummarizing(false)
         }
     }
 
@@ -110,6 +130,9 @@ export default function AdminActivityPage() {
                         <p className="page-subtitle">Immutable record of administrative actions and platform events</p>
                     </div>
                     <div className="page-actions">
+                        <button className="btn btn-secondary flex items-center gap-2" onClick={doAiSummary} disabled={aiSummarizing} style={{ background: 'var(--brand-primary)', color: '#fff', border: 'none' }}>
+                            {aiSummarizing ? 'Summarizing...' : 'AI Daily Summary'}
+                        </button>
                         <button className="btn btn-secondary flex items-center gap-2" onClick={() => fetchLogs(page)}>
                             <RefreshCw size={14} /> Refresh
                         </button>
@@ -120,6 +143,22 @@ export default function AdminActivityPage() {
                 </div>
             </div>
 
+            {aiSummaryResult && (
+                <div style={{ marginBottom: 24, padding: '24px 32px', background: 'var(--bg-card)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                        <div style={{ width: 32, height: 32, borderRadius: 8, background: aiSummaryResult.status === 'Normal' ? 'var(--success-subtle)' : aiSummaryResult.status === 'Warning' ? 'var(--warning-subtle)' : 'var(--danger-subtle)', color: aiSummaryResult.status === 'Normal' ? 'var(--success)' : aiSummaryResult.status === 'Warning' ? 'var(--warning)' : 'var(--danger)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {aiSummaryResult.status === 'Normal' ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}
+                        </div>
+                        <div>
+                            <h3 style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>AI Platform Health Summary</h3>
+                            <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Status: <strong style={{ color: aiSummaryResult.status === 'Normal' ? 'var(--success)' : aiSummaryResult.status === 'Warning' ? 'var(--warning)' : 'var(--danger)' }}>{aiSummaryResult.status}</strong></p>
+                        </div>
+                    </div>
+                    <div style={{ fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.6, whiteSpace: 'pre-line' }}>
+                        {aiSummaryResult.summaryMarkdown}
+                    </div>
+                </div>
+            )}
             <div style={{ display: 'flex', gap: 12, marginBottom: 24, padding: '16px 20px', background: 'var(--success-subtle)', border: '1px solid var(--success-border)', borderRadius: 'var(--radius-md)' }}>
                 <ShieldCheck size={20} color="var(--success)" style={{ flexShrink: 0 }} />
                 <div>
