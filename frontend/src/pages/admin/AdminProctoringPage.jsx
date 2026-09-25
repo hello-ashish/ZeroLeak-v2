@@ -123,7 +123,10 @@ export const AdminProctoringPage = () => {
 
     useEffect(() => {
         const token = localStorage.getItem('adminToken');
-        if (!token) return;
+        if (!token) {
+            window.location.href = '/admin/login';
+            return;
+        }
 
         // Fetch initial data
         const fetchData = async () => {
