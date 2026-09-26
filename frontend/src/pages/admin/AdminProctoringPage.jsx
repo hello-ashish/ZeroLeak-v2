@@ -64,7 +64,7 @@ const StudentMonitorCard = ({ session, onListen, listeningTo, onOpenDetails }) =
     const peerConnectionRef = useRef(null);
     const [connecting, setConnecting] = useState(false);
 
-    const isListening = listeningTo === session.studentId._id;
+    const isListening = listeningTo === session.studentId?._id;
     const isOnline = session.connectionStatus === 'ONLINE';
     const hasIncidents = session.incidentCount > 0;
 
@@ -82,11 +82,11 @@ const StudentMonitorCard = ({ session, onListen, listeningTo, onOpenDetails }) =
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontWeight: 'bold', fontSize: '16px'
                     }}>
-                        {session.studentId.name.charAt(0)}
+                        {session.studentId?.name?.charAt(0) || '?'}
                     </div>
                     <div>
-                        <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>{session.studentId.name}</h4>
-                        <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', letterSpacing: '0.05em' }}>{session.studentId.studentId}</span>
+                        <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>{session.studentId?.name || 'Unknown Student'}</h4>
+                        <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', letterSpacing: '0.05em' }}>{session.studentId?.studentId || 'N/A'}</span>
                     </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
@@ -199,7 +199,7 @@ const StudentMonitorCard = ({ session, onListen, listeningTo, onOpenDetails }) =
                 <button 
                     className={`btn ${isListening ? 'btn-primary' : 'btn-outline'}`} 
                     style={{ flex: 1, padding: '8px', fontSize: '13px', transition: 'all 0.2s', background: isListening ? 'var(--danger)' : undefined, borderColor: isListening ? 'var(--danger)' : undefined, color: isListening ? '#fff' : undefined }}
-                    onClick={() => onListen(session.studentId._id)}
+                    onClick={() => onListen(session.studentId?._id)}
                     disabled={session.microphoneStatus !== 'CONNECTED' || !(session.streams?.screen || session.streams?.camera || session.stream)}
                 >
                     {isListening ? <Mic size={16} style={{ marginRight: 6, animation: 'pulse-danger 1.5s infinite' }}/> : <MicOff size={16} style={{ marginRight: 6 }}/>}
@@ -334,7 +334,7 @@ export const AdminProctoringPage = () => {
                 const trackStream = event.streams[0];
                 
                 setSessions(prev => prev.map(s => {
-                    if (String(s.studentId._id) === String(studentId)) {
+                    if (String(s.studentId?._id) === String(studentId)) {
                         const newS = { ...s };
                         if (!newS.streams) newS.streams = { camera: null, screen: null };
                         
@@ -499,7 +499,7 @@ export const AdminProctoringPage = () => {
                 <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setSelectedSession(null)}>
                     <div className="card" style={{ width: '100%', maxWidth: '800px', padding: '24px', maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                            <h2 style={{ margin: 0 }}>{selectedSession.studentId.name} Monitoring Details</h2>
+                            <h2 style={{ margin: 0 }}>{selectedSession.studentId?.name || 'Unknown'} Monitoring Details</h2>
                             <button className="btn btn-outline" onClick={() => setSelectedSession(null)}>Close</button>
                         </div>
                         
@@ -508,7 +508,7 @@ export const AdminProctoringPage = () => {
                                 <h4>Session Info</h4>
                                 <ul style={{ listStyle: 'none', padding: 0, margin: 0, color: 'var(--text-secondary)' }}>
                                     <li style={{ padding: '8px 0', borderBottom: '1px solid var(--border-subtle)' }}><strong>Exam:</strong> {selectedSession.examId.title}</li>
-                                    <li style={{ padding: '8px 0', borderBottom: '1px solid var(--border-subtle)' }}><strong>Student ID:</strong> {selectedSession.studentId.studentId}</li>
+                                    <li style={{ padding: '8px 0', borderBottom: '1px solid var(--border-subtle)' }}><strong>Student ID:</strong> {selectedSession.studentId?.studentId || 'N/A'}</li>
                                     <li style={{ padding: '8px 0', borderBottom: '1px solid var(--border-subtle)' }}><strong>Started At:</strong> {new Date(selectedSession.startedAt).toLocaleString()}</li>
                                     <li style={{ padding: '8px 0', borderBottom: '1px solid var(--border-subtle)' }}><strong>Connection:</strong> {selectedSession.connectionStatus}</li>
                                 </ul>
@@ -532,7 +532,7 @@ export const AdminProctoringPage = () => {
                                             ref={(ref) => { if (ref) ref.srcObject = selectedSession.streams.screen; }}
                                             autoPlay 
                                             playsInline 
-                                            muted={listeningTo !== selectedSession.studentId._id}
+                                            muted={listeningTo !== selectedSession.studentId?._id}
                                             style={{ width: '100%', borderRadius: '8px', backgroundColor: '#000' }}
                                         />
                                     </div>
@@ -544,7 +544,7 @@ export const AdminProctoringPage = () => {
                                             ref={(ref) => { if (ref) ref.srcObject = selectedSession.streams?.camera || selectedSession.stream; }}
                                             autoPlay 
                                             playsInline 
-                                            muted={!selectedSession.streams?.screen && listeningTo === selectedSession.studentId._id ? false : true}
+                                            muted={!selectedSession.streams?.screen && listeningTo === selectedSession.studentId?._id ? false : true}
                                             style={{ width: '100%', borderRadius: '8px', backgroundColor: '#000' }}
                                         />
                                     </div>

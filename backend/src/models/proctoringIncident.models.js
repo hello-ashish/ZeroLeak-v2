@@ -88,6 +88,7 @@ const proctoringIncidentSchema = new Schema(
 
 // Indexes for efficient querying
 proctoringIncidentSchema.index({ examId: 1, studentId: 1 });
+proctoringIncidentSchema.index({ examId: 1, reviewStatus: 1 });
 proctoringIncidentSchema.index({ proctoringSessionId: 1 });
 proctoringIncidentSchema.index({ type: 1 });
 proctoringIncidentSchema.index({ severity: 1 });

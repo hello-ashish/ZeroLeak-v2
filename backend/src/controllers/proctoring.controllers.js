@@ -198,19 +198,17 @@ export const endSession = async (req, res) => {
 // Returns list of exams that currently have active proctoring sessions
 export const getActiveExams = async (req, res) => {
     try {
-        const activeExamIds = await ProctoringSession.distinct("examId", {
-            status: { $in: ["INITIALIZING", "ACTIVE", "PAUSED", "DISCONNECTED"] }
-        });
-
-        const exams = await Exam.find({ _id: { $in: activeExamIds } })
-            .select("title subject status scheduledAt")
-            .lean();
-
-        // Count sessions per exam
+        // Count sessions per exam and get active exam IDs in one go
         const examCounts = await ProctoringSession.aggregate([
             { $match: { status: { $in: ["INITIALIZING", "ACTIVE", "PAUSED", "DISCONNECTED"] } } },
             { $group: { _id: "$examId", count: { $sum: 1 } } }
         ]);
+
+        const activeExamIds = examCounts.map(ec => ec._id);
+
+        const exams = await Exam.find({ _id: { $in: activeExamIds } })
+            .select("title subject status scheduledAt")
+            .lean();
 
         const countMap = {};
         examCounts.forEach(ec => { countMap[ec._id.toString()] = ec.count; });

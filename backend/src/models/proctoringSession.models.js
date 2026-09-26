@@ -80,7 +80,7 @@ const proctoringSessionSchema = new Schema(
 // Indexes for efficient querying
 proctoringSessionSchema.index({ examId: 1, studentId: 1 });
 proctoringSessionSchema.index({ status: 1 });
-proctoringSessionSchema.index({ lastHeartbeat: 1 });
+proctoringSessionSchema.index({ status: 1, examId: 1 });
 proctoringSessionSchema.index({ startedAt: -1 });
 // Prevent duplicate active sessions for the same student/exam
 proctoringSessionSchema.index(
