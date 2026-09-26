@@ -99,7 +99,7 @@ const TakeExam = () => {
                         // Admin authorized a fresh attempt — clear the stale localStorage flag
                         localStorage.removeItem(terminatedKey);
                         // Fall through to load the exam below
-                    } else if (!existingResult.isTerminated) {
+                    } else if (existingResult.status === "Completed") {
                         // Exam was completed normally — redirect
                         alert("You have already completed this exam.");
                         return navigate('/student/exams');

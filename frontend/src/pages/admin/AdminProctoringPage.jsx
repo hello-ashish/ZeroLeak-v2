@@ -118,24 +118,43 @@ const StudentMonitorCard = ({ session, onListen, listeningTo, onOpenDetails }) =
                 position: 'relative',
                 border: '1px solid var(--border-subtle)'
             }}>
-                {session.stream ? (
-                    <video 
-                        ref={(el) => {
-                            if (el && session.stream) {
-                                if (el.srcObject !== session.stream) {
-                                    el.srcObject = session.stream;
+                {session.streams?.screen || session.streams?.camera || session.stream ? (
+                    <>
+                        <video 
+                            ref={(el) => {
+                                const mainStream = session.streams?.screen || session.streams?.camera || session.stream;
+                                if (el && mainStream) {
+                                    if (el.srcObject !== mainStream) {
+                                        el.srcObject = mainStream;
+                                    }
+                                    const playPromise = el.play();
+                                    if (playPromise !== undefined) {
+                                        playPromise.catch(e => console.error("Auto-play error:", e));
+                                    }
                                 }
-                                const playPromise = el.play();
-                                if (playPromise !== undefined) {
-                                    playPromise.catch(e => console.error("Auto-play error:", e));
-                                }
-                            }
-                        }}
-                        autoPlay 
-                        playsInline 
-                        muted={!isListening}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
+                            }}
+                            autoPlay 
+                            playsInline 
+                            muted={!isListening}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                        {session.streams?.camera && session.streams?.screen && (
+                            <div style={{ position: 'absolute', bottom: '10px', right: '10px', width: '25%', aspectRatio: '4/3', borderRadius: '4px', overflow: 'hidden', border: '2px solid rgba(255,255,255,0.2)', boxShadow: '0 4px 12px rgba(0,0,0,0.5)', zIndex: 10 }}>
+                                <video 
+                                    ref={(el) => {
+                                        if (el && session.streams.camera && el.srcObject !== session.streams.camera) {
+                                            el.srcObject = session.streams.camera;
+                                            el.play().catch(e => console.error("Auto-play error:", e));
+                                        }
+                                    }}
+                                    autoPlay 
+                                    playsInline 
+                                    muted={true}
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover', backgroundColor: '#000' }}
+                                />
+                            </div>
+                        )}
+                    </>
                 ) : (
                     <div style={{ color: 'var(--text-tertiary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
                         <div style={{ 
@@ -181,7 +200,7 @@ const StudentMonitorCard = ({ session, onListen, listeningTo, onOpenDetails }) =
                     className={`btn ${isListening ? 'btn-primary' : 'btn-outline'}`} 
                     style={{ flex: 1, padding: '8px', fontSize: '13px', transition: 'all 0.2s', background: isListening ? 'var(--danger)' : undefined, borderColor: isListening ? 'var(--danger)' : undefined, color: isListening ? '#fff' : undefined }}
                     onClick={() => onListen(session.studentId._id)}
-                    disabled={session.microphoneStatus !== 'CONNECTED' || !session.stream}
+                    disabled={session.microphoneStatus !== 'CONNECTED' || !(session.streams?.screen || session.streams?.camera || session.stream)}
                 >
                     {isListening ? <Mic size={16} style={{ marginRight: 6, animation: 'pulse-danger 1.5s infinite' }}/> : <MicOff size={16} style={{ marginRight: 6 }}/>}
                     {isListening ? 'Mute' : 'Listen'}
@@ -297,7 +316,7 @@ export const AdminProctoringPage = () => {
         });
 
         // WebRTC Signaling
-        newSocket.on('proctoring:offer', async ({ fromStudentSocketId, studentId, offer }) => {
+        newSocket.on('proctoring:offer', async ({ fromStudentSocketId, studentId, offer, streamIds }) => {
             console.log("Received WebRTC offer from student:", studentId);
             
             const pc = new RTCPeerConnection({
@@ -312,11 +331,26 @@ export const AdminProctoringPage = () => {
 
             pc.ontrack = (event) => {
                 console.log("Received track from student", studentId);
-                const stream = event.streams[0];
+                const trackStream = event.streams[0];
                 
                 setSessions(prev => prev.map(s => {
                     if (String(s.studentId._id) === String(studentId)) {
-                        return { ...s, stream };
+                        const newS = { ...s };
+                        if (!newS.streams) newS.streams = { camera: null, screen: null };
+                        
+                        if (streamIds && trackStream.id === streamIds.camera) {
+                            newS.streams.camera = trackStream;
+                        } else if (streamIds && trackStream.id === streamIds.screen) {
+                            newS.streams.screen = trackStream;
+                        } else {
+                            // Fallback
+                            if (!newS.streams.camera) {
+                                newS.streams.camera = trackStream;
+                            } else {
+                                newS.streams.screen = trackStream;
+                            }
+                        }
+                        return newS;
                     }
                     return s;
                 }));
@@ -359,7 +393,7 @@ export const AdminProctoringPage = () => {
         
         const requestStreams = () => {
             sessionsRef.current.forEach(session => {
-                if (session.connectionStatus === 'ONLINE' && session.socketId && !session.stream) {
+                if (session.connectionStatus === 'ONLINE' && session.socketId && !(session.streams?.screen || session.streams?.camera || session.stream)) {
                     socket.emit('proctoring:request-stream', { studentSocketId: session.socketId });
                 }
             });
@@ -489,16 +523,32 @@ export const AdminProctoringPage = () => {
                             </div>
                         </div>
 
-                        {selectedSession.stream && (
-                            <div style={{ marginTop: '24px' }}>
-                                <h4>Live Feed</h4>
-                                <video 
-                                    ref={(ref) => { if (ref) ref.srcObject = selectedSession.stream; }}
-                                    autoPlay 
-                                    playsInline 
-                                    muted={listeningTo !== selectedSession.studentId._id}
-                                    style={{ width: '100%', borderRadius: '8px', backgroundColor: '#000' }}
-                                />
+                        {(selectedSession.streams?.screen || selectedSession.streams?.camera || selectedSession.stream) && (
+                            <div style={{ marginTop: '24px', display: 'flex', gap: '20px' }}>
+                                {selectedSession.streams?.screen && (
+                                    <div style={{ flex: 1 }}>
+                                        <h4>Screen Feed</h4>
+                                        <video 
+                                            ref={(ref) => { if (ref) ref.srcObject = selectedSession.streams.screen; }}
+                                            autoPlay 
+                                            playsInline 
+                                            muted={listeningTo !== selectedSession.studentId._id}
+                                            style={{ width: '100%', borderRadius: '8px', backgroundColor: '#000' }}
+                                        />
+                                    </div>
+                                )}
+                                {(selectedSession.streams?.camera || selectedSession.stream) && (
+                                    <div style={{ flex: 1 }}>
+                                        <h4>Camera Feed</h4>
+                                        <video 
+                                            ref={(ref) => { if (ref) ref.srcObject = selectedSession.streams?.camera || selectedSession.stream; }}
+                                            autoPlay 
+                                            playsInline 
+                                            muted={!selectedSession.streams?.screen && listeningTo === selectedSession.studentId._id ? false : true}
+                                            style={{ width: '100%', borderRadius: '8px', backgroundColor: '#000' }}
+                                        />
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>

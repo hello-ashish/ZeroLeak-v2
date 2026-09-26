@@ -9,7 +9,7 @@ export const useProctoring = (examId, isStarted) => {
     const [cameraStatus, setCameraStatus] = useState('UNKNOWN');
     const [microphoneStatus, setMicrophoneStatus] = useState('UNKNOWN');
     const [proctoringSessionId, setProctoringSessionId] = useState(null);
-    
+
     const peerConnectionRef = useRef(null);
     const socketRef = useRef(null);
 
@@ -17,21 +17,34 @@ export const useProctoring = (examId, isStarted) => {
     useEffect(() => {
         if (!isStarted) return;
 
-        let activeStream = null;
+        let activeCamStream = null;
+        let activeScrStream = null;
         let isMounted = true;
 
         const initMedia = async () => {
             try {
-                const s = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                
+                // Get Camera & Mic (Low Quality for seamless connection)
+                const camStream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: { ideal: 320, max: 640 }, height: { ideal: 240, max: 480 }, frameRate: { ideal: 10, max: 15 } },
+                    audio: true
+                });
+
+                // Get Screen (Low Quality)
+                const scrStream = await navigator.mediaDevices.getDisplayMedia({
+                    video: { width: { ideal: 1280, max: 1280 }, height: { ideal: 720, max: 720 }, frameRate: { ideal: 10, max: 15 } },
+                    audio: false
+                });
+
                 if (!isMounted) {
                     // If component unmounted before promise resolved, stop the tracks immediately
-                    s.getTracks().forEach(t => t.stop());
+                    camStream.getTracks().forEach(t => t.stop());
+                    scrStream.getTracks().forEach(t => t.stop());
                     return;
                 }
 
-                activeStream = s;
-                setStream(s);
+                activeCamStream = camStream;
+                activeScrStream = scrStream;
+                setStream({ camera: camStream, screen: scrStream });
                 setCameraStatus('CONNECTED');
                 setMicrophoneStatus('CONNECTED');
             } catch (err) {
@@ -54,8 +67,11 @@ export const useProctoring = (examId, isStarted) => {
 
         return () => {
             isMounted = false;
-            if (activeStream) {
-                activeStream.getTracks().forEach(t => t.stop());
+            if (activeCamStream) {
+                activeCamStream.getTracks().forEach(t => t.stop());
+            }
+            if (activeScrStream) {
+                activeScrStream.getTracks().forEach(t => t.stop());
             }
         };
     }, [isStarted]);
@@ -100,7 +116,7 @@ export const useProctoring = (examId, isStarted) => {
         // WebRTC Signaling
         newSocket.on('proctoring:stream-requested', async ({ adminSocketId }) => {
             console.log("Admin requested stream", adminSocketId);
-            
+
             if (peerConnectionRef.current) {
                 peerConnectionRef.current.close();
             }
@@ -111,7 +127,12 @@ export const useProctoring = (examId, isStarted) => {
             peerConnectionRef.current = pc;
 
             // Add local tracks to peer connection
-            stream.getTracks().forEach(track => pc.addTrack(track, stream));
+            if (stream.camera) {
+                stream.camera.getTracks().forEach(track => pc.addTrack(track, stream.camera));
+            }
+            if (stream.screen) {
+                stream.screen.getTracks().forEach(track => pc.addTrack(track, stream.screen));
+            }
 
             pc.onicecandidate = (event) => {
                 if (event.candidate) {
@@ -122,7 +143,14 @@ export const useProctoring = (examId, isStarted) => {
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
 
-            newSocket.emit('proctoring:offer', { targetSocketId: adminSocketId, offer });
+            newSocket.emit('proctoring:offer', {
+                targetSocketId: adminSocketId,
+                offer,
+                streamIds: {
+                    camera: stream.camera ? stream.camera.id : null,
+                    screen: stream.screen ? stream.screen.id : null
+                }
+            });
         });
 
         newSocket.on('proctoring:answer', async ({ fromAdminSocketId, answer }) => {
@@ -140,7 +168,7 @@ export const useProctoring = (examId, isStarted) => {
                 }
             }
         });
-        
+
         newSocket.on('proctoring:monitoring-stopped', () => {
             console.log("Admin stopped monitoring");
             if (peerConnectionRef.current) {

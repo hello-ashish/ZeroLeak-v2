@@ -19,12 +19,12 @@ export const ProctoringStatusPanel = ({ stream, cameraStatus, microphoneStatus, 
                 overflow: 'hidden',
                 position: 'relative'
             }}>
-                {stream ? (
+                {stream?.camera ? (
                     <video 
                         ref={(el) => {
-                            if (el && stream) {
-                                if (el.srcObject !== stream) {
-                                    el.srcObject = stream;
+                            if (el && stream.camera) {
+                                if (el.srcObject !== stream.camera) {
+                                    el.srcObject = stream.camera;
                                 }
                                 const playPromise = el.play();
                                 if (playPromise !== undefined) {
