@@ -11,6 +11,10 @@ export default defineConfig({
       '/proctoring': {
         target: 'http://localhost:4000',
         ws: true
+      },
+      '/socket.io': {
+        target: 'http://localhost:4000',
+        ws: true
       }
     }
   },

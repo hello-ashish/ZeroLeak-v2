@@ -221,13 +221,11 @@ const TakeExam = () => {
         // Also report live to proctoring admin via socket
         reportIncident(event.type, event.severity, event.description, event.details);
 
-        // --- DEVELOPMENT BYPASS ---
-        // If testing on localhost, we bypass the strict warning counter and termination
+        // --- DISABLED BY REQUEST ---
+        // Disabling the strict warning counter and termination for now
         // so you can switch between Admin and Student tabs without getting blocked.
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-            console.warn(`[DEV MODE] Anti-cheating violation detected: ${event.type}. Termination bypassed for local testing.`);
-            return;
-        }
+        console.warn(`[DEV MODE] Anti-cheating violation detected: ${event.type}. Termination bypassed for now.`);
+        return;
         // --------------------------
 
         // If the counter is already at or beyond the limit (e.g. seeded from backend
