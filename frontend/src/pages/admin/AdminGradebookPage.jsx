@@ -10,7 +10,7 @@ import { Download, BarChart3, TrendingUp, Trophy, Search, ChevronRight, Graduati
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar, Cell } from 'recharts'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
-const API = 'http://localhost:4000/api'
+const API = '/api'
 const getToken = () => localStorage.getItem('adminToken')
 
 const CHART_COLORS = {

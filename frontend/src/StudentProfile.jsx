@@ -43,7 +43,7 @@ const StudentProfile = () => {
                 email: formData.email
             }
 
-            const response = await axios.put('http://localhost:4000/api/students/profile', payload, {
+            const response = await axios.put('/api/students/profile', payload, {
                 headers: { Authorization: `Bearer ${token}` }
             })
 
@@ -80,7 +80,7 @@ const StudentProfile = () => {
                 newPassword: formData.password
             }
 
-            await axios.put('http://localhost:4000/api/students/change-password', payload, {
+            await axios.put('/api/students/change-password', payload, {
                 headers: { Authorization: `Bearer ${token}` }
             })
 

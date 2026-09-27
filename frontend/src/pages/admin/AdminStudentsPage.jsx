@@ -9,7 +9,7 @@ import { SkeletonTable, EmptyState } from '../../components/SkeletonLoader.jsx'
 import { ScorePill } from '../../components/StatusBadge.jsx'
 import { useToast } from '../../components/Toast.jsx'
 
-const API = 'http://localhost:4000/api'
+const API = '/api'
 const getToken = () => localStorage.getItem('adminToken')
 
 export default function AdminStudentsPage() {

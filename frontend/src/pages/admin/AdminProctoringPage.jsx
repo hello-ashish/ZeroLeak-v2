@@ -4,8 +4,8 @@ import { io } from 'socket.io-client';
 import { AdminLayout } from './AdminLayout.jsx';
 import { Activity, Video, Mic, MicOff, MonitorPlay, AlertTriangle, Search, Filter, ShieldAlert } from 'lucide-react';
 
-const API = 'http://localhost:4000/api';
-const SOCKET_URL = 'http://localhost:4000/proctoring';
+const API = '/api';
+const SOCKET_URL = '/proctoring';
 
 const pageStyles = `
     .proctor-card {

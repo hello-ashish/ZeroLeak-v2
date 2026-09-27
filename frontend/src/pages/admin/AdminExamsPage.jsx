@@ -8,7 +8,7 @@ import { SkeletonCard, EmptyState } from '../../components/SkeletonLoader.jsx'
 import { useToast } from '../../components/Toast.jsx'
 import { Search, ClipboardList, Play, Square, Trash2, Plus, ChevronDown, ChevronRight, Check } from 'lucide-react'
 
-const API = 'http://localhost:4000/api'
+const API = '/api'
 const getToken = () => localStorage.getItem('adminToken')
 
 const TABS = ['All', 'Draft', 'Ongoing', 'Completed', 'Archived']

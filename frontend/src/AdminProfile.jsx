@@ -29,7 +29,7 @@ const AdminProfile = () => {
             const payload = { email: formData.email }
             if (formData.password) payload.password = formData.password
 
-            const response = await axios.put('http://localhost:4000/api/admin/profile', payload, {
+            const response = await axios.put('/api/admin/profile', payload, {
                 headers: {
                     Authorization: `Bearer ${token}`
                 }

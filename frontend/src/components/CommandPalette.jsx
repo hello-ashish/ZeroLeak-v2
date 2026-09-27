@@ -301,7 +301,7 @@ const SearchPalette = ({ open, onClose, role }) => {
                     localStorage.getItem('auditorToken') ||
                     localStorage.getItem('profToken') ||
                     localStorage.getItem('studentToken')
-                const res = await axios.get(`http://localhost:4000/api/search?q=${encodeURIComponent(query)}`, {
+                const res = await axios.get(`/api/search?q=${encodeURIComponent(query)}`, {
                     headers: { Authorization: `Bearer ${token}` }
                 })
                 setSearchResults(res.data)

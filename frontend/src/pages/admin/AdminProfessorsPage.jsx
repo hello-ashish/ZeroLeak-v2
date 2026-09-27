@@ -7,7 +7,7 @@ import { SkeletonTable, EmptyState } from '../../components/SkeletonLoader.jsx'
 import { useToast } from '../../components/Toast.jsx'
 import { Search, Users, Trash2, AlertTriangle, BookOpen, Clock, Activity, X, Mail, Upload, Download, CheckSquare, Loader2 } from 'lucide-react'
 
-const API = 'http://localhost:4000/api'
+const API = '/api'
 const getToken = () => localStorage.getItem('adminToken')
 
 export default function AdminProfessorsPage() {

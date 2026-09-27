@@ -16,7 +16,7 @@ import {
 } from 'recharts'
 import { format, subDays } from 'date-fns'
 
-const API = 'http://localhost:4000/api'
+const API = '/api'
 const getToken = () => localStorage.getItem('adminToken')
 
 const CHART_COLORS = {

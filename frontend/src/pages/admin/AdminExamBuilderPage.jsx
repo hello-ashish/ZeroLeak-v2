@@ -5,7 +5,7 @@ import { ArrowLeft, Check, BookOpen, Settings, Search, Database, Trash2, Plus } 
 import { useToast } from '../../components/Toast.jsx'
 import axios from 'axios'
 
-const API = 'http://localhost:4000/api'
+const API = '/api'
 const getToken = () => localStorage.getItem('adminToken')
 
 export const AdminExamBuilderPage = () => {

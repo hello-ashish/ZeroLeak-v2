@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { io } from 'socket.io-client';
 
-const SOCKET_URL = 'http://localhost:4000/proctoring';
+const SOCKET_URL = '/proctoring';
 
 export const useProctoring = (examId, isStarted) => {
     const [socket, setSocket] = useState(null);

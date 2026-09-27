@@ -7,7 +7,7 @@ import { EmptyState } from '../../components/SkeletonLoader.jsx'
 import { useToast } from '../../components/Toast.jsx'
 import { ArrowLeft, Clock, Search, Database, Trash2, Users, BarChart3, Info, Plus } from 'lucide-react'
 
-const API = 'http://localhost:4000/api'
+const API = '/api'
 const getToken = () => localStorage.getItem('adminToken')
 const diffColors = { easy: 'var(--success)', medium: 'var(--warning)', hard: 'var(--danger)' }
 

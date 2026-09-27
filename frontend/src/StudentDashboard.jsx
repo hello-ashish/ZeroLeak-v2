@@ -26,7 +26,7 @@ const StudentDashboard = () => {
 
   const fetchExams = async (token) => {
     try {
-      const response = await axios.get('http://localhost:4000/api/students/exams', {
+      const response = await axios.get('/api/students/exams', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setExams(response.data.exams);
@@ -37,7 +37,7 @@ const StudentDashboard = () => {
 
   const fetchResults = async (token) => {
     try {
-      const response = await axios.get('http://localhost:4000/api/students/results', {
+      const response = await axios.get('/api/students/results', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setResults(response.data.results);

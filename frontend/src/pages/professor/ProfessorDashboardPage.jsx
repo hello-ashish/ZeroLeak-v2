@@ -13,7 +13,7 @@ const ProfessorDashboardPage = () => {
 
     const fetchMyBatches = async (token) => {
         try {
-            const response = await axios.get('http://localhost:4000/api/professor/batches', {
+            const response = await axios.get('/api/professor/batches', {
                 headers: { Authorization: `Bearer ${token}` }
             })
             setBatches(response.data.batches || [])

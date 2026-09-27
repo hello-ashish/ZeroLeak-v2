@@ -7,7 +7,7 @@ import { SkeletonTable, EmptyState } from '../../components/SkeletonLoader.jsx'
 import { useToast } from '../../components/Toast.jsx'
 import { Key, UserPlus, UserMinus, CheckCircle2, XCircle, AlertTriangle, PlayCircle, Trash2, Edit3, MapPin, RefreshCw, ScrollText, Download, ShieldCheck } from 'lucide-react'
 
-const API = 'http://localhost:4000/api'
+const API = '/api'
 const getToken = () => localStorage.getItem('adminToken')
 
 const getActionDetails = (action) => {

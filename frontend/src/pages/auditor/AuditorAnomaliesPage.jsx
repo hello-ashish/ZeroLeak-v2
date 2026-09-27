@@ -6,7 +6,7 @@ import axios from 'axios'
 import { format } from 'date-fns'
 import { ShieldAlert, RefreshCw, CheckCircle2, Filter } from 'lucide-react'
 
-const API = 'http://localhost:4000/api'
+const API = '/api'
 const getToken = () => localStorage.getItem('auditorToken')
 
 export default function AuditorAnomaliesPage() {

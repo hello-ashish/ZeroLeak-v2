@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { 
-    Clock, AlertCircle, CheckCircle2, ChevronLeft, ChevronRight, 
-    Flag, Maximize2, Minimize2, Edit3, Bookmark, HelpCircle, 
+import {
+    Clock, AlertCircle, CheckCircle2, ChevronLeft, ChevronRight,
+    Flag, Maximize2, Minimize2, Edit3, Bookmark, HelpCircle,
     PanelRightClose, PanelRightOpen, X, Activity, LayoutDashboard,
     ShieldAlert, AlertTriangle, Lock
 } from 'lucide-react';
@@ -20,7 +20,7 @@ const TakeExam = () => {
 
     const [exam, setExam] = useState(null);
     const [loading, setLoading] = useState(true);
-    
+
     // Core State
     const [isStarted, setIsStarted] = useState(false);
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -30,7 +30,7 @@ const TakeExam = () => {
     const [scratchpad, setScratchpad] = useState("");
     const [score, setScore] = useState(null);
     const [timeLeft, setTimeLeft] = useState(null);
-    
+
     // UI State
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [focusMode, setFocusMode] = useState(false);
@@ -72,13 +72,13 @@ const TakeExam = () => {
                 // which means the stale localStorage terminated flag must be ignored.
 
                 // Fetch the exam data
-                const response = await axios.get(`http://localhost:4000/api/students/exams/${id}`, {
+                const response = await axios.get(`/api/students/exams/${id}`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 const fetchedExam = response.data.exam;
 
                 // Fetch results from the backend to check attempt status
-                const resultsRes = await axios.get(`http://localhost:4000/api/students/results`, {
+                const resultsRes = await axios.get(`/api/students/results`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
 
@@ -115,7 +115,7 @@ const TakeExam = () => {
                 // the in-memory warningCountRef resets to 0 on every page reload.
                 try {
                     const countRes = await axios.get(
-                        `http://localhost:4000/api/anti-cheating/my-count/${id}`,
+                        `/api/anti-cheating/my-count/${id}`,
                         { headers: { Authorization: `Bearer ${token}` } }
                     );
                     if (countRes.data?.isBlocked) {
@@ -199,7 +199,7 @@ const TakeExam = () => {
         try {
             const token = localStorage.getItem('studentToken');
             if (token) {
-                const res = await axios.post('http://localhost:4000/api/anti-cheating/terminate', {
+                const res = await axios.post('/api/anti-cheating/terminate', {
                     examId: id,
                     reason: reason || "Exceeded maximum allowed security violations (3 strikes)",
                     autoBlockStudent: true
@@ -248,7 +248,7 @@ const TakeExam = () => {
         try {
             const token = localStorage.getItem('studentToken');
             if (token) {
-                const incidentRes = await axios.post('http://localhost:4000/api/anti-cheating/incident', {
+                const incidentRes = await axios.post('/api/anti-cheating/incident', {
                     examId: id,
                     violationType: event.type,
                     severity: event.severity,
@@ -336,7 +336,7 @@ const TakeExam = () => {
     // Live Tracking / Heartbeat Ping
     useEffect(() => {
         if (!isStarted || score !== null || isRestricted || isTerminated) return;
-        
+
         const pingServer = async () => {
             try {
                 const token = localStorage.getItem('studentToken');
@@ -348,7 +348,7 @@ const TakeExam = () => {
                 if (pendingSubmit && score === null && !isSubmitting) {
                     try {
                         const payload = JSON.parse(pendingSubmit);
-                        const response = await axios.post('http://localhost:4000/api/students/results', payload, { headers: { Authorization: `Bearer ${token}` } });
+                        const response = await axios.post('/api/students/results', payload, { headers: { Authorization: `Bearer ${token}` } });
                         setScore(response.data.result.score);
                         localStorage.removeItem(sessionKey);
                         localStorage.removeItem(pendingSubmitKey);
@@ -360,7 +360,7 @@ const TakeExam = () => {
                 }
                 // --------------------------------------------
 
-                await axios.post('http://localhost:4000/api/students/ping', {
+                await axios.post('/api/students/ping', {
                     currentExamId: id,
                     warningCount: warningCountRef.current
                 }, {
@@ -368,21 +368,21 @@ const TakeExam = () => {
                 });
                 const queueKey = `zl_incident_queue_${id}`;
                 const queuedIncidents = JSON.parse(localStorage.getItem(queueKey) || '[]');
-                
+
                 // Flush offline incident queue if any exist
                 if (queuedIncidents.length > 0) {
                     let allFlushed = true;
                     for (const incident of queuedIncidents) {
                         try {
-                            const incidentRes = await axios.post('http://localhost:4000/api/anti-cheating/incident', incident, {
+                            const incidentRes = await axios.post('/api/anti-cheating/incident', incident, {
                                 headers: { Authorization: `Bearer ${token}` }
                             });
-                            
+
                             if (incidentRes.data?.incidentCount > warningCountRef.current) {
                                 warningCountRef.current = incidentRes.data.incidentCount;
                                 setWarningCount(Math.min(incidentRes.data.incidentCount, MAX_WARNINGS));
                             }
-                            
+
                             if (incidentRes.data?.shouldTerminate && !isTerminatedRef.current) {
                                 handleForceTermination(incident.description);
                             }
@@ -497,7 +497,7 @@ const TakeExam = () => {
         if (isTerminated) return;
         setIsSubmitting(true);
         if (timerRef.current) clearInterval(timerRef.current);
-        
+
         const payload = {
             examId: exam._id,
             answers: Object.entries(answers).map(([questionId, selectedOptionIndex]) => ({
@@ -508,8 +508,8 @@ const TakeExam = () => {
 
         try {
             const token = localStorage.getItem('studentToken');
-            const response = await axios.post('http://localhost:4000/api/students/results', payload, { headers: { Authorization: `Bearer ${token}` } });
-            
+            const response = await axios.post('/api/students/results', payload, { headers: { Authorization: `Bearer ${token}` } });
+
             setScore(response.data.result.score);
             localStorage.removeItem(sessionKey);
             setShowPreSubmit(false);
@@ -549,7 +549,7 @@ const TakeExam = () => {
                 <div style={{ marginTop: 24, fontSize: 12, color: 'var(--text-tertiary)', textAlign: 'center', maxWidth: 400 }}>
                     Disclaimer: Browser anti-cheating monitors tab switches, window focus, clipboard, and full-screen state.
                 </div>
-                <button 
+                <button
                     onClick={() => navigate('/student/login')}
                     style={{ marginTop: 24, padding: '12px 28px', background: 'var(--danger)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 500 }}
                 >
@@ -750,7 +750,7 @@ const TakeExam = () => {
 
     return (
         <div style={{ height: '100vh', background: 'var(--bg-base)', display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: 'Inter, system-ui, sans-serif' }}>
-            
+
             {/* --- SECURITY WARNING OVERLAY MODAL --- */}
             {warningModal.open && (
                 <div style={{
@@ -838,9 +838,9 @@ const TakeExam = () => {
                         </div>
                         <h1 style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', letterSpacing: '0.02em' }}>{exam.title}</h1>
                     </div>
-                    
+
                     <div style={{ width: 1, height: 16, background: 'var(--border-default)' }} />
-                    
+
                     <button onClick={() => setFocusMode(!focusMode)} style={{ background: 'none', border: 'none', display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer' }}>
                         {focusMode ? <Minimize2 size={14} /> : <Maximize2 size={14} />} {focusMode ? "Exit Focus" : "Focus Mode"}
                     </button>
@@ -848,7 +848,7 @@ const TakeExam = () => {
 
                 {/* Right: Security Status, Timer & Tools */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-                    
+
                     {/* Security Warning Badge */}
                     {warningCount > 0 && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: 'var(--danger)', background: 'rgba(239, 68, 68, 0.1)', padding: '4px 10px', borderRadius: 12 }}>
@@ -862,14 +862,14 @@ const TakeExam = () => {
                     </div>
 
                     <div style={{ fontSize: 12, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                        {saveStatus === "Saved" ? <CheckCircle2 size={12} style={{color: 'var(--success)'}}/> : <Activity size={12}/>} {saveStatus}
+                        {saveStatus === "Saved" ? <CheckCircle2 size={12} style={{ color: 'var(--success)' }} /> : <Activity size={12} />} {saveStatus}
                     </div>
-                    
+
                     {/* Timer */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: timeLeft < 300 ? 'var(--danger)' : 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', fontWeight: 500, fontSize: 15 }}>
                         <Clock size={16} /> {formatTime(timeLeft)}
                     </div>
-                    
+
                     <div style={{ width: 1, height: 16, background: 'var(--border-default)' }} />
 
                     <button onClick={() => setToolsOpen(!toolsOpen)} style={{ background: 'none', border: 'none', display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: toolsOpen ? 'var(--brand-primary)' : 'var(--text-secondary)', cursor: 'pointer' }}>
@@ -884,14 +884,14 @@ const TakeExam = () => {
 
             {/* 3-Zone Workspace */}
             <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
-                
+
                 {/* ZONE 1: Navigation Map (Left) */}
-                <aside style={{ 
-                    width: 240, 
-                    background: 'var(--bg-card)', 
-                    borderRight: '1px solid var(--border-default)', 
-                    display: 'flex', 
-                    flexDirection: 'column', 
+                <aside style={{
+                    width: 240,
+                    background: 'var(--bg-card)',
+                    borderRight: '1px solid var(--border-default)',
+                    display: 'flex',
+                    flexDirection: 'column',
                     overflowY: 'auto',
                     transition: 'margin-left 0.3s ease',
                     marginLeft: focusMode ? -240 : 0,
@@ -902,13 +902,13 @@ const TakeExam = () => {
                             <h3 style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Question Map</h3>
                             <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{answeredCount}/{exam.questions.length}</span>
                         </div>
-                        
+
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                             {exam.questions.map((question, i) => {
                                 const answered = answers[question._id] !== undefined;
                                 const marked = markedForReview.has(question._id);
                                 const current = i === currentQuestionIndex;
-                                
+
                                 return (
                                     <button
                                         key={question._id}
@@ -950,7 +950,7 @@ const TakeExam = () => {
                 {/* ZONE 2: Main Workspace (Center) */}
                 <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', background: 'var(--bg-base)', paddingRight: toolsOpen ? 340 : 0, transition: 'padding-right 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}>
                     <div style={{ flex: 1, padding: '48px 40px', maxWidth: 840, margin: '0 auto', width: '100%', transition: 'max-width 0.3s ease' }}>
-                        
+
                         {/* Question Header */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 48 }}>
                             <div>
@@ -968,7 +968,7 @@ const TakeExam = () => {
                                         <X size={14} /> Clear Selection
                                     </button>
                                 )}
-                                <button 
+                                <button
                                     onClick={() => toggleMarkForReview(q._id)}
                                     style={{ background: 'none', border: 'none', fontSize: 13, color: isMarked ? 'var(--warning)' : 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
                                 >
@@ -987,16 +987,16 @@ const TakeExam = () => {
                             {q.options.map((opt, optIndex) => {
                                 const isSelected = answers[q._id] === optIndex;
                                 const letter = LETTERS[optIndex] || String(optIndex + 1);
-                                
+
                                 return (
-                                    <div 
+                                    <div
                                         key={optIndex}
                                         onClick={() => handleOptionSelect(q._id, optIndex)}
-                                        style={{ 
-                                            padding: '16px 24px', 
-                                            background: isSelected ? 'rgba(59, 130, 246, 0.04)' : 'var(--bg-card)', 
+                                        style={{
+                                            padding: '16px 24px',
+                                            background: isSelected ? 'rgba(59, 130, 246, 0.04)' : 'var(--bg-card)',
                                             border: `1px solid ${isSelected ? 'var(--brand-primary)' : 'var(--border-default)'}`,
-                                            borderRadius: 12, 
+                                            borderRadius: 12,
                                             cursor: 'pointer',
                                             display: 'flex',
                                             alignItems: 'center',
@@ -1006,10 +1006,10 @@ const TakeExam = () => {
                                         }}
                                         className="table-row-hover"
                                     >
-                                        <div style={{ 
-                                            width: 28, 
-                                            height: 28, 
-                                            borderRadius: 6, 
+                                        <div style={{
+                                            width: 28,
+                                            height: 28,
+                                            borderRadius: 6,
                                             background: isSelected ? 'var(--brand-primary)' : 'var(--bg-body)',
                                             border: isSelected ? 'none' : '1px solid var(--border-default)',
                                             display: 'flex',
@@ -1057,7 +1057,7 @@ const TakeExam = () => {
 
                     {/* Bottom Navigation */}
                     <div style={{ padding: '24px 40px', borderTop: '1px solid var(--border-default)', background: 'var(--bg-base)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <button 
+                        <button
                             onClick={() => setCurrentQuestionIndex(prev => prev - 1)}
                             disabled={isFirstQuestion}
                             className="btn btn-secondary"
@@ -1065,13 +1065,13 @@ const TakeExam = () => {
                         >
                             <ChevronLeft size={16} /> Previous (P)
                         </button>
-                        
+
                         <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
                             {String(currentQuestionIndex + 1).padStart(2, '0')} / {exam.questions.length}
                         </div>
 
                         {!isLastQuestion ? (
-                            <button 
+                            <button
                                 onClick={() => setCurrentQuestionIndex(prev => prev + 1)}
                                 className="btn btn-secondary"
                                 style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 24px', borderRadius: 8, fontSize: 14, background: 'var(--bg-card)', color: 'var(--text-primary)', border: '1px solid var(--border-default)' }}
@@ -1079,7 +1079,7 @@ const TakeExam = () => {
                                 Next (N) <ChevronRight size={16} />
                             </button>
                         ) : (
-                            <button 
+                            <button
                                 onClick={() => setShowPreSubmit(true)}
                                 className="btn btn-primary"
                                 style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 24px', borderRadius: 8, fontSize: 14, border: 'none' }}
@@ -1091,15 +1091,15 @@ const TakeExam = () => {
                 </main>
 
                 {/* ZONE 3: Tools Drawer (Right) */}
-                <aside style={{ 
+                <aside style={{
                     position: 'absolute',
                     top: 0,
                     right: 0,
                     height: '100%',
-                    width: 340, 
-                    background: 'var(--bg-card)', 
-                    borderLeft: '1px solid var(--border-default)', 
-                    display: 'flex', 
+                    width: 340,
+                    background: 'var(--bg-card)',
+                    borderLeft: '1px solid var(--border-default)',
+                    display: 'flex',
                     flexDirection: 'column',
                     transform: toolsOpen ? 'translateX(0)' : 'translateX(100%)',
                     transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -1108,15 +1108,15 @@ const TakeExam = () => {
                 }}>
                     <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border-default)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <h3 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Contextual Tools</h3>
-                        <button onClick={() => setToolsOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer' }}><X size={16}/></button>
+                        <button onClick={() => setToolsOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer' }}><X size={16} /></button>
                     </div>
 
                     <div style={{ padding: 24, borderBottom: '1px solid var(--border-default)' }}>
-                        <ProctoringStatusPanel 
-                            stream={stream} 
-                            cameraStatus={cameraStatus} 
-                            microphoneStatus={microphoneStatus} 
-                            isStarted={isStarted} 
+                        <ProctoringStatusPanel
+                            stream={stream}
+                            cameraStatus={cameraStatus}
+                            microphoneStatus={microphoneStatus}
+                            isStarted={isStarted}
                         />
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                             <h4 style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -1148,7 +1148,7 @@ const TakeExam = () => {
                         <h4 style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 16 }}>
                             Review Queue
                         </h4>
-                        
+
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--bg-body)', borderRadius: 8, border: '1px solid var(--border-default)' }}>
                                 <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Unanswered</span>

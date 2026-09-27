@@ -8,7 +8,7 @@ import { useToast } from '../../components/Toast.jsx'
 import { Database, CircleDot, Search, PackageOpen, X, BarChart3, Clock, AlertTriangle, CheckCircle2, Trash2 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
-const API = 'http://localhost:4000/api'
+const API = '/api'
 const getToken = () => localStorage.getItem('adminToken')
 
 export default function AdminQuestionsPage() {

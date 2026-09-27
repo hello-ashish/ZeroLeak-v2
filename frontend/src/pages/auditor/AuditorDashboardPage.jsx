@@ -7,7 +7,7 @@ import { AlertTriangle, Activity, CheckCircle2, ShieldAlert, FileText, ChevronRi
 import { format } from 'date-fns'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 
-const API = 'http://localhost:4000/api'
+const API = '/api'
 const getToken = () => localStorage.getItem('auditorToken')
 
 const CHART_COLORS = {

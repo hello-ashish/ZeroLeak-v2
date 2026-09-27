@@ -22,9 +22,9 @@ export function useRealBlockchain() {
         setError(null);
         try {
             const [statusRes, ledgerRes, anchorRes] = await Promise.all([
-                fetch('http://localhost:4000/api/blockchain/status', { headers: getAuthHeaders() }),
-                fetch('http://localhost:4000/api/blockchain/ledger?limit=50', { headers: getAuthHeaders() }),
-                fetch('http://localhost:4000/api/blockchain/anchor', { headers: getAuthHeaders() })
+                fetch('/api/blockchain/status', { headers: getAuthHeaders() }),
+                fetch('/api/blockchain/ledger?limit=50', { headers: getAuthHeaders() }),
+                fetch('/api/blockchain/anchor', { headers: getAuthHeaders() })
             ]);
 
             if (!statusRes.ok) throw new Error('Failed to fetch status');
@@ -51,7 +51,7 @@ export function useRealBlockchain() {
 
     const verifyLedger = async () => {
         try {
-            const res = await fetch('http://localhost:4000/api/blockchain/verify', { headers: getAuthHeaders() });
+            const res = await fetch('/api/blockchain/verify', { headers: getAuthHeaders() });
             const data = await res.json();
             return data.verification;
         } catch (err) {

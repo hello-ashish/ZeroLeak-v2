@@ -19,8 +19,8 @@ const StudentExamsPage = () => {
         const fetchData = async () => {
             try {
                 const [examsRes, resultsRes] = await Promise.all([
-                    axios.get('http://localhost:4000/api/students/exams', { headers: { Authorization: `Bearer ${token}` } }),
-                    axios.get('http://localhost:4000/api/students/results', { headers: { Authorization: `Bearer ${token}` } })
+                    axios.get('/api/students/exams', { headers: { Authorization: `Bearer ${token}` } }),
+                    axios.get('/api/students/results', { headers: { Authorization: `Bearer ${token}` } })
                 ]);
                 setExams(examsRes.data.exams || []);
                 setResults(resultsRes.data.results || []);

@@ -4,7 +4,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { Mail, Lock, Eye, EyeOff, ShieldCheck, Loader2 } from 'lucide-react'
 import AuthShell from '../../components/auth/AuthShell';
 
-const API = 'http://localhost:4000/api'
+const API = '/api'
 
 export default function AuditorLogin() {
     const navigate = useNavigate()

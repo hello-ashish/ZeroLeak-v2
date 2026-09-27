@@ -103,7 +103,7 @@ const ProfessorCreateBatchPage = () => {
     const fetchBatchData = async () => {
         try {
             const token = localStorage.getItem('profToken')
-            const response = await axios.get('http://localhost:4000/api/professor/batches', {
+            const response = await axios.get('/api/professor/batches', {
                 headers: { Authorization: `Bearer ${token}` }
             })
             const batches = response.data.batches
@@ -146,7 +146,7 @@ const ProfessorCreateBatchPage = () => {
         setIsCreatingBatch(true)
         try {
             const token = localStorage.getItem('profToken')
-            const response = await axios.post('http://localhost:4000/api/professor/batches', {
+            const response = await axios.post('/api/professor/batches', {
                 title: batchTitle,
                 subject: batchSubject,
                 description: batchDescription
@@ -185,7 +185,7 @@ const ProfessorCreateBatchPage = () => {
         setAiBatchResult(null)
         try {
             const token = localStorage.getItem('profToken')
-            const response = await axios.post('http://localhost:4000/api/professor/ai/generate-batch', {
+            const response = await axios.post('/api/professor/ai/generate-batch', {
                 name: batchTitle.trim()
             }, {
                 headers: { Authorization: `Bearer ${token}` }
@@ -228,7 +228,7 @@ const ProfessorCreateBatchPage = () => {
         setAiQuestionResult(null)
         try {
             const token = localStorage.getItem('profToken')
-            const response = await axios.post('http://localhost:4000/api/professor/ai/generate-question', {
+            const response = await axios.post('/api/professor/ai/generate-question', {
                 question: title.trim(),
                 subject: batchSubject,
                 topic: topic || undefined,
@@ -283,11 +283,11 @@ const ProfessorCreateBatchPage = () => {
             const payload = { title, options, correctAnswer, difficultyLevel, subject: batchSubject, topic, correctAnswerIndex: Number(correctAnswerIndex) };
 
             if (editingQuestionId) {
-                await axios.put(`http://localhost:4000/api/professor/batches/${id}/questions/${editingQuestionId}`, payload, {
+                await axios.put(`/api/professor/batches/${id}/questions/${editingQuestionId}`, payload, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
             } else {
-                await axios.post(`http://localhost:4000/api/professor/batches/${id}/questions`, payload, {
+                await axios.post(`/api/professor/batches/${id}/questions`, payload, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
             }
@@ -321,7 +321,7 @@ const ProfessorCreateBatchPage = () => {
         if (!window.confirm("Are you sure you want to delete this question?")) return;
         try {
             const token = localStorage.getItem('profToken');
-            await axios.delete(`http://localhost:4000/api/professor/batches/${id}/questions/${questionId}`, {
+            await axios.delete(`/api/professor/batches/${id}/questions/${questionId}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             fetchBatchData();
@@ -335,7 +335,7 @@ const ProfessorCreateBatchPage = () => {
         setSubmittingBatchId(id);
         try {
             const token = localStorage.getItem('profToken');
-            await axios.post(`http://localhost:4000/api/professor/batches/${id}/submit`, {}, {
+            await axios.post(`/api/professor/batches/${id}/submit`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             toast.success("Batch submitted successfully");
@@ -351,7 +351,7 @@ const ProfessorCreateBatchPage = () => {
         if (!window.confirm("Are you sure you want to delete this entire batch?")) return;
         try {
             const token = localStorage.getItem('profToken');
-            await axios.delete(`http://localhost:4000/api/professor/batches/${id}`, {
+            await axios.delete(`/api/professor/batches/${id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             toast.success("Batch deleted");
@@ -431,7 +431,7 @@ const ProfessorCreateBatchPage = () => {
         setCsvRowAiLoading(prev => ({ ...prev, [rowIndex]: true }))
         try {
             const token = localStorage.getItem('profToken')
-            const response = await axios.post('http://localhost:4000/api/professor/ai/fix-question-import', {
+            const response = await axios.post('/api/professor/ai/fix-question-import', {
                 row: q,
                 missingFields: missing,
                 context: { subject: batchSubject }
@@ -499,7 +499,7 @@ const ProfessorCreateBatchPage = () => {
 
         try {
             const token = localStorage.getItem('profToken')
-            const response = await axios.post('http://localhost:4000/api/professor/ai/fix-question-import', {
+            const response = await axios.post('/api/professor/ai/fix-question-import', {
                 rows: incompleteRows,
                 context: { subject: batchSubject }
             }, {
@@ -582,7 +582,7 @@ const ProfessorCreateBatchPage = () => {
         setIsImporting(true);
         try {
             const token = localStorage.getItem('profToken');
-            await axios.post(`http://localhost:4000/api/professor/batches/${id}/questions/bulk`, { questions: validQuestions }, {
+            await axios.post(`/api/professor/batches/${id}/questions/bulk`, { questions: validQuestions }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             fetchBatchData();

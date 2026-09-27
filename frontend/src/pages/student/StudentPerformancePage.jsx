@@ -16,7 +16,7 @@ const StudentPerformancePage = () => {
 
         const fetchData = async () => {
             try {
-                const response = await axios.get('http://localhost:4000/api/students/results', { headers: { Authorization: `Bearer ${token}` } });
+                const response = await axios.get('/api/students/results', { headers: { Authorization: `Bearer ${token}` } });
                 setResults(response.data.results || []);
             } catch (error) {
                 console.error("Failed to fetch results", error);

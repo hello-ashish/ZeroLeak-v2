@@ -57,7 +57,7 @@ const ProfessorDashboard = () => {
     const fetchMyBatches = async () => {
         try {
             const token = localStorage.getItem('profToken')
-            const response = await axios.get('http://localhost:4000/api/professor/batches', {
+            const response = await axios.get('/api/professor/batches', {
                 headers: { Authorization: `Bearer ${token}` }
             })
             setBatches(response.data.batches)
@@ -70,7 +70,7 @@ const ProfessorDashboard = () => {
         e.preventDefault()
         try {
             const token = localStorage.getItem('profToken')
-            await axios.post('http://localhost:4000/api/professor/batches', {
+            await axios.post('/api/professor/batches', {
                 title: batchTitle,
                 subject: batchSubject,
                 description: batchDescription
@@ -91,7 +91,7 @@ const ProfessorDashboard = () => {
         e.preventDefault();
         try {
             const token = localStorage.getItem('profToken');
-            await axios.post(`http://localhost:4000/api/professor/batches/${activeBatchId}/questions`, {
+            await axios.post(`/api/professor/batches/${activeBatchId}/questions`, {
                 title, options, correctAnswer, difficultyLevel, subject, topic, correctAnswerIndex: Number(correctAnswerIndex)
             }, {
                 headers: { Authorization: `Bearer ${token}` }
@@ -109,7 +109,7 @@ const ProfessorDashboard = () => {
     const submitBatch = async (batchId) => {
         try {
             const token = localStorage.getItem('profToken');
-            await axios.post(`http://localhost:4000/api/professor/batches/${batchId}/submit`, {}, {
+            await axios.post(`/api/professor/batches/${batchId}/submit`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             alert("Batch submitted to admin for review!");

@@ -10,7 +10,7 @@ import {
     Filter, RefreshCw, Eye, Unlock, ShieldCheck, ChevronLeft, ChevronRight, FileText, UserCheck
 } from 'lucide-react';
 
-const API = 'http://localhost:4000/api';
+const API = '/api';
 const getToken = () => localStorage.getItem('adminToken');
 
 export default function AdminCheatingDetection() {

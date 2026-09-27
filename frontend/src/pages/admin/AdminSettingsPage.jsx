@@ -5,7 +5,7 @@ import { AdminLayout } from './AdminLayout.jsx'
 import { useToast } from '../../components/Toast.jsx'
 import { User, Palette, Lock, Info, Moon, Sun, AlertTriangle, Cpu, Globe, Database, Building2 } from 'lucide-react'
 
-const API = 'http://localhost:4000/api'
+const API = '/api'
 const getToken = () => localStorage.getItem('adminToken')
 
 export default function AdminSettingsPage() {

@@ -28,7 +28,7 @@ export const useNotifications = (role) => {
             else if (role === 'professor') basePath = '/api/professor';
             else if (role === 'auditor') basePath = '/api/auditor';
 
-            const response = await axios.get(`http://localhost:4000${basePath}/notifications`, { headers });
+            const response = await axios.get(`${basePath}/notifications`, { headers });
             
             if (response.data) {
                 setNotifications(response.data.notifications || []);
@@ -50,7 +50,7 @@ export const useNotifications = (role) => {
             else if (role === 'professor') basePath = '/api/professor';
             else if (role === 'auditor') basePath = '/api/auditor';
 
-            await axios.patch(`http://localhost:4000${basePath}/notifications/${id}/read`, {}, { headers });
+            await axios.patch(`${basePath}/notifications/${id}/read`, {}, { headers });
             
             // Optimistically update UI
             setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
@@ -71,7 +71,7 @@ export const useNotifications = (role) => {
             else if (role === 'professor') basePath = '/api/professor';
             else if (role === 'auditor') basePath = '/api/auditor';
 
-            await axios.patch(`http://localhost:4000${basePath}/notifications/read-all`, {}, { headers });
+            await axios.patch(`${basePath}/notifications/read-all`, {}, { headers });
             
             // Optimistically update UI
             setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
