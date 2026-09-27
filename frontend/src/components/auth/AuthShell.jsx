@@ -8,43 +8,43 @@ const AuthShell = ({ title, subtitle, badge, children }) => {
     <div className="auth-wrapper">
       <div className="auth-container">
         {/* Left Information Section */}
-        <div className="home-info-section">
-          <div className="brand-header">
-            <img src="/logo.png" alt="ZeroLeak Logo" className="brand-logo" />
+        <div className="auth-info-section">
+          <div className="auth-brand-header">
+            <img src="/logo.png" alt="ZeroLeak Logo" className="auth-brand-logo" />
             <div>
-              <h1 className="brand-title">ZeroLeak</h1>
-              <span className="brand-subtitle">Academic Intelligence Platform</span>
+              <h1 className="auth-brand-title">ZeroLeak</h1>
+              <span className="auth-brand-subtitle">Academic Intelligence Platform</span>
             </div>
           </div>
 
-          <h2 className="brand-statement">Secure every assessment.<br />Understand every outcome.</h2>
+          <h2 className="auth-statement">Secure every assessment.<br />Understand every outcome.</h2>
 
-          <div className="feature-list">
-            <div className="feature-item">
-              <div className="feature-icon-wrapper">
+          <div className="auth-feature-list">
+            <div className="auth-feature-item">
+              <div className="auth-feature-icon-wrapper">
                 <ShieldCheck size={20} />
               </div>
-              <div className="feature-text">
+              <div className="auth-feature-text">
                 <h3>Secure Assessment</h3>
                 <p>Integrity for every examination session.</p>
               </div>
             </div>
 
-            <div className="feature-item">
-              <div className="feature-icon-wrapper">
+            <div className="auth-feature-item">
+              <div className="auth-feature-icon-wrapper">
                 <BrainCircuit size={20} />
               </div>
-              <div className="feature-text">
+              <div className="auth-feature-text">
                 <h3>Academic Intelligence</h3>
                 <p>Comprehensive reports and insights into student performance.</p>
               </div>
             </div>
 
-            <div className="feature-item">
-              <div className="feature-icon-wrapper">
+            <div className="auth-feature-item">
+              <div className="auth-feature-icon-wrapper">
                 <Users size={20} />
               </div>
-              <div className="feature-text">
+              <div className="auth-feature-text">
                 <h3>Role-Based Access</h3>
                 <p>Dedicated portals for students, professors, and administration.</p>
               </div>

@@ -7,13 +7,15 @@ export default defineConfig({
   server: {
     allowedHosts: true,
     proxy: {
-      '/api': 'http://localhost:4000',
+      // '/api': 'http://backend:4000',
+      '/api': 'http://backend:4000',
       '/proctoring': {
-        target: 'http://localhost:4000',
+        target: 'http://backend:4000',
         ws: true
       },
       '/socket.io': {
-        target: 'http://localhost:4000',
+        // '/api': 'http://backend:4000',
+        target: 'http://backend:4000',
         ws: true
       }
     }

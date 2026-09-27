@@ -26,7 +26,7 @@ services:
     networks:
       - zeroleak-network
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      test: [ "CMD", "mongosh", "--eval", "db.adminCommand('ping')" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -47,7 +47,7 @@ services:
     networks:
       - zeroleak-network
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -68,7 +68,7 @@ services:
       - ./backend/.env
     environment:
       - NODE_ENV=development
-      - MONGODB_URI=mongodb://${MONGO_USERNAME:-zeroleak}:${MONGO_PASSWORD:-zeroleak_secret}@mongodb:27017/zeroleak?authSource=admin
+      # - MONGODB_URI=mongodb://${MONGO_USERNAME:-zeroleak}:${MONGO_PASSWORD:-zeroleak_secret}@mongodb:27017/zeroleak?authSource=admin
       - REDIS_URL=redis://redis:6379
     volumes:
       - ./backend:/app
