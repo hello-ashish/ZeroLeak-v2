@@ -228,6 +228,9 @@ export const getExamById = async (req, res) => {
 
         let examQuestions = exam.questions;
 
+        let needsNewResult = false;
+        let questionsToAssign = [];
+
         if (exam.mode === "Zeroleak") {
             if (existingResult) {
                 examQuestions = existingResult.assignedQuestions;
@@ -239,29 +242,14 @@ export const getExamById = async (req, res) => {
                     return res.status(400).json({ message: "No questions available for this subject." });
                 }
 
-                const questionIds = selectedQuestions.map(q => q._id);
-                
-                existingResult = await Result.create({
-                    student: req.student._id,
-                    exam: exam._id,
-                    score: 0,
-                    totalQuestions: questionIds.length,
-                    status: "InProgress",
-                    assignedQuestions: questionIds
-                });
-                
+                questionsToAssign = selectedQuestions.map(q => q._id);
                 examQuestions = selectedQuestions;
+                needsNewResult = true;
             }
         } else {
             if (!existingResult) {
-                existingResult = await Result.create({
-                    student: req.student._id,
-                    exam: exam._id,
-                    score: 0,
-                    totalQuestions: examQuestions.length,
-                    status: "InProgress",
-                    assignedQuestions: examQuestions.map(q => q._id)
-                });
+                questionsToAssign = examQuestions.map(q => q._id);
+                needsNewResult = true;
             }
         }
 
@@ -345,6 +333,17 @@ export const getExamById = async (req, res) => {
                         "Exam integrity verification failed."
                 })
             }
+        }
+
+        if (needsNewResult) {
+            existingResult = await Result.create({
+                student: req.student._id,
+                exam: exam._id,
+                score: 0,
+                totalQuestions: questionsToAssign.length,
+                status: "InProgress",
+                assignedQuestions: questionsToAssign
+            });
         }
 
         // Convert mongoose document to plain object

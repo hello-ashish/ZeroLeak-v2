@@ -315,21 +315,28 @@ const TakeExam = () => {
         }
     }, [isStarted, exam, score, isTerminated, timeLeft]);
 
+    // Timer Logic - Interval Management
     useEffect(() => {
-        if (timeLeft !== null && timeLeft > 0 && score === null && !isTerminated) {
-            timerRef.current = setInterval(() => {
-                setTimeLeft(prev => {
-                    if (prev <= 1) {
-                        clearInterval(timerRef.current);
-                        handleAutoSubmit();
-                        return 0;
-                    }
-                    return prev - 1;
-                });
-            }, 1000);
-        }
+        if (!isStarted || score !== null || isTerminated) return;
+
+        timerRef.current = setInterval(() => {
+            setTimeLeft(prev => {
+                if (prev === null) return null;
+                if (prev <= 0) return 0;
+                return prev - 1;
+            });
+        }, 1000);
+
         return () => { if (timerRef.current) clearInterval(timerRef.current); };
-    }, [timeLeft, score, isTerminated, handleAutoSubmit]);
+    }, [isStarted, score, isTerminated]);
+
+    // Timer Logic - Auto Submit Trigger
+    useEffect(() => {
+        if (timeLeft === 0 && score === null && !isTerminated && !isSubmitting) {
+            if (timerRef.current) clearInterval(timerRef.current);
+            handleAutoSubmit();
+        }
+    }, [timeLeft, score, isTerminated, isSubmitting, handleAutoSubmit]);
 
     // Live Tracking / Heartbeat Ping
     useEffect(() => {

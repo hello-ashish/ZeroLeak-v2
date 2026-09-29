@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { useEffect, useState, useMemo, useRef } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import axios from 'axios'
 import { Search, User, Trash2, AlertTriangle, GraduationCap, X, ChevronRight, CheckCircle2, TrendingDown, Upload, Download, UserX, CheckSquare, FileText, Loader2 } from 'lucide-react'
 import Papa from 'papaparse'
@@ -35,6 +35,7 @@ export default function AdminStudentsPage() {
     const [previewModal, setPreviewModal] = useState({ isOpen: false, title: '', content: '', headers: [], rows: [], filename: '' })
     const [importPreview, setImportPreview] = useState(null)
     const navigate = useNavigate()
+    const [searchParams, setSearchParams] = useSearchParams()
     const toast = useToast()
 
     const fetchData = async (showLoad = true) => {
@@ -62,6 +63,25 @@ export default function AdminStudentsPage() {
         const interval = setInterval(() => fetchData(false), 5000);
         return () => clearInterval(interval);
     }, [])
+
+    const processedStudentId = useRef(null)
+
+    useEffect(() => {
+        const studentId = searchParams.get('studentId')
+        
+        if (!studentId) {
+            processedStudentId.current = null
+            return
+        }
+
+        if (students.length > 0 && processedStudentId.current !== studentId) {
+            const stu = students.find(s => s._id === studentId)
+            if (stu) {
+                setSelectedStudent(stu)
+                processedStudentId.current = studentId
+            }
+        }
+    }, [searchParams, students])
 
     const handleToggleBlock = async (id) => {
         const token = getToken();
@@ -502,7 +522,14 @@ export default function AdminStudentsPage() {
                                         const isSelected = selectedStudent?._id === stu._id
                                         return (
                                             <tr key={stu._id}
-                                                onClick={() => setSelectedStudent(stu)}
+                                                onClick={() => {
+                                                    setSelectedStudent(stu)
+                                                    if (searchParams.has('studentId')) {
+                                                        const p = new URLSearchParams(searchParams)
+                                                        p.delete('studentId')
+                                                        setSearchParams(p, { replace: true })
+                                                    }
+                                                }}
                                                 style={{
                                                     cursor: 'pointer',
                                                     background: isSelected ? 'var(--bg-active)' : 'transparent',
@@ -587,7 +614,14 @@ export default function AdminStudentsPage() {
                                 >
                                     {blockingId === selectedStudent._id ? '...' : (selectedStudent.isBlocked ? 'Unblock' : 'Block Access')}
                                 </button>
-                                <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setSelectedStudent(null)}>
+                                <button className="btn btn-ghost btn-sm btn-icon" onClick={() => {
+                                                    setSelectedStudent(null)
+                                                    if (searchParams.has('studentId')) {
+                                                        const p = new URLSearchParams(searchParams)
+                                                        p.delete('studentId')
+                                                        setSearchParams(p, { replace: true })
+                                                    }
+                                                }}>
                                     <X size={16} />
                                 </button>
                             </div>
@@ -784,17 +818,17 @@ export default function AdminStudentsPage() {
                     </div>
                 </div>
             </Modal>
-            
-            <Modal 
-                open={!!importPreview} 
-                onClose={() => setImportPreview(null)} 
-                title="Preview Students Import" 
+
+            <Modal
+                open={!!importPreview}
+                onClose={() => setImportPreview(null)}
+                title="Preview Students Import"
                 size="full"
                 footer={
                     <>
                         <button className="btn btn-ghost" onClick={() => setImportPreview(null)}>Cancel</button>
                         <button className="btn btn-primary flex items-center gap-2" onClick={confirmImport} disabled={isImporting}>
-                            {isImporting ? <Loader2 size={16} className="spin" /> : <Upload size={16} />} 
+                            {isImporting ? <Loader2 size={16} className="spin" /> : <Upload size={16} />}
                             {isImporting ? 'Importing...' : 'Confirm Import'}
                         </button>
                     </>

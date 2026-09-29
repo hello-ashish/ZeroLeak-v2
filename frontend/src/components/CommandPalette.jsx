@@ -241,11 +241,11 @@ const NavOnlyPalette = ({ open, onClose, role }) => {
                     borderBottom: '1px solid var(--border-subtle)',
                 }}>
                     <Search size={17} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
-                    <input
+                    <Command.Input
                         ref={inputRef}
                         placeholder="Navigate to…"
                         value={query}
-                        onChange={(e) => setQuery(e.target.value)}
+                        onValueChange={setQuery}
                         style={{
                             flex: 1, border: 'none', padding: 0,
                             background: 'transparent', fontSize: 15,
@@ -334,7 +334,7 @@ const SearchPalette = ({ open, onClose, role }) => {
                     borderBottom: '1px solid var(--border-subtle)',
                 }}>
                     <Search size={17} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
-                    <input
+                    <Command.Input
                         placeholder={
                             role === 'admin' ? "Search admin workspace or navigate…" :
                             role === 'professor' ? "Search your batches, exams, or navigate…" :
@@ -345,7 +345,7 @@ const SearchPalette = ({ open, onClose, role }) => {
                         className="command-input"
                         autoFocus
                         value={query}
-                        onChange={(e) => setQuery(e.target.value)}
+                        onValueChange={setQuery}
                         style={{ flex: 1, border: 'none', padding: 0, background: 'transparent',
                                  fontSize: 15, color: 'var(--text-primary)', outline: 'none' }}
                     />
@@ -390,7 +390,7 @@ const SearchPalette = ({ open, onClose, role }) => {
                         {searchResults.students.length > 0 && (
                             <Command.Group heading="Students">
                                 {searchResults.students.map(s => (
-                                    <Command.Item key={s._id} onSelect={() => handleSelect(`/admin/students`)}
+                                <Command.Item key={s._id} onSelect={() => handleSelect(`/admin/students?studentId=${s._id}`)}
                                         style={{ borderRadius: 10, margin: '2px 0' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%' }}>
                                             <div style={{
@@ -424,7 +424,7 @@ const SearchPalette = ({ open, onClose, role }) => {
                         {searchResults.professors.length > 0 && (
                             <Command.Group heading="Professors">
                                 {searchResults.professors.map(p => (
-                                    <Command.Item key={p._id} onSelect={() => handleSelect(`/admin/professors`)}
+                                <Command.Item key={p._id} onSelect={() => handleSelect(`/admin/professors?professorId=${p._id}`)}
                                         style={{ borderRadius: 10, margin: '2px 0' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%' }}>
                                             <div style={{
@@ -458,7 +458,7 @@ const SearchPalette = ({ open, onClose, role }) => {
                         {searchResults.batches?.length > 0 && (
                             <Command.Group heading="Batches">
                                 {searchResults.batches.map(b => (
-                                    <Command.Item key={b._id} onSelect={() => handleSelect(`/${role}/batches`)}
+                                <Command.Item key={b._id} onSelect={() => handleSelect(`/${role}/batches?batchId=${b._id}`)}
                                         style={{ borderRadius: 10, margin: '2px 0' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%' }}>
                                             <div style={{
@@ -492,7 +492,7 @@ const SearchPalette = ({ open, onClose, role }) => {
                         {searchResults.exams?.length > 0 && (
                             <Command.Group heading="Exams">
                                 {searchResults.exams.map(e => (
-                                    <Command.Item key={e._id} onSelect={() => handleSelect(`/${role}/exams`)}
+                                <Command.Item key={e._id} onSelect={() => handleSelect(`/${role}/exams?examId=${e._id}`)}
                                         style={{ borderRadius: 10, margin: '2px 0' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%' }}>
                                             <div style={{
