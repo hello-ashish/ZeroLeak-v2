@@ -44,7 +44,8 @@ export const loginAuditor = async (req, res) => {
         if (!isPasswordCorrect) return res.status(401).json({ message: "Invalid credentials" });
 
         const token = auditor.generateAccessToken();
-        const loggedIn = await Auditor.findById(auditor._id).select("-password");
+        const loggedIn = auditor.toObject();
+        delete loggedIn.password;
 
         await AuditLog.create({
             actor: email,
@@ -64,15 +65,27 @@ export const loginAuditor = async (req, res) => {
 // ─── Get Dashboard Metrics ──────────────────────────────────────────────────
 export const getDashboardMetrics = async (req, res) => {
     try {
-        const [totalAuditLogs, totalCheatingIncidents, highRiskLogs, highRiskIncidents, openAnomalies, pendingIncidents, recentLogs, recentIncidents] = await Promise.all([
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+        const [totalAuditLogs, totalCheatingIncidents, highRiskLogs, highRiskIncidents, openAnomalies, pendingIncidents, recentLogs, recentIncidents, auditTrend, cheatingTrend] = await Promise.all([
             AuditLog.countDocuments(),
             CheatingIncident.countDocuments(),
             AuditLog.countDocuments({ action: { $in: ["ADMIN_LOGIN", "BATCH_REJECTED", "EXAM_DELETED", "STUDENT_DELETED", "PROFESSOR_DELETED", "EXAM_ATTEMPT_TERMINATED"] } }),
             CheatingIncident.countDocuments({ severity: { $in: ["High", "Critical"] } }),
             Anomaly.countDocuments({ status: { $in: ["Open", "Under Review"] } }),
             CheatingIncident.countDocuments({ reviewStatus: "Pending" }),
-            AuditLog.find().sort({ createdAt: -1 }).limit(10),
-            CheatingIncident.find().populate("studentId", "name email").populate("examId", "title").sort({ createdAt: -1 }).limit(10)
+            AuditLog.find().sort({ createdAt: -1 }).limit(10).lean(),
+            CheatingIncident.find().populate("studentId", "name email").populate("examId", "title").sort({ createdAt: -1 }).limit(10).lean(),
+            // Aggregate daily counts instead of fetching full documents
+            AuditLog.aggregate([
+                { $match: { createdAt: { $gte: sevenDaysAgo } } },
+                { $group: { _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } }, count: { $sum: 1 } } }
+            ]),
+            CheatingIncident.aggregate([
+                { $match: { createdAt: { $gte: sevenDaysAgo } } },
+                { $group: { _id: { $dateToString: { format: "%Y-%m-%d", date: { $ifNull: ["$detectedAt", "$createdAt"] } } }, count: { $sum: 1 } } }
+            ])
         ]);
 
         const loggingStatus = mongoose.connection.readyState === 1 ? "Operational" : "Degraded";
@@ -81,14 +94,7 @@ export const getDashboardMetrics = async (req, res) => {
         const highRiskEvents = highRiskLogs + highRiskIncidents;
         const unresolvedAnomalies = openAnomalies + pendingIncidents;
 
-        // Compute 7-day activity trend including both AuditLogs & CheatingIncidents
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        const [recentAuditLogs, recentCheatingEvents] = await Promise.all([
-            AuditLog.find({ createdAt: { $gte: sevenDaysAgo } }),
-            CheatingIncident.find({ createdAt: { $gte: sevenDaysAgo } })
-        ]);
-
+        // Build trend map from aggregated counts
         const trendMap = {};
         for (let i = 6; i >= 0; i--) {
             const d = new Date();
@@ -97,18 +103,11 @@ export const getDashboardMetrics = async (req, res) => {
             trendMap[dateStr] = { date: dateStr, count: 0 };
         }
 
-        recentAuditLogs.forEach(log => {
-            const dateStr = new Date(log.createdAt).toISOString().split('T')[0];
-            if (trendMap[dateStr]) {
-                trendMap[dateStr].count += 1;
-            }
+        auditTrend.forEach(t => {
+            if (trendMap[t._id]) trendMap[t._id].count += t.count;
         });
-
-        recentCheatingEvents.forEach(inc => {
-            const dateStr = new Date(inc.createdAt || inc.detectedAt).toISOString().split('T')[0];
-            if (trendMap[dateStr]) {
-                trendMap[dateStr].count += 1;
-            }
+        cheatingTrend.forEach(t => {
+            if (trendMap[t._id]) trendMap[t._id].count += t.count;
         });
 
         const activityTrend = Object.values(trendMap);
@@ -171,8 +170,27 @@ export const getAuditLogs = async (req, res) => {
 // ─── Get Anomalies ──────────────────────────────────────────────────────────
 export const getAnomalies = async (req, res) => {
     try {
-        const anomalies = await Anomaly.find().sort({ createdAt: -1 }).populate("relatedEvents");
-        return res.status(200).json({ anomalies });
+        const { page = 1, limit = 20, status } = req.query;
+        const query = status ? { status } : {};
+        const skip = (Number(page) - 1) * Number(limit);
+
+        const total = await Anomaly.countDocuments(query);
+        const anomalies = await Anomaly.find(query)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(Number(limit))
+            .populate("relatedEvents")
+            .lean();
+
+        return res.status(200).json({ 
+            anomalies,
+            pagination: {
+                total,
+                page: Number(page),
+                limit: Number(limit),
+                totalPages: Math.ceil(total / Number(limit))
+            }
+        });
     } catch (error) {
         return res.status(500).json({ message: "Error fetching anomalies" });
     }
@@ -214,11 +232,15 @@ export const updateAnomalyStatus = async (req, res) => {
 export const scanAnomalies = async (req, res) => {
     try {
         // Detect rule 1: Detect if an exam was deleted.
-        const deletedExamsLogs = await AuditLog.find({ action: "EXAM_DELETED" });
-        for (const log of deletedExamsLogs) {
-            const exists = await Anomaly.findOne({ targetId: log.targetId, rule: "Exam Deleted" });
-            if (!exists) {
-                await Anomaly.create({
+        const deletedExamsLogs = await AuditLog.find({ action: "EXAM_DELETED" }).lean();
+        if (deletedExamsLogs.length > 0) {
+            const targetIds = deletedExamsLogs.map(log => log.targetId);
+            const existing = await Anomaly.find({ targetId: { $in: targetIds }, rule: "Exam Deleted" }).select("targetId").lean();
+            const existingIds = new Set(existing.map(e => e.targetId));
+            
+            const toInsert = deletedExamsLogs
+                .filter(log => !existingIds.has(log.targetId))
+                .map(log => ({
                     rule: "Exam Deleted",
                     description: `An exam (${log.targetLabel}) was deleted by ${log.actor}.`,
                     severity: "High",
@@ -227,16 +249,21 @@ export const scanAnomalies = async (req, res) => {
                     targetId: log.targetId,
                     actor: log.actor,
                     relatedEvents: [log._id]
-                });
-            }
+                }));
+                
+            if (toInsert.length > 0) await Anomaly.insertMany(toInsert);
         }
 
         // Another rule: Batch Rejected
-        const rejectedBatchesLogs = await AuditLog.find({ action: "BATCH_REJECTED" });
-        for (const log of rejectedBatchesLogs) {
-            const exists = await Anomaly.findOne({ targetId: log.targetId, rule: "Batch Rejected" });
-            if (!exists) {
-                await Anomaly.create({
+        const rejectedBatchesLogs = await AuditLog.find({ action: "BATCH_REJECTED" }).lean();
+        if (rejectedBatchesLogs.length > 0) {
+            const targetIds = rejectedBatchesLogs.map(log => log.targetId);
+            const existing = await Anomaly.find({ targetId: { $in: targetIds }, rule: "Batch Rejected" }).select("targetId").lean();
+            const existingIds = new Set(existing.map(e => e.targetId));
+
+            const toInsert = rejectedBatchesLogs
+                .filter(log => !existingIds.has(log.targetId))
+                .map(log => ({
                     rule: "Batch Rejected",
                     description: `A batch of questions (${log.targetLabel}) was rejected by ${log.actor}.`,
                     severity: "Medium",
@@ -245,36 +272,47 @@ export const scanAnomalies = async (req, res) => {
                     targetId: log.targetId,
                     actor: log.actor,
                     relatedEvents: [log._id]
-                });
-            }
+                }));
+
+            if (toInsert.length > 0) await Anomaly.insertMany(toInsert);
         }
 
         // Rule 3: Critical Identity Deletion
-        const identityDeletionLogs = await AuditLog.find({ action: { $in: ["STUDENT_DELETED", "PROFESSOR_DELETED"] } });
-        for (const log of identityDeletionLogs) {
-            const role = log.action === "STUDENT_DELETED" ? "Student" : "Professor";
-            const exists = await Anomaly.findOne({ targetId: log.targetId, rule: "Critical Identity Deletion" });
-            if (!exists) {
-                await Anomaly.create({
-                    rule: "Critical Identity Deletion",
-                    description: `A ${role} account (${log.targetLabel}) was deleted by ${log.actor}.`,
-                    severity: "High",
-                    category: "Access & Identity",
-                    targetType: role,
-                    targetId: log.targetId,
-                    actor: log.actor,
-                    relatedEvents: [log._id]
+        const identityDeletionLogs = await AuditLog.find({ action: { $in: ["STUDENT_DELETED", "PROFESSOR_DELETED"] } }).lean();
+        if (identityDeletionLogs.length > 0) {
+            const targetIds = identityDeletionLogs.map(log => log.targetId);
+            const existing = await Anomaly.find({ targetId: { $in: targetIds }, rule: "Critical Identity Deletion" }).select("targetId").lean();
+            const existingIds = new Set(existing.map(e => e.targetId));
+
+            const toInsert = identityDeletionLogs
+                .filter(log => !existingIds.has(log.targetId))
+                .map(log => {
+                    const role = log.action === "STUDENT_DELETED" ? "Student" : "Professor";
+                    return {
+                        rule: "Critical Identity Deletion",
+                        description: `A ${role} account (${log.targetLabel}) was deleted by ${log.actor}.`,
+                        severity: "High",
+                        category: "Access & Identity",
+                        targetType: role,
+                        targetId: log.targetId,
+                        actor: log.actor,
+                        relatedEvents: [log._id]
+                    };
                 });
-            }
+
+            if (toInsert.length > 0) await Anomaly.insertMany(toInsert);
         }
 
         // Rule 4: Perfect Score Anomaly (Flagged for Review)
-        const perfectResults = await Result.find({ $expr: { $eq: ["$score", "$totalQuestions"] } }).populate('student exam');
-        for (const result of perfectResults) {
-            if (!result.student || !result.exam) continue;
-            const exists = await Anomaly.findOne({ targetId: result.student._id, rule: "Perfect Score Anomaly", "relatedEvents.0": result._id });
-            if (!exists) {
-                await Anomaly.create({
+        const perfectResults = await Result.find({ $expr: { $eq: ["$score", "$totalQuestions"] } }).populate('student exam').lean();
+        if (perfectResults.length > 0) {
+            const resultIds = perfectResults.map(r => r._id);
+            const existing = await Anomaly.find({ "relatedEvents.0": { $in: resultIds }, rule: "Perfect Score Anomaly" }).select("relatedEvents").lean();
+            const existingResultIds = new Set(existing.map(e => String(e.relatedEvents[0])));
+
+            const toInsert = perfectResults
+                .filter(result => result.student && result.exam && !existingResultIds.has(String(result._id)))
+                .map(result => ({
                     rule: "Perfect Score Anomaly",
                     description: `Student ${result.student.name} achieved a perfect score on ${result.exam.title}. Flagged for routine review.`,
                     severity: "Low",
@@ -282,9 +320,10 @@ export const scanAnomalies = async (req, res) => {
                     targetType: "Student",
                     targetId: result.student._id,
                     actor: "System",
-                    relatedEvents: [result._id] // Storing Result ID instead of AuditLog ID
-                });
-            }
+                    relatedEvents: [result._id]
+                }));
+
+            if (toInsert.length > 0) await Anomaly.insertMany(toInsert);
         }
 
         // Rules 5 & 6: Mass Failure and Probable Exam Leak

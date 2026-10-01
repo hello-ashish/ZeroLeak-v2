@@ -44,4 +44,10 @@ const anomalySchema = new Schema({
     }]
 }, { timestamps: true })
 
+// Indexes for high-performance querying
+anomalySchema.index({ targetId: 1, rule: 1 });
+anomalySchema.index({ status: 1 });
+anomalySchema.index({ createdAt: -1 });
+anomalySchema.index({ actor: 1, rule: 1 });
+
 export const Anomaly = mongoose.model("Anomaly", anomalySchema)

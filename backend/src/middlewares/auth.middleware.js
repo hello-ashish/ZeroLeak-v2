@@ -143,30 +143,37 @@ export const verifyAnyJWT = async (req, res, next) => {
 
         const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET)
 
-        const [admin, professor, student, auditor] = await Promise.all([
-            Admin.findById(decodedToken.id).select("-password"),
-            Professor.findById(decodedToken.id).select("-password"),
-            Student.findById(decodedToken.id).select("-password"),
-            Auditor.findById(decodedToken.id).select("-password")
-        ])
-
+        // Sequential lookups with early return (1-2 queries instead of 4 parallel)
+        // Ideal fix: encode role in JWT to avoid any extra lookup
+        const admin = await Admin.findById(decodedToken.id).select("-password")
         if (admin) {
             req.user = admin
             req.userRole = "Admin"
-        } else if (professor) {
-            req.user = professor
-            req.userRole = "Professor"
-        } else if (student) {
-            req.user = student
-            req.userRole = "Student"
-        } else if (auditor) {
-            req.user = auditor
-            req.userRole = "Auditor"
-        } else {
-            return res.status(401).json({ message: "User not found" })
+            return next()
         }
 
-        next()
+        const professor = await Professor.findById(decodedToken.id).select("-password")
+        if (professor) {
+            req.user = professor
+            req.userRole = "Professor"
+            return next()
+        }
+
+        const student = await Student.findById(decodedToken.id).select("-password")
+        if (student) {
+            req.user = student
+            req.userRole = "Student"
+            return next()
+        }
+
+        const auditor = await Auditor.findById(decodedToken.id).select("-password")
+        if (auditor) {
+            req.user = auditor
+            req.userRole = "Auditor"
+            return next()
+        }
+
+        return res.status(401).json({ message: "User not found" })
     } catch (error) {
         return res.status(401).json({ message: "Invalid or Expired Access Token", code: "TOKEN_EXPIRED" })
     }

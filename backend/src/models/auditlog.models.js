@@ -37,4 +37,9 @@ const auditLogSchema = new mongoose.Schema({
     }
 }, { timestamps: true })
 
+// Indexes for high-performance querying
+auditLogSchema.index({ createdAt: -1 });
+auditLogSchema.index({ action: 1 });
+auditLogSchema.index({ actorRole: 1, action: 1, createdAt: -1 });
+
 export const AuditLog = mongoose.model("AuditLog", auditLogSchema)

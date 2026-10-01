@@ -61,19 +61,19 @@ export const recordIncident = async (req, res) => {
             reviewStatus: "Pending"
         });
 
-        // Notify Admins and Auditors
+        // Notify Admins and Auditors (Fire and forget)
         const alertMsg = `Cheating Incident: ${student.name || student.email} - ${violationType} on exam "${exam.title}"`;
-        await notifyAdmins({ title: "Security Alert", message: alertMsg, type: "WARNING", relatedLink: "/admin/cheating" });
-        await notifyAuditors({ title: "Security Alert", message: alertMsg, type: "WARNING", relatedLink: "/auditor/anomalies" });
+        notifyAdmins({ title: "Security Alert", message: alertMsg, type: "WARNING", relatedLink: "/admin/cheating" }).catch(e => console.error(e));
+        notifyAuditors({ title: "Security Alert", message: alertMsg, type: "WARNING", relatedLink: "/auditor/anomalies" }).catch(e => console.error(e));
         
-        // Notify Student
-        await createNotification({
+        // Notify Student (Fire and forget)
+        createNotification({
             userId: student._id,
             userRole: "Student",
             title: "Security Warning",
             message: `A security violation was logged during your exam: ${violationType}.`,
             type: "WARNING"
-        });
+        }).catch(e => console.error(e));
 
         // ── SERVER-SIDE 3-STRIKE ENFORCEMENT ────────────────────────────────────
         // Count cumulative incidents for this student+exam that occurred AFTER the most recent reset (if any).
@@ -132,38 +132,34 @@ export const recordIncident = async (req, res) => {
             }
             isNowBlocked = true;
 
-            // Notify Student of Block
-            await createNotification({
+            // Notify Student of Block (Fire and forget)
+            createNotification({
                 userId: student._id,
                 userRole: "Student",
                 title: "Exam Terminated & Account Restricted",
                 message: `You exceeded the maximum allowed security violations. Your exam was terminated and your account is restricted.`,
                 type: "ERROR"
-            });
+            }).catch(e => console.error(e));
 
-            // Notify Admins of Block
-            await notifyAdmins({ 
+            // Notify Admins of Block (Fire and forget)
+            notifyAdmins({ 
                 title: "Student Auto-Blocked", 
                 message: `${student.name || student.email} was auto-blocked for exceeding violations on "${exam.title}".`, 
                 type: "ERROR", 
                 relatedLink: "/admin/cheating" 
-            });
+            }).catch(e => console.error(e));
 
-            // Audit log for auto-block
-            try {
-                await AuditLog.create({
-                    actor: student.email,
-                    actorRole: "System",
-                    action: "STUDENT_AUTO_BLOCKED",
-                    targetType: "Student",
-                    targetId: String(student._id),
-                    targetLabel: student.name,
-                    details: `Student ${student.email} auto-blocked after ${incidentCount} violations on exam "${exam.title}".`,
-                    status: "success"
-                });
-            } catch (auditErr) {
-                console.error("Error creating auto-block audit log:", auditErr.message);
-            }
+            // Audit log for auto-block (Fire and forget)
+            AuditLog.create({
+                actor: student.email,
+                actorRole: "System",
+                action: "STUDENT_AUTO_BLOCKED",
+                targetType: "Student",
+                targetId: String(student._id),
+                targetLabel: student.name,
+                details: `Student ${student.email} auto-blocked after ${incidentCount} violations on exam "${exam.title}".`,
+                status: "success"
+            }).catch(auditErr => console.error("Error creating auto-block audit log:", auditErr.message));
 
             // Cryptographic Incident Commitment for Auto-Termination
             const incidentPayload = canonicalize({
@@ -189,21 +185,17 @@ export const recordIncident = async (req, res) => {
         }
         // ─────────────────────────────────────────────────────────────────────────
 
-        // Log to Anomaly telemetry system as well
-        try {
-            await Anomaly.create({
-                rule: `Security Policy Violation: ${violationType}`,
-                description: `Student ${student.name} (${student.email}) triggered ${violationType} during exam ${exam.title}`,
-                severity: severity === "Critical" ? "Critical" : severity === "High" ? "High" : "Medium",
-                category: "Exam Integrity",
-                status: "Open",
-                actor: student.email,
-                targetType: "Exam",
-                targetId: String(exam._id)
-            });
-        } catch (anomError) {
-            console.error("Error creating anomaly log for incident:", anomError.message);
-        }
+        // Log to Anomaly telemetry system as well (Fire and forget)
+        Anomaly.create({
+            rule: `Security Policy Violation: ${violationType}`,
+            description: `Student ${student.name} (${student.email}) triggered ${violationType} during exam ${exam.title}`,
+            severity: severity === "Critical" ? "Critical" : severity === "High" ? "High" : "Medium",
+            category: "Exam Integrity",
+            status: "Open",
+            actor: student.email,
+            targetType: "Exam",
+            targetId: String(exam._id)
+        }).catch(anomError => console.error("Error creating anomaly log for incident:", anomError.message));
 
         return res.status(201).json({
             message: "Cheating incident recorded successfully",

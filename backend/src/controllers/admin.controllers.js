@@ -35,7 +35,8 @@ export const registerAdmin = async (req, res) => {
             return res.status(400).json({ message: "Admin with this adminId or email already exists" });
         }
         const admin = await Admin.create({ adminId, email, password });
-        const createdAdmin = await Admin.findById(admin._id).select("-password");
+        const createdAdmin = admin.toObject();
+        delete createdAdmin.password;
         return res.status(201).json({ message: "Admin registered successfully", admin: createdAdmin });
     } catch (error) {
         console.error("Admin Registration Error:", error.message);
@@ -55,7 +56,8 @@ export const loginAdmin = async (req, res) => {
         const isPasswordCorrect = await admin.isPasswordCorrect(password);
         if (!isPasswordCorrect) return res.status(401).json({ message: "Invalid credentials" });
         const token = admin.generateAccessToken();
-        const loggedInAdmin = await Admin.findById(admin._id).select("-password");
+        const loggedInAdmin = admin.toObject();
+        delete loggedInAdmin.password;
 
         await logAction({ actor: email, action: "ADMIN_LOGIN", targetType: "Admin", targetId: admin._id, targetLabel: email });
 
@@ -78,7 +80,8 @@ export const createProfessor = async (req, res) => {
             return res.status(400).json({ message: "A professor with this id or email already exists" });
         }
         const professor = await Professor.create({ id, name, email, contact, address, password });
-        const createdProfessor = await Professor.findById(professor._id).select("-password");
+        const createdProfessor = professor.toObject();
+        delete createdProfessor.password;
 
         await logAction({ actor: req.admin?.email, action: "PROFESSOR_CREATED", targetType: "Professor", targetId: professor._id, targetLabel: name });
 
@@ -92,13 +95,21 @@ export const createProfessor = async (req, res) => {
 // ─── Get All Professors ───────────────────────────────────────────────────────
 export const getAllProfessors = async (req, res) => {
     try {
-        const professors = await Professor.find({}).select("-password").lean();
-        const professorsWithCounts = await Promise.all(professors.map(async (prof) => {
-            const count = await Batch.countDocuments({ 
-                createdBy: prof._id, 
-                status: { $in: ["Submitted", "Accepted", "Rejected", "MarkForReview"] } 
-            });
-            return { ...prof, submittedBatches: count };
+        // Single aggregation replaces N+1 countDocuments pattern
+        const [professors, batchCounts] = await Promise.all([
+            Professor.find({}).select("-password").lean(),
+            Batch.aggregate([
+                { $match: { status: { $in: ["Submitted", "Accepted", "Rejected", "MarkForReview"] } } },
+                { $group: { _id: "$createdBy", count: { $sum: 1 } } }
+            ])
+        ]);
+
+        const countMap = {};
+        batchCounts.forEach(bc => { countMap[bc._id.toString()] = bc.count; });
+
+        const professorsWithCounts = professors.map(prof => ({
+            ...prof,
+            submittedBatches: countMap[prof._id.toString()] || 0
         }));
         return res.status(200).json({ professors: professorsWithCounts });
     } catch (error) {
@@ -144,7 +155,7 @@ export const getBatches = async (req, res) => {
     try {
         const { status } = req.query;
         const query = status ? { status, isDeletedByAdmin: { $ne: true } } : { isDeletedByAdmin: { $ne: true } };
-        const batches = await Batch.find(query).sort({ createdAt: -1 }).populate('createdBy', 'name email');
+        const batches = await Batch.find(query).sort({ createdAt: -1 }).populate('createdBy', 'name email').lean();
         res.status(200).json({ batches });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -325,7 +336,8 @@ export const updateAdminProfile = async (req, res) => {
         if (email) admin.email = email;
         if (password) admin.password = password;
         await admin.save();
-        const updatedAdmin = await Admin.findById(admin._id).select("-password");
+        const updatedAdmin = admin.toObject();
+        delete updatedAdmin.password;
         await logAction({ actor: admin.email, action: "ADMIN_PROFILE_UPDATED", targetType: "Admin", targetId: admin._id, targetLabel: admin.email });
         return res.status(200).json({ message: "Profile updated successfully", admin: updatedAdmin });
     } catch (error) {
@@ -336,6 +348,9 @@ export const updateAdminProfile = async (req, res) => {
 // ─── Dashboard Stats ──────────────────────────────────────────────────────────
 export const getDashboardStats = async (req, res) => {
     try {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
         const [
             studentCount,
             professorCount,
@@ -343,11 +358,17 @@ export const getDashboardStats = async (req, res) => {
             questionCount,
             batchCount,
             pendingBatchCount,
-            allResults,
             recentLogs,
             recentExams,
             liveExamsCount,
-            studentsLastMonth
+            studentsLastMonth,
+            // Aggregated stats from Results (replaces loading all results into memory)
+            resultStats,
+            scoreDistributionAgg,
+            performanceDataAgg,
+            studentPerformanceAgg,
+            questionsBySubject,
+            totalResultCount
         ] = await Promise.all([
             Student.countDocuments(),
             Professor.countDocuments(),
@@ -355,41 +376,126 @@ export const getDashboardStats = async (req, res) => {
             Question.countDocuments(),
             Batch.countDocuments(),
             Batch.countDocuments({ status: "Submitted" }),
-            Result.find({}).populate("student", "name studentId").populate("exam", "title"),
-            AuditLog.find({}).sort({ createdAt: -1 }).limit(15),
-            Exam.find({}).sort({ createdAt: -1 }).limit(5).populate("questions", "_id"),
+            AuditLog.find({}).sort({ createdAt: -1 }).limit(15).lean(),
+            Exam.find({}).sort({ createdAt: -1 }).limit(5).populate("questions", "_id").lean(),
             Exam.countDocuments({ status: "Live" }),
-            Student.countDocuments({ createdAt: { $lt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } })
+            Student.countDocuments({ createdAt: { $lt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } }),
+            // Compute avgScore and passRate via aggregation
+            Result.aggregate([
+                {
+                    $project: {
+                        pct: { $multiply: [{ $divide: ["$score", "$totalQuestions"] }, 100] }
+                    }
+                },
+                {
+                    $group: {
+                        _id: null,
+                        avgScore: { $avg: "$pct" },
+                        totalPassed: { $sum: { $cond: [{ $gte: ["$pct", 50] }, 1, 0] } },
+                        total: { $sum: 1 }
+                    }
+                }
+            ]),
+            // Score distribution via aggregation
+            Result.aggregate([
+                {
+                    $project: {
+                        pct: { $multiply: [{ $divide: ["$score", "$totalQuestions"] }, 100] }
+                    }
+                },
+                {
+                    $group: {
+                        _id: null,
+                        below50: { $sum: { $cond: [{ $lt: ["$pct", 50] }, 1, 0] } },
+                        fiftyToSixtyNine: { $sum: { $cond: [{ $and: [{ $gte: ["$pct", 50] }, { $lt: ["$pct", 70] }] }, 1, 0] } },
+                        seventyToEightyNine: { $sum: { $cond: [{ $and: [{ $gte: ["$pct", 70] }, { $lt: ["$pct", 90] }] }, 1, 0] } },
+                        above90: { $sum: { $cond: [{ $gte: ["$pct", 90] }, 1, 0] } }
+                    }
+                }
+            ]),
+            // Performance trend over the last 7 days via aggregation
+            Result.aggregate([
+                { $match: { createdAt: { $gte: sevenDaysAgo } } },
+                {
+                    $project: {
+                        dateStr: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+                        pct: { $multiply: [{ $divide: ["$score", "$totalQuestions"] }, 100] }
+                    }
+                },
+                {
+                    $group: {
+                        _id: "$dateStr",
+                        totalScore: { $sum: "$pct" },
+                        count: { $sum: 1 },
+                        passed: { $sum: { $cond: [{ $gte: ["$pct", 50] }, 1, 0] } }
+                    }
+                },
+                { $sort: { _id: 1 } }
+            ]),
+            // Top and at-risk students via aggregation
+            Result.aggregate([
+                {
+                    $group: {
+                        _id: "$student",
+                        avgPct: { $avg: { $multiply: [{ $divide: ["$score", "$totalQuestions"] }, 100] } },
+                        examsCount: { $sum: 1 }
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "students",
+                        localField: "_id",
+                        foreignField: "_id",
+                        as: "studentDoc",
+                        pipeline: [{ $project: { name: 1, studentId: 1 } }]
+                    }
+                },
+                { $unwind: { path: "$studentDoc", preserveNullAndEmptyArrays: false } },
+                {
+                    $project: {
+                        name: "$studentDoc.name",
+                        studentId: "$studentDoc.studentId",
+                        avgScore: { $round: ["$avgPct", 0] },
+                        examsCount: 1
+                    }
+                }
+            ]),
+            // Questions by subject
+            Question.aggregate([
+                { $group: { _id: "$subject", count: { $sum: 1 } } },
+                { $sort: { count: -1 } }
+            ]),
+            Result.countDocuments()
         ]);
 
-        // Compute performance trend over the last 7 days
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        const recentResults = allResults.filter(r => new Date(r.createdAt) >= sevenDaysAgo);
-        
-        const performanceMap = {};
+        // Process aggregation results
+        const stats_agg = resultStats[0] || { avgScore: 0, totalPassed: 0, total: 0 };
+        const avgScore = Math.round(stats_agg.avgScore || 0);
+        const passRate = stats_agg.total > 0 ? Math.round((stats_agg.totalPassed / stats_agg.total) * 100) : 0;
+
+        const scoreDist = scoreDistributionAgg[0] || { below50: 0, fiftyToSixtyNine: 0, seventyToEightyNine: 0, above90: 0 };
+        const scoreDistribution = {
+            below50: scoreDist.below50,
+            fiftyToSixtyNine: scoreDist.fiftyToSixtyNine,
+            seventyToEightyNine: scoreDist.seventyToEightyNine,
+            above90: scoreDist.above90
+        };
+
+        // Build 7-day performance data map
+        const perfMap = {};
         for (let i = 6; i >= 0; i--) {
             const d = new Date();
             d.setDate(d.getDate() - i);
             const dateStr = d.toISOString().split('T')[0];
-            performanceMap[dateStr] = { date: dateStr, totalScore: 0, count: 0, passed: 0 };
+            perfMap[dateStr] = { date: dateStr, score: 0, passRate: 0 };
         }
-        
-        recentResults.forEach(r => {
-            const dateStr = new Date(r.createdAt).toISOString().split('T')[0];
-            if (performanceMap[dateStr]) {
-                const scorePct = (r.score / r.totalQuestions) * 100;
-                performanceMap[dateStr].totalScore += scorePct;
-                performanceMap[dateStr].count += 1;
-                if (scorePct >= 50) performanceMap[dateStr].passed += 1;
+        performanceDataAgg.forEach(day => {
+            if (perfMap[day._id]) {
+                perfMap[day._id].score = day.count > 0 ? Math.round(day.totalScore / day.count) : 0;
+                perfMap[day._id].passRate = day.count > 0 ? Math.round((day.passed / day.count) * 100) : 0;
             }
         });
-        
-        const performanceData = Object.values(performanceMap).map(day => ({
-            date: day.date,
-            score: day.count > 0 ? Math.round(day.totalScore / day.count) : 0,
-            passRate: day.count > 0 ? Math.round((day.passed / day.count) * 100) : 0
-        }));
+        const performanceData = Object.values(perfMap);
 
         let scoreTrajectory = 0;
         if (performanceData.length === 7) {
@@ -402,53 +508,9 @@ export const getDashboardStats = async (req, res) => {
             }
         }
 
-        // Compute pass rate and average score from Results
-        let avgScore = 0;
-        let passRate = 0;
-        if (allResults.length > 0) {
-            const totalPct = allResults.reduce((sum, r) => sum + (r.score / r.totalQuestions) * 100, 0);
-            avgScore = Math.round(totalPct / allResults.length);
-            const passed = allResults.filter(r => (r.score / r.totalQuestions) * 100 >= 50).length;
-            passRate = Math.round((passed / allResults.length) * 100);
-        }
-
-        // Subject breakdown from questions
-        const questionsBySubject = await Question.aggregate([
-            { $group: { _id: "$subject", count: { $sum: 1 } } },
-            { $sort: { count: -1 } }
-        ]);
-
-        // Top and at-risk students (from results)
-        const studentPerformance = {};
-        const scoreDistribution = {
-            below50: 0,
-            fiftyToSixtyNine: 0,
-            seventyToEightyNine: 0,
-            above90: 0
-        };
-
-        for (const r of allResults) {
-            const pct = (r.score / r.totalQuestions) * 100;
-            if (pct < 50) scoreDistribution.below50 += 1;
-            else if (pct < 70) scoreDistribution.fiftyToSixtyNine += 1;
-            else if (pct < 90) scoreDistribution.seventyToEightyNine += 1;
-            else scoreDistribution.above90 += 1;
-
-            if (!r.student) continue;
-            const sid = r.student._id.toString();
-            if (!studentPerformance[sid]) {
-                studentPerformance[sid] = { name: r.student.name, studentId: r.student.studentId, scores: [] };
-            }
-            studentPerformance[sid].scores.push(pct);
-        }
-        const studentStats = Object.values(studentPerformance).map(s => ({
-            name: s.name,
-            studentId: s.studentId,
-            avgScore: Math.round(s.scores.reduce((a, b) => a + b, 0) / s.scores.length),
-            examsCount: s.scores.length
-        }));
-        const topStudents = [...studentStats].sort((a, b) => b.avgScore - a.avgScore).slice(0, 5);
-        const atRiskStudents = [...studentStats].filter(s => s.avgScore < 50).sort((a, b) => a.avgScore - b.avgScore).slice(0, 5);
+        // Top and at-risk students from aggregated results
+        const topStudents = [...studentPerformanceAgg].sort((a, b) => b.avgScore - a.avgScore).slice(0, 5);
+        const atRiskStudents = [...studentPerformanceAgg].filter(s => s.avgScore < 50).sort((a, b) => a.avgScore - b.avgScore).slice(0, 5);
 
         return res.status(200).json({
             stats: {
@@ -458,7 +520,7 @@ export const getDashboardStats = async (req, res) => {
                 questions: questionCount,
                 batches: batchCount,
                 pendingBatches: pendingBatchCount,
-                totalResults: allResults.length,
+                totalResults: totalResultCount,
                 avgScore,
                 passRate,
                 scoreDistribution,
@@ -675,40 +737,58 @@ export const bulkImportProfessors = async (req, res) => {
             return res.status(400).json({ message: "No professor data provided" });
         }
 
-        let importedCount = 0;
+        // 1. Validate and extract candidate data
+        const candidates = [];
         let skippedCount = 0;
-
         for (const profData of professors) {
             const rawProfessorId = profData.id || profData.professorid || profData['professor id'];
             const { name, email, password, contact, address } = profData;
-            
             if (!rawProfessorId || !name || !email) {
                 skippedCount++;
                 continue;
             }
-
-            const existingProfessor = await Professor.findOne({ $or: [{ id: rawProfessorId }, { email }] });
-            if (existingProfessor) {
-                skippedCount++;
-                continue; // Skip duplicates
-            }
-
             let finalPassword = password;
             if (!finalPassword) {
                 const firstName = name.split(' ')[0];
                 finalPassword = `hello${firstName}`;
             }
-
-            const cleanData = { id: rawProfessorId, name, email, password: finalPassword, contact, address };
-            await Professor.create(cleanData);
-            importedCount++;
+            candidates.push({ id: rawProfessorId, name, email, password: finalPassword, contact, address });
         }
 
-        await logAction({ actor: req.admin?.email, action: "PROFESSORS_BULK_IMPORTED", targetType: "Professor", targetLabel: `${importedCount} professors imported` });
+        if (candidates.length === 0) {
+            return res.status(200).json({ message: "Import complete", imported: 0, skipped: skippedCount });
+        }
+
+        // 2. Batch-fetch all existing professors by id or email in ONE query
+        const candidateIds = candidates.map(c => c.id);
+        const candidateEmails = candidates.map(c => c.email);
+        const existing = await Professor.find({
+            $or: [{ id: { $in: candidateIds } }, { email: { $in: candidateEmails } }]
+        }).select("id email").lean();
+
+        const existingIds = new Set(existing.map(e => e.id));
+        const existingEmails = new Set(existing.map(e => e.email));
+
+        // 3. Filter out duplicates
+        const toInsert = candidates.filter(c => !existingIds.has(c.id) && !existingEmails.has(c.email));
+        skippedCount += (candidates.length - toInsert.length);
+
+        if (toInsert.length > 0) {
+            // 4. Pre-hash passwords in parallel (bcrypt is CPU-intensive)
+            const bcrypt = (await import('bcrypt')).default;
+            await Promise.all(toInsert.map(async (prof) => {
+                prof.password = await bcrypt.hash(prof.password, 10);
+            }));
+
+            // 5. Bulk insert (skips Mongoose pre-save hooks since passwords are already hashed)
+            await Professor.insertMany(toInsert, { ordered: false });
+        }
+
+        await logAction({ actor: req.admin?.email, action: "PROFESSORS_BULK_IMPORTED", targetType: "Professor", targetLabel: `${toInsert.length} professors imported` });
 
         return res.status(200).json({ 
             message: "Import complete", 
-            imported: importedCount, 
+            imported: toInsert.length, 
             skipped: skippedCount 
         });
     } catch (error) {
@@ -757,42 +837,60 @@ export const bulkImportStudents = async (req, res) => {
             return res.status(400).json({ message: "No student data provided" });
         }
 
-        let importedCount = 0;
+        // 1. Validate and extract candidate data
+        const candidates = [];
         let skippedCount = 0;
-
         for (const stuData of students) {
             const rawStudentId = stuData.studentId || stuData.studentid;
             const { name, email, password, department, batch, contact, dateOfBirth, address, gender, program } = stuData;
-            
             if (!rawStudentId || !name || !email) {
                 skippedCount++;
                 continue;
             }
-
-            const existingStudent = await Student.findOne({ $or: [{ studentId: rawStudentId }, { email }] });
-            if (existingStudent) {
-                skippedCount++;
-                continue; // Skip duplicates
-            }
-
             let finalPassword = password;
             if (!finalPassword) {
                 const firstName = name.split(' ')[0];
                 finalPassword = `hello${firstName}`;
             }
-
             const cleanData = { studentId: rawStudentId, name, email, password: finalPassword, department, batch, contact, address, gender, program };
             if (dateOfBirth) cleanData.dateOfBirth = dateOfBirth;
-
-            await Student.create(cleanData);
-            importedCount++;
+            candidates.push(cleanData);
         }
 
-        await logAction({ actor: req.admin?.email, action: "STUDENTS_BULK_IMPORTED", targetType: "Student", targetLabel: `${importedCount} students imported` });
+        if (candidates.length === 0) {
+            return res.status(200).json({ message: "Import complete", imported: 0, skipped: skippedCount });
+        }
+
+        // 2. Batch-fetch all existing students by studentId or email in ONE query
+        const candidateIds = candidates.map(c => c.studentId);
+        const candidateEmails = candidates.map(c => c.email);
+        const existing = await Student.find({
+            $or: [{ studentId: { $in: candidateIds } }, { email: { $in: candidateEmails } }]
+        }).select("studentId email").lean();
+
+        const existingIds = new Set(existing.map(e => e.studentId));
+        const existingEmails = new Set(existing.map(e => e.email));
+
+        // 3. Filter out duplicates
+        const toInsert = candidates.filter(c => !existingIds.has(c.studentId) && !existingEmails.has(c.email));
+        skippedCount += (candidates.length - toInsert.length);
+
+        if (toInsert.length > 0) {
+            // 4. Pre-hash passwords in parallel
+            const bcrypt = (await import('bcrypt')).default;
+            await Promise.all(toInsert.map(async (stu) => {
+                stu.password = await bcrypt.hash(stu.password, 10);
+            }));
+
+            // 5. Bulk insert
+            await Student.insertMany(toInsert, { ordered: false });
+        }
+
+        await logAction({ actor: req.admin?.email, action: "STUDENTS_BULK_IMPORTED", targetType: "Student", targetLabel: `${toInsert.length} students imported` });
 
         return res.status(200).json({ 
             message: "Import complete", 
-            imported: importedCount, 
+            imported: toInsert.length, 
             skipped: skippedCount 
         });
     } catch (error) {

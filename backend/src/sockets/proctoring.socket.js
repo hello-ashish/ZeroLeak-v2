@@ -14,20 +14,20 @@ const authenticateSocket = async (socket, next) => {
 
         const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
 
-        // Check if Admin
-        const admin = await Admin.findById(decoded.id).select("-password");
-        if (admin) {
-            socket.user = { id: admin._id, role: "Admin", email: admin.email };
-            return next();
-        }
-
-        // Check if Student
-        const student = await Student.findById(decoded.id).select("-password");
+        // Check if Student (Check first because 99% of connections are students)
+        const student = await Student.findById(decoded.id).select("-password").lean();
         if (student) {
             if (student.isBlocked) {
                 return next(new Error("Authentication error: Student is blocked"));
             }
             socket.user = { id: student._id, role: "Student", studentId: student.studentId };
+            return next();
+        }
+
+        // Check if Admin
+        const admin = await Admin.findById(decoded.id).select("-password").lean();
+        if (admin) {
+            socket.user = { id: admin._id, role: "Admin", email: admin.email };
             return next();
         }
 
@@ -139,19 +139,23 @@ export const setupProctoringSockets = (io) => {
             socket.on("proctoring:heartbeat", async (data) => {
                 if (!currentSessionId) return;
                 try {
-                    const session = await ProctoringSession.findById(currentSessionId);
+                    // Use findByIdAndUpdate for atomic single-round-trip update instead of fetch-modify-save
+                    const updateFields = {
+                        lastHeartbeat: new Date(),
+                        lastSeenAt: new Date(),
+                        connectionStatus: "ONLINE"
+                    };
+                    if (data?.cameraStatus) updateFields.cameraStatus = data.cameraStatus;
+                    if (data?.microphoneStatus) updateFields.microphoneStatus = data.microphoneStatus;
+                    if (data?.fullscreenStatus) updateFields.fullscreenStatus = data.fullscreenStatus;
+
+                    const session = await ProctoringSession.findByIdAndUpdate(
+                        currentSessionId,
+                        { $set: updateFields },
+                        { new: true, lean: true }
+                    );
+
                     if (session) {
-                        session.lastHeartbeat = new Date();
-                        session.lastSeenAt = new Date();
-                        session.connectionStatus = "ONLINE";
-                        
-                        // Update device status if provided
-                        if (data?.cameraStatus) session.cameraStatus = data.cameraStatus;
-                        if (data?.microphoneStatus) session.microphoneStatus = data.microphoneStatus;
-                        if (data?.fullscreenStatus) session.fullscreenStatus = data.fullscreenStatus;
-
-                        await session.save();
-
                         proctoringNamespace.to("admin_room").emit("proctoring:heartbeat-update", {
                             sessionId: currentSessionId,
                             studentId: user.id,
@@ -170,27 +174,17 @@ export const setupProctoringSockets = (io) => {
             socket.on("proctoring:status", async (data) => {
                 if (!currentSessionId) return;
                 try {
-                     const session = await ProctoringSession.findById(currentSessionId);
-                     if (session) {
-                         let updated = false;
-                         if (data.cameraStatus && session.cameraStatus !== data.cameraStatus) {
-                             session.cameraStatus = data.cameraStatus;
-                             updated = true;
-                         }
-                         if (data.microphoneStatus && session.microphoneStatus !== data.microphoneStatus) {
-                             session.microphoneStatus = data.microphoneStatus;
-                             updated = true;
-                         }
-                         
-                         if (updated) {
-                             await session.save();
-                             proctoringNamespace.to("admin_room").emit("proctoring:student-updated", {
-                                 sessionId: currentSessionId,
-                                 cameraStatus: session.cameraStatus,
-                                 microphoneStatus: session.microphoneStatus
-                             });
-                         }
-                     }
+                    const updateFields = {};
+                    if (data.cameraStatus) updateFields.cameraStatus = data.cameraStatus;
+                    if (data.microphoneStatus) updateFields.microphoneStatus = data.microphoneStatus;
+
+                    if (Object.keys(updateFields).length > 0) {
+                        await ProctoringSession.findByIdAndUpdate(currentSessionId, { $set: updateFields });
+                        proctoringNamespace.to("admin_room").emit("proctoring:student-updated", {
+                            sessionId: currentSessionId,
+                            ...updateFields
+                        });
+                    }
                 } catch (error) {
                     console.error("[PROCTORING_SOCKET] Status error:", error);
                 }
@@ -201,7 +195,7 @@ export const setupProctoringSockets = (io) => {
                 try {
                     const { type, severity, description, details } = data;
                     
-                    const session = await ProctoringSession.findById(currentSessionId);
+                    const session = await ProctoringSession.findById(currentSessionId).select("examId").lean();
                     if (!session) return;
 
                     const incident = await ProctoringIncident.create({
@@ -214,11 +208,11 @@ export const setupProctoringSockets = (io) => {
                         notes: description
                     });
 
-                    // Update session counts
-                    if (type === "TAB_SWITCH") session.tabSwitchCount += 1;
-                    if (type === "WINDOW_BLUR") session.windowBlurCount += 1;
-                    session.incidentCount += 1;
-                    await session.save();
+                    // Update session counts atomically
+                    const incUpdate = { $inc: { incidentCount: 1 } };
+                    if (type === "TAB_SWITCH") incUpdate.$inc.tabSwitchCount = 1;
+                    if (type === "WINDOW_BLUR") incUpdate.$inc.windowBlurCount = 1;
+                    await ProctoringSession.findByIdAndUpdate(currentSessionId, incUpdate);
 
                     proctoringNamespace.to("admin_room").emit("proctoring:incident", {
                         sessionId: currentSessionId,
@@ -246,18 +240,14 @@ export const setupProctoringSockets = (io) => {
             socket.on("proctoring:leave", async () => {
                 if (!currentSessionId) return;
                 try {
-                    const session = await ProctoringSession.findById(currentSessionId);
-                    if (session) {
-                        session.status = "ENDED";
-                        session.endedAt = new Date();
-                        session.connectionStatus = "OFFLINE";
-                        await session.save();
+                    await ProctoringSession.findByIdAndUpdate(currentSessionId, {
+                        $set: { status: "ENDED", endedAt: new Date(), connectionStatus: "OFFLINE" }
+                    });
 
-                        proctoringNamespace.to("admin_room").emit("proctoring:student-left", {
-                            sessionId: currentSessionId,
-                            studentId: user.id
-                        });
-                    }
+                    proctoringNamespace.to("admin_room").emit("proctoring:student-left", {
+                        sessionId: currentSessionId,
+                        studentId: user.id
+                    });
                     currentSessionId = null;
                 } catch (error) {
                     console.error("[PROCTORING_SOCKET] Leave error:", error);
@@ -268,18 +258,16 @@ export const setupProctoringSockets = (io) => {
                 console.log(`[PROCTORING_SOCKET] Student ${user.id} disconnected`);
                 if (currentSessionId) {
                     try {
-                        const session = await ProctoringSession.findById(currentSessionId);
-                        if (session && session.status === "ACTIVE") {
-                            session.status = "DISCONNECTED";
-                            session.connectionStatus = "OFFLINE";
-                            await session.save();
-                            
-                            proctoringNamespace.to("admin_room").emit("proctoring:student-updated", {
-                                sessionId: currentSessionId,
-                                status: "DISCONNECTED",
-                                connectionStatus: "OFFLINE"
-                            });
-                        }
+                        await ProctoringSession.findOneAndUpdate(
+                            { _id: currentSessionId, status: "ACTIVE" },
+                            { $set: { status: "DISCONNECTED", connectionStatus: "OFFLINE" } }
+                        );
+                        
+                        proctoringNamespace.to("admin_room").emit("proctoring:student-updated", {
+                            sessionId: currentSessionId,
+                            status: "DISCONNECTED",
+                            connectionStatus: "OFFLINE"
+                        });
                     } catch (error) {
                         console.error("[PROCTORING_SOCKET] Disconnect error:", error);
                     }

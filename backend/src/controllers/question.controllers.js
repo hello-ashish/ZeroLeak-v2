@@ -132,20 +132,20 @@ export const getProfessorQuestions = async (req, res) => {
 }
 export const getAllQuestions = async (req, res) => {
     try {
-        const questions = await Question.find({})
-            .sort({ createdAt: -1 })
-            .lean()
+        // Run question fetch and usage aggregation in parallel
+        const [questions, usageAgg] = await Promise.all([
+            Question.find({})
+                .sort({ createdAt: -1 })
+                .lean(),
+            // Compute question usage counts via aggregation instead of loading all exams
+            Exam.aggregate([
+                { $unwind: "$questions" },
+                { $group: { _id: "$questions", usageCount: { $sum: 1 } } }
+            ])
+        ]);
 
-        const exams = await Exam.find({}).lean()
-
-        const usageMap = {}
-
-        exams.forEach((exam) => {
-            exam.questions.forEach((qId) => {
-                const id = String(qId)
-                usageMap[id] = (usageMap[id] || 0) + 1
-            })
-        })
+        const usageMap = {};
+        usageAgg.forEach(u => { usageMap[String(u._id)] = u.usageCount; });
 
         const questionsWithHealth = questions.map((question) => {
             let decryptedContent = {}

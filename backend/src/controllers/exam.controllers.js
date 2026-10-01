@@ -173,21 +173,26 @@ export const getExams = async (req, res) => {
 
 export const getExamResults = async (req, res) => {
     try {
-        const results = await Result.find({})
-            .populate(
-                "student",
-                "name studentId"
-            )
-            .populate(
-                "exam",
-                "title"
-            )
-            .sort({ createdAt: -1 });
+        const { page = 1, limit = 50 } = req.query;
+        const skip = (Number(page) - 1) * Number(limit);
+
+        const [results, total] = await Promise.all([
+            Result.find({})
+                .populate("student", "name studentId")
+                .populate("exam", "title")
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(Number(limit))
+                .lean(),
+            Result.countDocuments()
+        ]);
 
         return res.status(200).json({
-            message:
-                "Results fetched successfully",
-            results
+            message: "Results fetched successfully",
+            results,
+            total,
+            page: Number(page),
+            totalPages: Math.ceil(total / Number(limit))
         });
 
     } catch (error) {

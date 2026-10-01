@@ -43,7 +43,8 @@ export const loginProfessor = async (req, res) => {
         await professor.save({ validateBeforeSave: false });
 
         // if login is successful, remove the password from the data
-        const loggedInProfessor = await Professor.findById(professor._id).select("-password")
+        const loggedInProfessor = professor.toObject();
+        delete loggedInProfessor.password;
 
         // JWT for future
 
@@ -244,7 +245,8 @@ export const updateProfessorProfile = async (req, res) => {
 
         await professor.save()
 
-        const updatedProfessor = await Professor.findById(professor._id).select("-password")
+        const updatedProfessor = professor.toObject();
+        delete updatedProfessor.password;
         return res.status(200).json({
             message: "Profile Updated Successfully", professor: updatedProfessor
         })

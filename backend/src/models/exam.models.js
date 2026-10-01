@@ -83,4 +83,11 @@ const examSchema = new mongoose.Schema({
     },
 }, { timestamps: true })
 
+// Indexes for high-performance querying
+examSchema.index({ title: 'text', subject: 'text' });
+examSchema.index({ status: 1 });
+examSchema.index({ examinationId: 1 });
+examSchema.index({ createdAt: -1 });
+examSchema.index({ subject: 1 });
+
 export const Exam = mongoose.model('Exam', examSchema)

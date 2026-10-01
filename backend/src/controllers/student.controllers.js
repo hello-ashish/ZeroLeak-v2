@@ -27,7 +27,8 @@ export const registerStudent = async (req, res) => {
         if (dateOfBirth) studentData.dateOfBirth = dateOfBirth;
         
         const student = await Student.create(studentData);
-        const createdStudent = await Student.findById(student._id).select("-password");
+        const createdStudent = student.toObject();
+        delete createdStudent.password;
         return res.status(201).json({ message: "Student registered", student: createdStudent });
     } catch (error) {
         return res.status(500).json({ message: "Error registering student", error: error.message });
@@ -46,7 +47,8 @@ export const loginStudent = async (req, res) => {
         const isPasswordValid = await student.isPasswordCorrect(password);
         if (!isPasswordValid) return res.status(401).json({ message: "Invalid credentials" });
         const token = student.generateAccessToken();
-        const loggedInStudent = await Student.findById(student._id).select("-password");
+        const loggedInStudent = student.toObject();
+        delete loggedInStudent.password;;
         return res.status(200).json({ message: "Login successful", token, student: loggedInStudent });
     } catch (error) {
         return res.status(500).json({ message: "Error logging in", error: error.message });
@@ -57,8 +59,20 @@ export const loginStudent = async (req, res) => {
 export const pingSession = async (req, res) => {
     try {
         const { currentExamId, warningCount } = req.body;
-        // The verifyStudentJWT middleware will automatically reject this if the student is blocked.
         const student = req.student;
+        
+        const MAX_VIOLATIONS = 3;
+
+        // Happy Path Optimization: Atomic update, skip heavy logic and document saves
+        if (warningCount < MAX_VIOLATIONS) {
+            const updateFields = { lastActiveAt: new Date() };
+            if (currentExamId) updateFields.currentExamId = currentExamId;
+            
+            await Student.findByIdAndUpdate(student._id, { $set: updateFields });
+            return res.status(200).json({ message: "Ping successful" });
+        }
+
+        // --- Slow Path: Security Enforcement ---
         student.lastActiveAt = new Date();
         if (currentExamId) {
             student.currentExamId = currentExamId;
@@ -67,7 +81,6 @@ export const pingSession = async (req, res) => {
         // Network Interception Bypass Protection
         // If the client's warning count is >= 3, they might be blocking the /incident endpoint.
         // We enforce termination here as a fallback.
-        const MAX_VIOLATIONS = 3;
         if (warningCount >= MAX_VIOLATIONS && currentExamId) {
             const exam = await Exam.findById(currentExamId);
             
@@ -676,7 +689,8 @@ export const updateStudentProfile = async (req, res) => {
 
         await student.save()
 
-        const updatedStudent = await Student.findById(student._id).select("-password")
+        const updatedStudent = student.toObject();
+        delete updatedStudent.password;
         return res.status(200).json({
             message: "profile updated successfully", student: updatedStudent
         })

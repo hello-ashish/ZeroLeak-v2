@@ -57,4 +57,10 @@ const resultSchema = new mongoose.Schema({
     }
 }, { timestamps: true })
 
+// Indexes for high-performance querying
+resultSchema.index({ student: 1, exam: 1 });
+resultSchema.index({ student: 1, exam: 1, resetByAdmin: 1 });
+resultSchema.index({ exam: 1 });
+resultSchema.index({ student: 1, isTerminated: 1, resetByAdmin: 1 });
+
 export const Result = mongoose.model("Result", resultSchema)

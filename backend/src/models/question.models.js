@@ -62,6 +62,11 @@ const questionSchema = new mongoose.Schema(
     }
 );
 
+// Additional indexes for high-performance querying
+questionSchema.index({ subject: 1 });
+questionSchema.index({ createdBy: 1 });
+questionSchema.index({ subject: 1, difficultyLevel: 1 });
+
 export const Question = mongoose.model(
     "Question",
     questionSchema

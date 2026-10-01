@@ -24,4 +24,7 @@ const integrityOutboxSchema = new mongoose.Schema({
     privateTransactionId: { type: String, default: null }, // ID returned by Fabric
 }, { timestamps: true });
 
+// Compound index for outbox worker polling (runs every 5 seconds)
+integrityOutboxSchema.index({ status: 1, retryCount: 1, createdAt: 1 });
+
 export const IntegrityOutbox = mongoose.model("IntegrityOutbox", integrityOutboxSchema);

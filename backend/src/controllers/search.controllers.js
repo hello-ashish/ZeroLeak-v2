@@ -23,30 +23,29 @@ export const globalSearch = async (req, res) => {
 
         if (role === "Admin" || role === "Auditor") {
             [students, professors, batches, exams] = await Promise.all([
-                Student.find({
-                    $or: [{ name: regex }, { email: regex }, { studentId: regex }]
-                }).select("name email studentId department program batch").limit(10),
-                Professor.find({
-                    $or: [{ name: regex }, { email: regex }]
-                }).select("name email contact").limit(10),
-                Batch.find({
-                    $or: [{ name: regex }, { subject: regex }]
-                }).select("name subject status").limit(10),
-                Exam.find({
-                    $or: [{ title: regex }, { subject: regex }]
-                }).select("title subject status").limit(10)
+                Student.find({ $text: { $search: q } })
+                    .select("name email studentId department program batch")
+                    .limit(10).lean(),
+                Professor.find({ $text: { $search: q } })
+                    .select("name email contact")
+                    .limit(10).lean(),
+                Batch.find({ $text: { $search: q } })
+                    .select("name subject status")
+                    .limit(10).lean(),
+                Exam.find({ $text: { $search: q } })
+                    .select("title subject status")
+                    .limit(10).lean()
             ]);
         } else if (role === "Professor") {
             [batches, exams] = await Promise.all([
                 Batch.find({
                     professor: req.user._id,
-                    $or: [{ name: regex }, { subject: regex }]
-                }).select("name subject status").limit(10)
+                    $text: { $search: q }
+                }).select("name subject status").limit(10).lean()
             ]);
         } else if (role === "Student") {
-            exams = await Exam.find({
-                $or: [{ title: regex }, { subject: regex }]
-            }).select("title subject status").limit(10);
+            exams = await Exam.find({ $text: { $search: q } })
+                .select("title subject status").limit(10).lean();
         }
 
         res.status(200).json({ students, professors, batches, exams });

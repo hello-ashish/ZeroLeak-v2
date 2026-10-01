@@ -86,4 +86,10 @@ const batchSchema = new Schema({
     }
 }, { timestamps: true})
 
+// Indexes for high-performance querying
+batchSchema.index({ name: 'text', subject: 'text' });
+batchSchema.index({ createdBy: 1, status: 1 });
+batchSchema.index({ status: 1, isDeletedByAdmin: 1 });
+batchSchema.index({ createdAt: -1 });
+
 export const Batch = mongoose.model("Batch", batchSchema)
