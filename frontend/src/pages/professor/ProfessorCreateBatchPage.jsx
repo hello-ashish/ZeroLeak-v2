@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import "./ProfessorCreateBatchPage.css";
 import { useNavigate, useParams } from 'react-router-dom'
 import axios from 'axios'
 import { Plus, Send, Edit2, Trash2, Download, Upload, Loader2, ArrowLeft, Eye, EyeOff, Sparkles, CheckCircle, AlertTriangle, XCircle, RefreshCw } from 'lucide-react'
@@ -917,9 +918,9 @@ const ProfessorCreateBatchPage = () => {
                         </div>
                         <div className="card-body" style={{ padding: '24px' }}>
                             <form onSubmit={handleCreateBatch} style={{ display: 'grid', gap: '1rem' }}>
-                                <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                <div className="form-group batch-form-group">
                                     <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>Batch Title *</label>
-                                    <input className="form-input" style={{ background: 'var(--bg-input)', border: '1px solid var(--border-default)', padding: '8px 12px', borderRadius: 6, color: 'var(--text-primary)' }} type="text" placeholder="e.g. Physics Midterm Pool" value={batchTitle} onChange={(e) => setBatchTitle(e.target.value)} required />
+                                    <input className="form-input batch-form-input" type="text" placeholder="e.g. Physics Midterm Pool" value={batchTitle} onChange={(e) => setBatchTitle(e.target.value)} required />
                                 </div>
 
                                 {/* ── AI Generate Batch Button ───────────────── */}
@@ -965,11 +966,11 @@ const ProfessorCreateBatchPage = () => {
                                     )}
                                 </div>
 
-                                <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                <div className="form-group batch-form-group">
                                     <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>Subject *</label>
-                                    <input className="form-input" style={{ background: 'var(--bg-input)', border: '1px solid var(--border-default)', padding: '8px 12px', borderRadius: 6, color: 'var(--text-primary)' }} type="text" placeholder="e.g. Physics" value={batchSubject} onChange={(e) => setBatchSubject(e.target.value)} required />
+                                    <input className="form-input batch-form-input" type="text" placeholder="e.g. Physics" value={batchSubject} onChange={(e) => setBatchSubject(e.target.value)} required />
                                 </div>
-                                <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                <div className="form-group batch-form-group">
                                     <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>Description (Optional)</label>
                                     <textarea className="form-input" style={{ background: 'var(--bg-input)', border: '1px solid var(--border-default)', padding: '8px 12px', borderRadius: 6, color: 'var(--text-primary)', minHeight: 80 }} placeholder="Brief description of the batch content" value={batchDescription} onChange={(e) => setBatchDescription(e.target.value)} />
                                 </div>
@@ -993,9 +994,9 @@ const ProfessorCreateBatchPage = () => {
                     size="lg"
                 >
                     <form onSubmit={handleAddQuestionToBatch} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                        <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <div className="form-group batch-form-group">
                             <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>Question Text *</label>
-                            <input className="form-input" style={{ background: 'var(--bg-input)', border: '1px solid var(--border-default)', padding: '8px 12px', borderRadius: 6, color: 'var(--text-primary)' }} type="text" placeholder="e.g. What is React?" value={title} onChange={(e) => setTitle(e.target.value)} required />
+                            <input className="form-input batch-form-input" type="text" placeholder="e.g. What is React?" value={title} onChange={(e) => setTitle(e.target.value)} required />
                         </div>
 
                         {/* ── AI Generate Question Button ──────────────── */}
@@ -1053,39 +1054,39 @@ const ProfessorCreateBatchPage = () => {
                         </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
-                            <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <div className="form-group batch-form-group">
                                 <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>Subject (Inherited) *</label>
                                 <input className="form-input" style={{ background: 'var(--bg-input)', border: '1px solid var(--border-default)', padding: '8px 12px', borderRadius: 6, color: 'var(--text-secondary)', opacity: 0.7 }} type="text" placeholder="Subject" value={batchSubject} readOnly disabled />
                             </div>
-                            <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <div className="form-group batch-form-group">
                                 <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>Topic *</label>
-                                <input className="form-input" style={{ background: 'var(--bg-input)', border: '1px solid var(--border-default)', padding: '8px 12px', borderRadius: 6, color: 'var(--text-primary)' }} type="text" placeholder="Topic" value={topic} onChange={(e) => setTopic(e.target.value)} required />
+                                <input className="form-input batch-form-input" type="text" placeholder="Topic" value={topic} onChange={(e) => setTopic(e.target.value)} required />
                             </div>
-                            <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <div className="form-group batch-form-group">
                                 <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>Difficulty *</label>
-                                <select className="form-input" style={{ background: 'var(--bg-input)', border: '1px solid var(--border-default)', padding: '8px 12px', borderRadius: 6, color: 'var(--text-primary)' }} value={difficultyLevel} onChange={(e) => setDifficultyLevel(e.target.value)}>
+                                <select className="form-input batch-form-input" value={difficultyLevel} onChange={(e) => setDifficultyLevel(e.target.value)}>
                                     <option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option>
                                 </select>
                             </div>
                         </div>
 
-                        <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <div className="form-group batch-form-group">
                             <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>Options *</label>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                 {[0, 1, 2, 3].map(index => (
-                                    <input key={index} className="form-input" style={{ background: 'var(--bg-input)', border: '1px solid var(--border-default)', padding: '8px 12px', borderRadius: 6, color: 'var(--text-primary)' }} type="text" placeholder={`Option ${index + 1}`} value={options[index]} onChange={(e) => handleOptionChange(index, e.target.value)} required />
+                                    <input key={index} className="form-input batch-form-input" type="text" placeholder={`Option ${index + 1}`} value={options[index]} onChange={(e) => handleOptionChange(index, e.target.value)} required />
                                 ))}
                             </div>
                         </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                            <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <div className="form-group batch-form-group">
                                 <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>Exact Correct Answer Text (optional)</label>
-                                <input className="form-input" style={{ background: 'var(--bg-input)', border: '1px solid var(--border-default)', padding: '8px 12px', borderRadius: 6, color: 'var(--text-primary)' }} type="text" placeholder="Exact Correct Answer Text" value={correctAnswer} onChange={(e) => setCorrectAnswer(e.target.value)} />
+                                <input className="form-input batch-form-input" type="text" placeholder="Exact Correct Answer Text" value={correctAnswer} onChange={(e) => setCorrectAnswer(e.target.value)} />
                             </div>
-                            <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <div className="form-group batch-form-group">
                                 <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>Correct Option *</label>
-                                <select className="form-input" style={{ background: 'var(--bg-input)', border: '1px solid var(--border-default)', padding: '8px 12px', borderRadius: 6, color: 'var(--text-primary)' }} value={correctAnswerIndex} onChange={(e) => setCorrectAnswerIndex(e.target.value)}>
+                                <select className="form-input batch-form-input" value={correctAnswerIndex} onChange={(e) => setCorrectAnswerIndex(e.target.value)}>
                                     <option value={0}>Option 1 is correct</option><option value={1}>Option 2 is correct</option><option value={2}>Option 3 is correct</option><option value={3}>Option 4 is correct</option>
                                 </select>
                             </div>

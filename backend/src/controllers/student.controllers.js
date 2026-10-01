@@ -435,8 +435,8 @@ export const submitExamResult = async (req, res) => {
             });
         }
 
-        // Protected exams must contain a Merkle root
-        if (!exam.questionMerkleRoot) {
+        // Protected exams must contain a Merkle root unless it is a Zeroleak exam
+        if (exam.mode !== "Zeroleak" && !exam.questionMerkleRoot) {
             return res.status(403).json({
                 message:
                     "This exam is not protected."

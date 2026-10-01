@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import "./AdminCheatingDetection.css";
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { AdminLayout } from './AdminLayout.jsx';
@@ -369,32 +370,32 @@ export default function AdminCheatingDetection() {
                 {/* Metrics Cards */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20, marginBottom: 32 }}>
                     
-                    <div style={{ background: 'var(--bg-card)', padding: 24, borderRadius: 16, border: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', gap: 20 }}>
+                    <div className="metric-card">
                         <div style={{ width: 52, height: 52, borderRadius: 12, background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <AlertTriangle size={24} />
                         </div>
                         <div>
-                            <div style={{ fontSize: 28, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1 }}>{metrics.totalIncidents}</div>
+                            <div className="metric-value">{metrics.totalIncidents}</div>
                             <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 6 }}>Total Security Incidents</div>
                         </div>
                     </div>
 
-                    <div style={{ background: 'var(--bg-card)', padding: 24, borderRadius: 16, border: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', gap: 20 }}>
+                    <div className="metric-card">
                         <div style={{ width: 52, height: 52, borderRadius: 12, background: 'rgba(249, 115, 22, 0.1)', color: '#f97316', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <UserX size={24} />
                         </div>
                         <div>
-                            <div style={{ fontSize: 28, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1 }}>{metrics.blockedStudentsCount}</div>
+                            <div className="metric-value">{metrics.blockedStudentsCount}</div>
                             <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 6 }}>Blocked Students</div>
                         </div>
                     </div>
 
-                    <div style={{ background: 'var(--bg-card)', padding: 24, borderRadius: 16, border: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', gap: 20 }}>
+                    <div className="metric-card">
                         <div style={{ width: 52, height: 52, borderRadius: 12, background: 'rgba(234, 179, 8, 0.1)', color: '#eab308', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <ShieldAlert size={24} />
                         </div>
                         <div>
-                            <div style={{ fontSize: 28, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1 }}>{metrics.terminatedAttempts}</div>
+                            <div className="metric-value">{metrics.terminatedAttempts}</div>
                             <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 6 }}>Terminated Exam Attempts</div>
                         </div>
                     </div>
@@ -461,7 +462,7 @@ export default function AdminCheatingDetection() {
 
                 {/* TAB 1: INCIDENTS TABLE */}
                 {activeTab === 'incidents' && (
-                    <div style={{ background: 'var(--bg-card)', borderRadius: 16, border: '1px solid var(--border-default)', padding: 24 }}>
+                    <div className="section-card">
                         
                         {/* Filters */}
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
@@ -501,9 +502,7 @@ export default function AdminCheatingDetection() {
                         </div>
 
                         {/* Table */}
-                        {incidentsLoading ? (
-                            <SkeletonTable rows={5} cols={7} />
-                        ) : incidents.length === 0 ? (
+                        {incidentsLoading ? (<table style={{ width: "100%", borderCollapse: "collapse" }}><SkeletonTable rows={5} cols={7} /></table>) : incidents.length === 0 ? (
                             <EmptyState
                                 icon={<ShieldCheck size={48} style={{ color: 'var(--success)' }} />}
                                 title="No Cheating Incidents Detected"
@@ -600,7 +599,7 @@ export default function AdminCheatingDetection() {
 
                 {/* TAB 2: BLOCKED STUDENTS TABLE */}
                 {activeTab === 'blocked' && (
-                    <div style={{ background: 'var(--bg-card)', borderRadius: 16, border: '1px solid var(--border-default)', padding: 24 }}>
+                    <div className="section-card">
                         
                         {/* Search */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
@@ -629,9 +628,7 @@ export default function AdminCheatingDetection() {
                         </div>
 
                         {/* Table */}
-                        {blockedLoading ? (
-                            <SkeletonTable rows={5} cols={6} />
-                        ) : blockedStudents.length === 0 ? (
+                        {blockedLoading ? (<table style={{ width: "100%", borderCollapse: "collapse" }}><SkeletonTable rows={5} cols={6} /></table>) : blockedStudents.length === 0 ? (
                             <EmptyState
                                 icon={<CheckCircle2 size={48} style={{ color: 'var(--success)' }} />}
                                 title="No Blocked Students"
@@ -718,7 +715,7 @@ export default function AdminCheatingDetection() {
 
                 {/* TAB 3: UNBLOCKED STUDENTS TABLE */}
                 {activeTab === 'unblocked' && (
-                    <div style={{ background: 'var(--bg-card)', borderRadius: 16, border: '1px solid var(--border-default)', padding: 24 }}>
+                    <div className="section-card">
                         
                         {/* Search */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
@@ -747,9 +744,7 @@ export default function AdminCheatingDetection() {
                         </div>
 
                         {/* Table */}
-                        {unblockedLoading ? (
-                            <SkeletonTable rows={5} cols={5} />
-                        ) : unblockedStudents.length === 0 ? (
+                        {unblockedLoading ? (<table style={{ width: "100%", borderCollapse: "collapse" }}><SkeletonTable rows={5} cols={5} /></table>) : unblockedStudents.length === 0 ? (
                             <EmptyState
                                 icon={<UserCheck size={48} style={{ color: 'var(--success)' }} />}
                                 title="No Unblocked Students"

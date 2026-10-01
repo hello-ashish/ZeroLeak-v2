@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
+import "./TakeExam.css";
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
@@ -10,7 +11,6 @@ import {
 import { useAntiCheating } from './utils/useAntiCheating';
 import { useProctoring } from './hooks/useProctoring';
 import { ProctoringStatusPanel } from './components/ProctoringStatusPanel';
-
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 const MAX_WARNINGS = 3;
 
@@ -351,16 +351,19 @@ const TakeExam = () => {
                 const pendingSubmitKey = `zl_pending_submit_${id}`;
                 const pendingSubmit = localStorage.getItem(pendingSubmitKey);
                 if (pendingSubmit && score === null && !isSubmitting) {
+                    setIsSubmitting(true);
                     try {
                         const payload = JSON.parse(pendingSubmit);
                         const response = await axios.post('/api/students/results', payload, { headers: { Authorization: `Bearer ${token}` } });
-                        setScore(response.data.result.score);
+                        setScore(response.data.result.score !== null ? response.data.result.score : 'Hidden');
                         localStorage.removeItem(sessionKey);
                         localStorage.removeItem(pendingSubmitKey);
                         setShowPreSubmit(false);
                         return; // Auto-submit succeeded, stop this ping cycle
                     } catch (e) {
                         console.warn("Background auto-submit failed, will retry...", e);
+                    } finally {
+                        setIsSubmitting(false);
                     }
                 }
                 // --------------------------------------------
@@ -499,7 +502,7 @@ const TakeExam = () => {
     };
 
     const submitExamData = async () => {
-        if (isTerminated) return;
+        if (isTerminated || isSubmitting) return;
         setIsSubmitting(true);
         if (timerRef.current) clearInterval(timerRef.current);
 
@@ -515,17 +518,22 @@ const TakeExam = () => {
             const token = localStorage.getItem('studentToken');
             const response = await axios.post('/api/students/results', payload, { headers: { Authorization: `Bearer ${token}` } });
 
-            setScore(response.data.result.score);
+            setScore(response.data.result.score !== null ? response.data.result.score : 'Hidden');
             localStorage.removeItem(sessionKey);
             setShowPreSubmit(false);
         } catch (error) {
             console.error("Failed to submit exam result", error);
-            if (!error.response || error.code === 'ERR_NETWORK') {
-                localStorage.setItem(`zl_pending_submit_${id}`, JSON.stringify(payload));
-                alert("You are offline. Your exam has been saved locally and will auto-submit when your connection is restored. Please do not close this window.");
-            } else {
-                alert("Failed to save results. " + (error.response?.data?.message || ""));
+            try {
+                if (!error.response || error.code === 'ERR_NETWORK') {
+                    localStorage.setItem(`zl_pending_submit_${id}`, JSON.stringify(payload));
+                    alert("You are offline. Your exam has been saved locally and will auto-submit when your connection is restored. Please do not close this window.");
+                } else {
+                    alert("Failed to save results. " + (error.response?.data?.message || ""));
+                }
+            } catch (e) {
+                console.error("Error saving pending submit", e);
             }
+        } finally {
             setIsSubmitting(false);
         }
     };
@@ -567,7 +575,7 @@ const TakeExam = () => {
     // --- SCREEN: EXAM TERMINATED (Anti-Cheating Threshold Exceeded) ---
     if (isTerminated) {
         return (
-            <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-base)', padding: 24 }}>
+            <div className="exam-screen">
                 <div style={{ maxWidth: 520, width: '100%', textAlign: 'center', background: 'var(--bg-card)', padding: 48, borderRadius: 24, border: '1px solid var(--border-default)', animation: 'slideIn 0.3s ease-out' }}>
                     <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
                         <ShieldAlert size={36} />
@@ -595,7 +603,7 @@ const TakeExam = () => {
                         Disclaimer: Browser anti-cheating monitors tab switches, window focus, clipboard, and full-screen state.
                     </div>
 
-                    <button onClick={() => navigate('/student/dashboard')} className="btn btn-secondary" style={{ width: '100%', padding: '16px', fontSize: 15, borderRadius: 12 }}>
+                    <button onClick={() => navigate('/student/dashboard')} className="btn btn-secondary exam-action-btn">
                         Return to Command Center
                     </button>
                 </div>
@@ -609,7 +617,7 @@ const TakeExam = () => {
     if (score !== null) {
         const pct = Math.round((score / exam.questions.length) * 100);
         return (
-            <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-base)', padding: 24 }}>
+            <div className="exam-screen">
                 <div style={{ maxWidth: 480, width: '100%', textAlign: 'center', animation: 'slideIn 0.3s ease-out' }}>
                     <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--success-subtle)', color: 'var(--success)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
                         <CheckCircle2 size={32} />
@@ -617,7 +625,7 @@ const TakeExam = () => {
                     <h2 style={{ fontSize: 28, fontWeight: 300, color: 'var(--text-primary)', marginBottom: 8, letterSpacing: '-0.02em' }}>Submission Successful</h2>
                     <p style={{ fontSize: 15, color: 'var(--text-secondary)', marginBottom: 40 }}>Exam Completed Successfully. Your result will be released soon.</p>
 
-                    <button onClick={() => navigate('/student/dashboard')} className="btn btn-secondary" style={{ width: '100%', padding: '16px', fontSize: 15, borderRadius: 12 }}>
+                    <button onClick={() => navigate('/student/dashboard')} className="btn btn-secondary exam-action-btn">
                         Return to Command Center
                     </button>
                 </div>
@@ -628,7 +636,7 @@ const TakeExam = () => {
     // --- SCREEN: BRIEFING ---
     if (!isStarted) {
         return (
-            <div style={{ minHeight: '100vh', background: 'var(--bg-base)', padding: '40px 24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="exam-container">
                 <div style={{ maxWidth: 640, width: '100%', background: 'var(--bg-card)', padding: 48, borderRadius: 24, border: '1px solid var(--border-default)' }}>
                     <div style={{ marginBottom: 40 }}>
                         <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--brand-primary)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 16 }}>ZeroLeak Assessment</div>
@@ -637,14 +645,14 @@ const TakeExam = () => {
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 32 }}>
-                        <div style={{ background: 'var(--bg-body)', padding: 24, borderRadius: 16, display: 'flex', alignItems: 'center', gap: 16 }}>
+                        <div className="exam-info-box">
                             <div style={{ width: 48, height: 48, borderRadius: 12, background: 'var(--bg-card)', border: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}><Clock size={20} /></div>
                             <div>
                                 <div style={{ fontSize: 24, fontWeight: 400, color: 'var(--text-primary)', lineHeight: 1 }}>{exam.durationMinutes}</div>
                                 <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 4 }}>Minutes</div>
                             </div>
                         </div>
-                        <div style={{ background: 'var(--bg-body)', padding: 24, borderRadius: 16, display: 'flex', alignItems: 'center', gap: 16 }}>
+                        <div className="exam-info-box">
                             <div style={{ width: 48, height: 48, borderRadius: 12, background: 'var(--bg-card)', border: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}><LayoutDashboard size={20} /></div>
                             <div>
                                 <div style={{ fontSize: 24, fontWeight: 400, color: 'var(--text-primary)', lineHeight: 1 }}>{exam.questions.length}</div>
@@ -680,7 +688,7 @@ const TakeExam = () => {
         const markedCount = markedForReview.size;
 
         return (
-            <div style={{ minHeight: '100vh', background: 'var(--bg-base)', padding: '40px 24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="exam-container">
                 <div style={{ maxWidth: 540, width: '100%', background: 'var(--bg-card)', padding: 48, borderRadius: 24, border: '1px solid var(--border-default)', animation: 'slideIn 0.2s ease-out' }}>
                     <div style={{ textAlign: 'center', marginBottom: 40 }}>
                         <h2 style={{ fontSize: 28, fontWeight: 300, color: 'var(--text-primary)', marginBottom: 12, letterSpacing: '-0.02em' }}>Ready to Submit?</h2>
