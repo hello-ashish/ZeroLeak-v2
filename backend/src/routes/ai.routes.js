@@ -1,7 +1,7 @@
 import { Router } from "express"
-import { verifyProfessorJWT, verifyAdminJWT } from "../middlewares/auth.middleware.js"
+import { verifyProfessorJWT, verifyAdminJWT, verifyStudentJWT } from "../middlewares/auth.middleware.js"
 import { rateLimit } from "../middlewares/rateLimit.middleware.js"
-import { RATE_LIMITS } from "../Services/ai/ai.policy.js"
+import { RATE_LIMITS } from "../services/ai/ai.policy.js"
 import { generateBatch, generateQuestion, fixQuestionImport, reviewBatchAdmin, auditSummaryAdmin, cohortReportAdmin, examCopilotAdmin, policyRewriteAdmin } from "../controllers/ai.controllers.js"
 
 const router = Router()
@@ -58,6 +58,26 @@ router.post(
     "/admin/policy-rewrite",
     verifyAdminJWT,
     policyRewriteAdmin
+)
+
+router.get(
+    "/admin/student/:studentId/performance",
+    verifyAdminJWT,
+    (req, res, next) => {
+        import('../controllers/ai.controllers.js')
+            .then(mod => mod.getStudentPerformanceAnalysis(req, res, next))
+            .catch(next);
+    }
+)
+
+router.get(
+    "/student/performance-analysis",
+    verifyStudentJWT,
+    (req, res, next) => {
+        import('../controllers/ai.controllers.js')
+            .then(mod => mod.getStudentSelfPerformanceAnalysis(req, res, next))
+            .catch(next);
+    }
 )
 
 export default router

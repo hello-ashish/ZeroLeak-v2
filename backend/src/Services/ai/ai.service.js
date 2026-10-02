@@ -60,14 +60,15 @@ async function callLLM(systemPrompt, userPrompt, jsonSchema) {
     }
 }
 
-async function logAiAction({ professorId, action, promptVersion, requestData, responseData, status }) {
+async function logAiAction({ professorId, actorId, actorRole = "Professor", action, promptVersion, requestData, responseData, status }) {
     try {
+        const finalActorId = actorId || professorId;
         const requestHash = crypto.createHash("sha256").update(JSON.stringify(requestData)).digest("hex")
         const responseHash = crypto.createHash("sha256").update(JSON.stringify(responseData)).digest("hex")
 
         await AuditLog.create({
-            actor: professorId.toString(),
-            actorRole: "Professor",
+            actor: finalActorId.toString(),
+            actorRole: actorRole,
             action,
             targetType: "AI",
             details: JSON.stringify({
@@ -497,3 +498,116 @@ export async function adminPolicyRewrite(draft, adminId) {
     }
 }
 
+export async function generateStudentPerformanceAnalysis(studentData, examHistory, adminId) {
+    try {
+        const { STUDENT_PERFORMANCE_PROMPT } = await import('./ai.prompts.js');
+        const { validateStudentPerformanceResponse } = await import('./ai.validation.js');
+        
+        const raw = await callLLM(
+            STUDENT_PERFORMANCE_PROMPT.system,
+            STUDENT_PERFORMANCE_PROMPT.user(studentData, examHistory),
+            {
+                name: "student_performance_analysis",
+                strict: true,
+                schema: {
+                    type: "object",
+                    properties: {
+                        summary: { type: "string" },
+                        averagePerformance: { type: "string" },
+                        performanceTrend: { type: "string", enum: ["Improving", "Declining", "Stable", "Inconsistent", "Insufficient Data"] },
+                        strengths: { type: "array", items: { type: "string" } },
+                        weakAreas: { type: "array", items: { type: "string" } },
+                        observations: { type: "array", items: { type: "string" } }
+                    },
+                    required: ["summary", "averagePerformance", "performanceTrend", "strengths", "weakAreas", "observations"],
+                    additionalProperties: false
+                }
+            }
+        );
+        
+        const validated = validateStudentPerformanceResponse(raw);
+        if (!validated.valid) {
+            return { success: false, error: validated.error };
+        }
+        
+        await logAiAction({
+            professorId: adminId,
+            action: "AI_STUDENT_PERFORMANCE",
+            promptVersion: "1.0",
+            requestData: { studentId: studentData.studentId },
+            responseData: validated.data,
+            status: "SUCCESS",
+        });
+
+        return { success: true, data: validated.data };
+    } catch (error) {
+        await logAiAction({
+            professorId: adminId,
+            action: "AI_STUDENT_PERFORMANCE",
+            promptVersion: "1.0",
+            requestData: { studentId: studentData.studentId },
+            responseData: { error: error.message },
+            status: "FAILURE",
+        });
+        return { success: false, error: error.message };
+    }
+}
+
+
+export async function generateStudentSelfPerformanceAnalysis(studentData, examHistory, studentId) {
+    try {
+        const { STUDENT_SELF_PERFORMANCE_PROMPT } = await import('./ai.prompts.js');
+        const { validateStudentSelfPerformanceResponse } = await import('./ai.validation.js');
+        
+        const raw = await callLLM(
+            STUDENT_SELF_PERFORMANCE_PROMPT.system,
+            STUDENT_SELF_PERFORMANCE_PROMPT.user(studentData, examHistory),
+            {
+                name: "student_self_performance_analysis",
+                strict: true,
+                schema: {
+                    type: "object",
+                    properties: {
+                        summary: { type: "string" },
+                        averagePerformance: { type: "string" },
+                        performanceTrend: { type: "string", enum: ["Improving", "Declining", "Stable", "Inconsistent", "Insufficient Data"] },
+                        strengths: { type: "array", items: { type: "string" } },
+                        weakAreas: { type: "array", items: { type: "string" } },
+                        observations: { type: "array", items: { type: "string" } },
+                        improvementFocus: { type: "array", items: { type: "string" } }
+                    },
+                    required: ["summary", "averagePerformance", "performanceTrend", "strengths", "weakAreas", "observations", "improvementFocus"],
+                    additionalProperties: false
+                }
+            }
+        );
+        
+        const validated = validateStudentSelfPerformanceResponse(raw);
+        if (!validated.valid) {
+            return { success: false, error: validated.error };
+        }
+        
+        await logAiAction({
+            actorId: studentId,
+            actorRole: "Student",
+            action: "AI_STUDENT_SELF_PERFORMANCE_ANALYSIS",
+            promptVersion: "1.0",
+            requestData: { studentId },
+            responseData: validated.data,
+            status: "SUCCESS",
+        });
+
+        return { success: true, data: validated.data };
+    } catch (error) {
+        await logAiAction({
+            actorId: studentId,
+            actorRole: "Student",
+            action: "AI_STUDENT_SELF_PERFORMANCE_ANALYSIS",
+            promptVersion: "1.0",
+            requestData: { studentId },
+            responseData: { error: error.message },
+            status: "FAILURE",
+        });
+        return { success: false, error: error.message };
+    }
+}

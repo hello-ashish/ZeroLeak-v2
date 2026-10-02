@@ -3,6 +3,7 @@ import axios from 'axios';
 import { io } from 'socket.io-client';
 import { AdminLayout } from './AdminLayout.jsx';
 import { Activity, Video, Mic, MicOff, MonitorPlay, AlertTriangle, Search, Filter, ShieldAlert } from 'lucide-react';
+import { useToast } from '../../components/Toast.jsx';
 
 const API = '/api';
 const SOCKET_URL = '/proctoring';
@@ -69,15 +70,15 @@ const StudentMonitorCard = ({ session, onListen, listeningTo, onOpenDetails }) =
     const hasIncidents = session.incidentCount > 0;
 
     return (
-        <div className="card proctor-card" style={{ 
+        <div className="card proctor-card" style={{
             padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px',
             borderColor: hasIncidents ? 'rgba(255, 71, 87, 0.5)' : undefined,
             boxShadow: hasIncidents ? '0 0 15px rgba(255, 71, 87, 0.15)' : undefined
         }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ 
-                        width: '40px', height: '40px', borderRadius: '50%', 
+                    <div style={{
+                        width: '40px', height: '40px', borderRadius: '50%',
                         background: 'var(--brand-primary-subtle)', color: 'var(--brand-primary)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontWeight: 'bold', fontSize: '16px'
@@ -90,9 +91,9 @@ const StudentMonitorCard = ({ session, onListen, listeningTo, onOpenDetails }) =
                     </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
-                    <div style={{ 
-                        display: 'flex', alignItems: 'center', gap: '6px', 
-                        padding: '4px 8px', borderRadius: '20px', 
+                    <div style={{
+                        display: 'flex', alignItems: 'center', gap: '6px',
+                        padding: '4px 8px', borderRadius: '20px',
                         background: isOnline ? 'rgba(46, 213, 115, 0.1)' : 'rgba(255, 71, 87, 0.1)',
                         border: `1px solid ${isOnline ? 'rgba(46, 213, 115, 0.2)' : 'rgba(255, 71, 87, 0.2)'}`
                     }}>
@@ -107,9 +108,9 @@ const StudentMonitorCard = ({ session, onListen, listeningTo, onOpenDetails }) =
                 </div>
             </div>
 
-            <div className="video-placeholder" style={{ 
-                width: '100%', 
-                aspectRatio: '16/9', 
+            <div className="video-placeholder" style={{
+                width: '100%',
+                aspectRatio: '16/9',
                 borderRadius: '8px',
                 display: 'flex',
                 alignItems: 'center',
@@ -120,7 +121,7 @@ const StudentMonitorCard = ({ session, onListen, listeningTo, onOpenDetails }) =
             }}>
                 {session.streams?.screen || session.streams?.camera || session.stream ? (
                     <>
-                        <video 
+                        <video
                             ref={(el) => {
                                 const mainStream = session.streams?.screen || session.streams?.camera || session.stream;
                                 if (el && mainStream) {
@@ -133,22 +134,22 @@ const StudentMonitorCard = ({ session, onListen, listeningTo, onOpenDetails }) =
                                     }
                                 }
                             }}
-                            autoPlay 
-                            playsInline 
+                            autoPlay
+                            playsInline
                             muted={!isListening}
                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         />
                         {session.streams?.camera && session.streams?.screen && (
                             <div style={{ position: 'absolute', bottom: '10px', right: '10px', width: '25%', aspectRatio: '4/3', borderRadius: '4px', overflow: 'hidden', border: '2px solid rgba(255,255,255,0.2)', boxShadow: '0 4px 12px rgba(0,0,0,0.5)', zIndex: 10 }}>
-                                <video 
+                                <video
                                     ref={(el) => {
                                         if (el && session.streams.camera && el.srcObject !== session.streams.camera) {
                                             el.srcObject = session.streams.camera;
                                             el.play().catch(e => console.error("Auto-play error:", e));
                                         }
                                     }}
-                                    autoPlay 
-                                    playsInline 
+                                    autoPlay
+                                    playsInline
                                     muted={true}
                                     style={{ width: '100%', height: '100%', objectFit: 'cover', backgroundColor: '#000' }}
                                 />
@@ -157,9 +158,9 @@ const StudentMonitorCard = ({ session, onListen, listeningTo, onOpenDetails }) =
                     </>
                 ) : (
                     <div style={{ color: 'var(--text-tertiary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-                        <div style={{ 
-                            width: '48px', height: '48px', borderRadius: '50%', 
-                            background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' 
+                        <div style={{
+                            width: '48px', height: '48px', borderRadius: '50%',
+                            background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center'
                         }}>
                             <Video size={24} style={{ opacity: 0.7 }} />
                         </div>
@@ -173,7 +174,7 @@ const StudentMonitorCard = ({ session, onListen, listeningTo, onOpenDetails }) =
             <div style={{ background: 'var(--bg-surface)', padding: '10px 12px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-secondary)' }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 500 }}>
                     <div style={{ padding: '4px', borderRadius: '4px', background: session.cameraStatus === 'CONNECTED' ? 'rgba(46, 213, 115, 0.1)' : 'rgba(255, 71, 87, 0.1)' }}>
-                        <Video size={14} color={session.cameraStatus === 'CONNECTED' ? 'var(--success)' : 'var(--danger)'} /> 
+                        <Video size={14} color={session.cameraStatus === 'CONNECTED' ? 'var(--success)' : 'var(--danger)'} />
                     </div>
                     Cam
                 </span>
@@ -183,30 +184,30 @@ const StudentMonitorCard = ({ session, onListen, listeningTo, onOpenDetails }) =
                             <Mic size={14} color="var(--success)" />
                         ) : (
                             <MicOff size={14} color="var(--danger)" />
-                        )} 
+                        )}
                     </div>
                     Mic
                 </span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 500 }}>
                     <div style={{ padding: '4px', borderRadius: '4px', background: session.fullscreenStatus === 'ACTIVE' ? 'rgba(46, 213, 115, 0.1)' : 'rgba(255, 71, 87, 0.1)' }}>
-                        <MonitorPlay size={14} color={session.fullscreenStatus === 'ACTIVE' ? 'var(--success)' : 'var(--danger)'} /> 
+                        <MonitorPlay size={14} color={session.fullscreenStatus === 'ACTIVE' ? 'var(--success)' : 'var(--danger)'} />
                     </div>
                     Screen
                 </span>
             </div>
 
             <div style={{ display: 'flex', gap: '8px' }}>
-                <button 
-                    className={`btn ${isListening ? 'btn-primary' : 'btn-outline'}`} 
+                <button
+                    className={`btn ${isListening ? 'btn-primary' : 'btn-outline'}`}
                     style={{ flex: 1, padding: '8px', fontSize: '13px', transition: 'all 0.2s', background: isListening ? 'var(--danger)' : undefined, borderColor: isListening ? 'var(--danger)' : undefined, color: isListening ? '#fff' : undefined }}
                     onClick={() => onListen(session.studentId?._id)}
                     disabled={session.microphoneStatus !== 'CONNECTED' || !(session.streams?.screen || session.streams?.camera || session.stream)}
                 >
-                    {isListening ? <Mic size={16} style={{ marginRight: 6, animation: 'pulse-danger 1.5s infinite' }}/> : <MicOff size={16} style={{ marginRight: 6 }}/>}
+                    {isListening ? <Mic size={16} style={{ marginRight: 6, animation: 'pulse-danger 1.5s infinite' }} /> : <MicOff size={16} style={{ marginRight: 6 }} />}
                     {isListening ? 'Mute' : 'Listen'}
                 </button>
-                <button 
-                    className="btn btn-outline" 
+                <button
+                    className="btn btn-outline"
                     style={{ flex: 1, padding: '8px', fontSize: '13px', transition: 'all 0.2s' }}
                     onClick={() => onOpenDetails(session)}
                 >
@@ -225,7 +226,8 @@ export const AdminProctoringPage = () => {
     const [socket, setSocket] = useState(null);
     const [listeningTo, setListeningTo] = useState(null);
     const [selectedSession, setSelectedSession] = useState(null);
-    
+    const toast = useToast();
+
     // For WebRTC: map of studentId -> { peerConnection, stream }
     const rtcMapRef = useRef(new Map());
     const sessionsRef = useRef(sessions);
@@ -288,8 +290,8 @@ export const AdminProctoringPage = () => {
         newSocket.on('proctoring:heartbeat-update', (data) => {
             setSessions(prev => prev.map(s => {
                 if (s._id === data.sessionId) {
-                    return { 
-                        ...s, 
+                    return {
+                        ...s,
                         lastHeartbeat: data.lastHeartbeat,
                         connectionStatus: data.connectionStatus,
                         cameraStatus: data.cameraStatus,
@@ -307,18 +309,18 @@ export const AdminProctoringPage = () => {
         });
 
         newSocket.on('proctoring:student-left', (data) => {
-             setSessions(prev => prev.filter(s => s._id !== data.sessionId));
-             if (rtcMapRef.current.has(data.studentId)) {
-                 const { peerConnection } = rtcMapRef.current.get(data.studentId);
-                 if (peerConnection) peerConnection.close();
-                 rtcMapRef.current.delete(data.studentId);
-             }
+            setSessions(prev => prev.filter(s => s._id !== data.sessionId));
+            if (rtcMapRef.current.has(data.studentId)) {
+                const { peerConnection } = rtcMapRef.current.get(data.studentId);
+                if (peerConnection) peerConnection.close();
+                rtcMapRef.current.delete(data.studentId);
+            }
         });
 
         // WebRTC Signaling
         newSocket.on('proctoring:offer', async ({ fromStudentSocketId, studentId, offer, streamIds }) => {
             console.log("Received WebRTC offer from student:", studentId);
-            
+
             const pc = new RTCPeerConnection({
                 iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
             });
@@ -332,12 +334,12 @@ export const AdminProctoringPage = () => {
             pc.ontrack = (event) => {
                 console.log("Received track from student", studentId);
                 const trackStream = event.streams[0];
-                
+
                 setSessions(prev => prev.map(s => {
                     if (String(s.studentId?._id) === String(studentId)) {
                         const newS = { ...s };
                         if (!newS.streams) newS.streams = { camera: null, screen: null };
-                        
+
                         if (streamIds && trackStream.id === streamIds.camera) {
                             newS.streams.camera = trackStream;
                         } else if (streamIds && trackStream.id === streamIds.screen) {
@@ -390,7 +392,7 @@ export const AdminProctoringPage = () => {
     // Periodically request streams for all connected students
     useEffect(() => {
         if (!socket) return;
-        
+
         const requestStreams = () => {
             sessionsRef.current.forEach(session => {
                 if (session.connectionStatus === 'ONLINE' && session.socketId && !(session.streams?.screen || session.streams?.camera || session.stream)) {
@@ -421,12 +423,12 @@ export const AdminProctoringPage = () => {
                     <h1 className="page-title"><Activity size={24} style={{ marginRight: 12, color: 'var(--brand-primary)' }} /> Live Proctoring</h1>
                     <p className="page-subtitle">Real-time monitoring and anomaly detection</p>
                 </div>
-                
+
                 <div style={{ display: 'flex', gap: '12px' }}>
                     <div className="search-box">
                         <Filter size={16} />
-                        <select 
-                            value={selectedExam} 
+                        <select
+                            value={selectedExam}
                             onChange={e => setSelectedExam(e.target.value)}
                             style={{ border: 'none', background: 'transparent', color: 'var(--text-primary)', outline: 'none' }}
                         >
@@ -448,7 +450,7 @@ export const AdminProctoringPage = () => {
                         </div>
                         <div style={{ fontSize: 32, fontWeight: 700, color: 'var(--text-primary)' }}>{summary.total}</div>
                     </div>
-                    
+
                     <div className="stat-card-rich">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
                             <div style={{ color: 'var(--text-secondary)', fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Online</div>
@@ -477,12 +479,14 @@ export const AdminProctoringPage = () => {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
                 {sessions.map(session => (
-                    <StudentMonitorCard 
-                        key={session._id} 
-                        session={session} 
-                        onListen={handleListen} 
+                    <StudentMonitorCard
+                        key={session._id}
+                        session={session}
+                        onListen={handleListen}
                         listeningTo={listeningTo}
-                        onOpenDetails={setSelectedSession}
+                        onOpenDetails={(s) => {
+                            setSelectedSession(s);
+                        }}
                     />
                 ))}
                 {sessions.length === 0 && (
@@ -502,7 +506,7 @@ export const AdminProctoringPage = () => {
                             <h2 style={{ margin: 0 }}>{selectedSession.studentId?.name || 'Unknown'} Monitoring Details</h2>
                             <button className="btn btn-outline" onClick={() => setSelectedSession(null)}>Close</button>
                         </div>
-                        
+
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                             <div>
                                 <h4>Session Info</h4>
@@ -523,15 +527,16 @@ export const AdminProctoringPage = () => {
                             </div>
                         </div>
 
+
                         {(selectedSession.streams?.screen || selectedSession.streams?.camera || selectedSession.stream) && (
                             <div style={{ marginTop: '24px', display: 'flex', gap: '20px' }}>
                                 {selectedSession.streams?.screen && (
                                     <div style={{ flex: 1 }}>
                                         <h4>Screen Feed</h4>
-                                        <video 
+                                        <video
                                             ref={(ref) => { if (ref) ref.srcObject = selectedSession.streams.screen; }}
-                                            autoPlay 
-                                            playsInline 
+                                            autoPlay
+                                            playsInline
                                             muted={listeningTo !== selectedSession.studentId?._id}
                                             style={{ width: '100%', borderRadius: '8px', backgroundColor: '#000' }}
                                         />
@@ -540,10 +545,10 @@ export const AdminProctoringPage = () => {
                                 {(selectedSession.streams?.camera || selectedSession.stream) && (
                                     <div style={{ flex: 1 }}>
                                         <h4>Camera Feed</h4>
-                                        <video 
+                                        <video
                                             ref={(ref) => { if (ref) ref.srcObject = selectedSession.streams?.camera || selectedSession.stream; }}
-                                            autoPlay 
-                                            playsInline 
+                                            autoPlay
+                                            playsInline
                                             muted={!selectedSession.streams?.screen && listeningTo === selectedSession.studentId?._id ? false : true}
                                             style={{ width: '100%', borderRadius: '8px', backgroundColor: '#000' }}
                                         />
