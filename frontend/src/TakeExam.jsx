@@ -214,6 +214,16 @@ const TakeExam = () => {
         }
     }, [id, sessionKey, terminatedKey]);
 
+    // Handle Socket-Driven Admin Termination
+    useEffect(() => {
+        const handleForceEnd = (e) => {
+            const reason = e.detail || "Terminated by admin.";
+            handleForceTermination(reason);
+        };
+        window.addEventListener("proctoring-force-terminate", handleForceEnd);
+        return () => window.removeEventListener("proctoring-force-terminate", handleForceEnd);
+    }, [handleForceTermination]);
+
     // Violation Callback from Anti-Cheating Hook
     const handleViolation = useCallback(async (event) => {
         if (!isStarted || score !== null || isTerminatedRef.current || isRestricted) return;

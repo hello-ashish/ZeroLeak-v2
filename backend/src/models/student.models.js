@@ -49,7 +49,8 @@ studentSchema.methods.generateAccessToken = function () {
         {
             id: this._id,
             email: this.email,
-            studentId: this.studentId
+            studentId: this.studentId,
+            role: "Student"
         },
         process.env.ACCESS_TOKEN_SECRET,
         { expiresIn: process.env.ACCESS_TOKEN_EXPIRY || "1d" }

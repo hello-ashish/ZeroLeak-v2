@@ -1,64 +1,149 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { io } from 'socket.io-client';
+/**
+ * useProctoring — Student-side proctoring hook
+ *
+ * Responsibilities:
+ *   - Acquire camera + mic + screen capture independently of socket lifecycle
+ *   - Maintain heartbeat over Socket.IO
+ *   - Handle screen-share track-ending (user stops sharing)
+ *   - Respond to on-demand WebRTC stream requests from admin
+ *   - Report behavioural incidents (tab switch, window blur, fullscreen exit…)
+ *   - Signal to server when media is ready (to fulfil pending admin requests)
+ *
+ * State ownership (this hook):
+ *   - streamRef  useRef      — latest live MediaStream pair (no React state)
+ *   - socketRef  useRef      — socket (no React state, avoids re-renders)
+ *   - peerConnectionRef useRef — active RTCPeerConnection
+ *
+ * WebRTC protocol (all events use sessionId, never arbitrary socketId):
+ *   Admin → proctoring:request-stream { sessionId }
+ *   Server → student room: proctoring:stream-requested { adminSocketId }
+ *   Student → Admin: proctoring:offer { adminSocketId, offer, streamIds }
+ *   Admin → Student room: proctoring:answer { sessionId, answer }
+ *   ICE: both sides → proctoring:ice-candidate { sessionId|adminSocketId, candidate }
+ */
 
-const SOCKET_URL = '/proctoring';
+import { useState, useEffect, useRef, useCallback } from "react";
+import { io } from "socket.io-client";
+
+const SOCKET_URL         = "/proctoring";
+const HEARTBEAT_INTERVAL = 10_000; // 10 s
 
 export const useProctoring = (examId, isStarted) => {
-    const [socket, setSocket] = useState(null);
-    const [stream, setStream] = useState(null);
-    const [cameraStatus, setCameraStatus] = useState('UNKNOWN');
-    const [microphoneStatus, setMicrophoneStatus] = useState('UNKNOWN');
-    const [proctoringSessionId, setProctoringSessionId] = useState(null);
+    const [cameraStatus,    setCameraStatus]    = useState("UNKNOWN");
+    const [microphoneStatus,setMicrophoneStatus]= useState("UNKNOWN");
+    const [screenStatus,    setScreenStatus]    = useState("UNKNOWN");
 
-    const peerConnectionRef = useRef(null);
-    const socketRef = useRef(null);
+    const socketRef          = useRef(null);
+    const peerConnectionRef  = useRef(null);
+    const streamRef          = useRef(null);        // { camera: MediaStream, screen: MediaStream }
+    const mediaReadyRef      = useRef(false);       // true once both streams are acquired
+    const statusRefs         = useRef({ cameraStatus: "UNKNOWN", microphoneStatus: "UNKNOWN", screenStatus: "UNKNOWN" });
 
-    // Initialize Media
+    // Keep status refs in sync (heartbeat closure reads these)
+    useEffect(() => {
+        statusRefs.current = { cameraStatus, microphoneStatus, screenStatus };
+    }, [cameraStatus, microphoneStatus, screenStatus]);
+
+    // ── Effect 1: Media acquisition ─────────────────────────────────────────
+    // Independent of socket.  Socket can reconnect without re-requesting permissions.
     useEffect(() => {
         if (!isStarted) return;
 
-        let activeCamStream = null;
-        let activeScrStream = null;
-        let isMounted = true;
+        let activeCam  = null;
+        let activeScr  = null;
+        let mounted    = true;
 
         const initMedia = async () => {
+            // 1. Camera + Mic
             try {
-                // Get Camera & Mic (Low Quality for seamless connection)
                 const camStream = await navigator.mediaDevices.getUserMedia({
-                    video: { width: { ideal: 320, max: 640 }, height: { ideal: 240, max: 480 }, frameRate: { ideal: 10, max: 15 } },
+                    video: {
+                        width:     { ideal: 320, max: 640 },
+                        height:    { ideal: 240, max: 480 },
+                        frameRate: { ideal: 10,  max: 15  }
+                    },
                     audio: true
                 });
+                if (!mounted) { camStream.getTracks().forEach(t => t.stop()); return; }
 
-                // Get Screen (Low Quality)
-                const scrStream = await navigator.mediaDevices.getDisplayMedia({
-                    video: { width: { ideal: 1280, max: 1280 }, height: { ideal: 720, max: 720 }, frameRate: { ideal: 10, max: 15 } },
-                    audio: false
-                });
+                activeCam = camStream;
+                setCameraStatus("CONNECTED");
+                setMicrophoneStatus("CONNECTED");
 
-                if (!isMounted) {
-                    // If component unmounted before promise resolved, stop the tracks immediately
-                    camStream.getTracks().forEach(t => t.stop());
-                    scrStream.getTracks().forEach(t => t.stop());
-                    return;
+                // 2. Screen capture
+                try {
+                    const scrStream = await navigator.mediaDevices.getDisplayMedia({
+                        video: {
+                            width:     { ideal: 1280, max: 1280 },
+                            height:    { ideal: 720,  max: 720  },
+                            frameRate: { ideal: 10,   max: 15   }
+                        },
+                        audio: false
+                    });
+                    if (!mounted) { camStream.getTracks().forEach(t => t.stop()); scrStream.getTracks().forEach(t => t.stop()); return; }
+
+                    activeScr = scrStream;
+                    setScreenStatus("CONNECTED");
+
+                    // Listen for user stopping screen share (browser "Stop sharing" button)
+                    scrStream.getVideoTracks().forEach(track => {
+                        track.addEventListener("ended", () => {
+                            if (!mounted) return;
+                            setScreenStatus("STOPPED");
+                            streamRef.current = streamRef.current
+                                ? { ...streamRef.current, screen: null }
+                                : { camera: null, screen: null };
+                            // Notify server via proctoring:event
+                            if (socketRef.current) {
+                                socketRef.current.emit("proctoring:event", {
+                                    type:        "SCREEN_SHARE_STOPPED",
+                                    severity:    "HIGH",
+                                    description: "Student stopped screen sharing",
+                                    details:     {}
+                                });
+                                socketRef.current.emit("proctoring:status", {
+                                    screenStatus: "STOPPED"
+                                });
+                            }
+                        });
+                    });
+
+                    streamRef.current  = { camera: activeCam, screen: activeScr };
+                    mediaReadyRef.current = true;
+
+                    // Tell server media is ready (fulfils any pending admin request)
+                    if (socketRef.current) {
+                        socketRef.current.emit("proctoring:media-ready");
+                    }
+
+                } catch(scrErr) {
+                    if (!mounted) return;
+                    console.warn("[useProctoring] Screen capture failed:", scrErr.name);
+                    if (scrErr.name === "NotAllowedError") setScreenStatus("PERMISSION_DENIED");
+                    else setScreenStatus("NOT_AVAILABLE");
+                    // Camera is still available even without screen
+                    streamRef.current     = { camera: activeCam, screen: null };
+                    mediaReadyRef.current = true;
+                    if (socketRef.current) socketRef.current.emit("proctoring:media-ready");
                 }
-
-                activeCamStream = camStream;
-                activeScrStream = scrStream;
-                setStream({ camera: camStream, screen: scrStream });
-                setCameraStatus('CONNECTED');
-                setMicrophoneStatus('CONNECTED');
-            } catch (err) {
-                if (!isMounted) return;
-                console.error("Failed to get media devices:", err);
-                if (err.name === 'NotAllowedError') {
-                    setCameraStatus('PERMISSION_DENIED');
-                    setMicrophoneStatus('PERMISSION_DENIED');
-                } else if (err.name === 'NotFoundError') {
-                    setCameraStatus('NOT_FOUND');
-                    setMicrophoneStatus('NOT_FOUND');
+            } catch(camErr) {
+                if (!mounted) return;
+                console.error("[useProctoring] Camera/mic failed:", camErr.name);
+                if (camErr.name === "NotAllowedError") {
+                    setCameraStatus("PERMISSION_DENIED");
+                    setMicrophoneStatus("PERMISSION_DENIED");
+                } else if (camErr.name === "NotFoundError") {
+                    setCameraStatus("NOT_FOUND");
+                    setMicrophoneStatus("NOT_FOUND");
                 } else {
-                    setCameraStatus('DEVICE_ERROR');
-                    setMicrophoneStatus('DEVICE_ERROR');
+                    setCameraStatus("DEVICE_ERROR");
+                    setMicrophoneStatus("DEVICE_ERROR");
+                }
+                if (socketRef.current) {
+                    socketRef.current.emit("proctoring:status", {
+                        cameraStatus:     statusRefs.current.cameraStatus,
+                        microphoneStatus: statusRefs.current.microphoneStatus
+                    });
                 }
             }
         };
@@ -66,139 +151,172 @@ export const useProctoring = (examId, isStarted) => {
         initMedia();
 
         return () => {
-            isMounted = false;
-            if (activeCamStream) {
-                activeCamStream.getTracks().forEach(t => t.stop());
-            }
-            if (activeScrStream) {
-                activeScrStream.getTracks().forEach(t => t.stop());
-            }
+            mounted = false;
+            activeCam?.getTracks().forEach(t => t.stop());
+            activeScr?.getTracks().forEach(t => t.stop());
+            streamRef.current     = null;
+            mediaReadyRef.current = false;
         };
     }, [isStarted]);
 
-    const statusRefs = useRef({ cameraStatus, microphoneStatus });
-
-    // Keep refs in sync with state for the heartbeat closure
+    // ── Effect 2: Socket + WebRTC lifecycle ─────────────────────────────────
     useEffect(() => {
-        statusRefs.current = { cameraStatus, microphoneStatus };
-    }, [cameraStatus, microphoneStatus]);
+        if (!isStarted) return;
 
-    // Initialize Socket and WebRTC
-    useEffect(() => {
-        if (!isStarted || !stream) return;
-
-        const token = localStorage.getItem('studentToken');
+        const token = localStorage.getItem("studentToken");
         if (!token) return;
 
-        const newSocket = io(SOCKET_URL, {
-            auth: { token }
-        });
-        socketRef.current = newSocket;
+        const socket = io(SOCKET_URL, { auth: { token } });
+        socketRef.current = socket;
 
-        newSocket.on('connect', () => {
-            console.log("Connected to Proctoring Socket");
-            newSocket.emit('proctoring:join', { examId });
+        socket.on("connect", () => {
+            socket.emit("proctoring:join", { examId });
         });
 
-        newSocket.on('proctoring:session-ready', ({ sessionId }) => {
-            setProctoringSessionId(sessionId);
+        socket.on("proctoring:terminated", (data) => {
+            window.dispatchEvent(new CustomEvent("proctoring-force-terminate", { detail: data?.reason }));
         });
 
-        // Periodic Heartbeat
+        socket.on("proctoring:session-ready", ({ sessionId }) => {
+            // If media was already ready before the socket connected, signal now
+            if (mediaReadyRef.current) {
+                socket.emit("proctoring:media-ready");
+            }
+        });
+
+        // Heartbeat — reads statusRefs for the latest values
         const heartbeatInterval = setInterval(() => {
-            newSocket.emit('proctoring:heartbeat', {
-                cameraStatus: statusRefs.current.cameraStatus,
+            socket.emit("proctoring:heartbeat", {
+                cameraStatus:     statusRefs.current.cameraStatus,
                 microphoneStatus: statusRefs.current.microphoneStatus,
-                fullscreenStatus: document.fullscreenElement ? 'ACTIVE' : 'INACTIVE'
+                fullscreenStatus: document.fullscreenElement ? "ACTIVE" : "INACTIVE",
+                screenStatus:     statusRefs.current.screenStatus
             });
-        }, 10000);
+        }, HEARTBEAT_INTERVAL);
 
-        // WebRTC Signaling
-        newSocket.on('proctoring:stream-requested', async ({ adminSocketId }) => {
-            console.log("Admin requested stream", adminSocketId);
+        // ── WebRTC: Admin requested this student's stream ─────────────────
+        socket.on("proctoring:stream-requested", async ({ adminSocketId }) => {
+            const current = streamRef.current;
 
+            if (!current) {
+                // Media not ready yet — let server know to queue
+                socket.emit("proctoring:stream-not-ready", { adminSocketId });
+                return;
+            }
+
+            // Teardown any existing peer connection before starting a new one
             if (peerConnectionRef.current) {
                 peerConnectionRef.current.close();
+                peerConnectionRef.current = null;
             }
 
             const pc = new RTCPeerConnection({
-                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+                iceServers: [
+                    { urls: "stun:stun.l.google.com:19302" },
+                    { urls: "stun:stun1.l.google.com:19302" }
+                ]
             });
             peerConnectionRef.current = pc;
 
-            // Add local tracks to peer connection
-            if (stream.camera) {
-                stream.camera.getTracks().forEach(track => pc.addTrack(track, stream.camera));
+            if (current.camera) {
+                current.camera.getTracks().forEach(t => pc.addTrack(t, current.camera));
             }
-            if (stream.screen) {
-                stream.screen.getTracks().forEach(track => pc.addTrack(track, stream.screen));
+            if (current.screen) {
+                current.screen.getTracks().forEach(t => pc.addTrack(t, current.screen));
             }
 
-            pc.onicecandidate = (event) => {
-                if (event.candidate) {
-                    newSocket.emit('proctoring:ice-candidate', { targetSocketId: adminSocketId, candidate: event.candidate });
+            // ICE — send to admin socket directly (server routes it)
+            pc.onicecandidate = ({ candidate }) => {
+                if (candidate) {
+                    socket.emit("proctoring:ice-candidate", { adminSocketId, candidate });
                 }
             };
 
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-
-            newSocket.emit('proctoring:offer', {
-                targetSocketId: adminSocketId,
-                offer,
-                streamIds: {
-                    camera: stream.camera ? stream.camera.id : null,
-                    screen: stream.screen ? stream.screen.id : null
+            pc.oniceconnectionstatechange = () => {
+                if (["failed", "closed"].includes(pc.iceConnectionState)) {
+                    pc.close();
+                    if (peerConnectionRef.current === pc) peerConnectionRef.current = null;
                 }
-            });
-        });
+            };
 
-        newSocket.on('proctoring:answer', async ({ fromAdminSocketId, answer }) => {
-            if (peerConnectionRef.current) {
-                await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(answer));
+            try {
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
+
+                socket.emit("proctoring:offer", {
+                    adminSocketId,
+                    offer,
+                    streamIds: {
+                        camera: current.camera?.id || null,
+                        screen: current.screen?.id || null
+                    }
+                });
+            } catch(e) {
+                console.error("[useProctoring] createOffer failed:", e);
+                pc.close();
+                peerConnectionRef.current = null;
             }
         });
 
-        newSocket.on('proctoring:ice-candidate', async ({ fromAdminSocketId, candidate }) => {
+        // Answer from admin
+        socket.on("proctoring:answer", async ({ answer }) => {
             if (peerConnectionRef.current) {
                 try {
-                    await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate));
-                } catch (e) {
-                    console.error("Error adding ice candidate on student side", e);
+                    await peerConnectionRef.current.setRemoteDescription(
+                        new RTCSessionDescription(answer)
+                    );
+                } catch(e) {
+                    console.error("[useProctoring] setRemoteDescription failed:", e);
                 }
             }
         });
 
-        newSocket.on('proctoring:monitoring-stopped', () => {
-            console.log("Admin stopped monitoring");
+        // ICE candidate from admin
+        socket.on("proctoring:ice-candidate", async ({ candidate }) => {
+            if (peerConnectionRef.current && candidate) {
+                try {
+                    await peerConnectionRef.current.addIceCandidate(
+                        new RTCIceCandidate(candidate)
+                    );
+                } catch(e) {
+                    console.error("[useProctoring] addIceCandidate failed:", e);
+                }
+            }
+        });
+
+        // Admin stopped monitoring — close peer connection
+        socket.on("proctoring:monitoring-stopped", () => {
             if (peerConnectionRef.current) {
                 peerConnectionRef.current.close();
                 peerConnectionRef.current = null;
             }
         });
 
-        setSocket(newSocket);
-
         return () => {
             clearInterval(heartbeatInterval);
-            newSocket.emit('proctoring:leave');
-            newSocket.disconnect();
+            socket.emit("proctoring:leave");
+            socket.disconnect();
+            socketRef.current = null;
             if (peerConnectionRef.current) {
                 peerConnectionRef.current.close();
+                peerConnectionRef.current = null;
             }
         };
-    }, [isStarted, examId, stream]);
+    }, [isStarted, examId]);
 
-    const reportIncident = useCallback((type, severity, description, details) => {
+    // ── Public API ────────────────────────────────────────────────────────────
+    const reportIncident = useCallback((type, severity = "MEDIUM", description = "", details = {}) => {
         if (socketRef.current) {
-            socketRef.current.emit('proctoring:event', { type, severity, description, details });
+            socketRef.current.emit("proctoring:event", { type, severity, description, details });
         }
     }, []);
 
     return {
-        stream,
+        // Expose current stream snapshot (for local preview, not for grid)
+        stream:           streamRef.current,
         cameraStatus,
         microphoneStatus,
+        screenStatus,
         reportIncident
     };
 };

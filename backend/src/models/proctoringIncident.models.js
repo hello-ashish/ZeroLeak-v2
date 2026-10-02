@@ -40,6 +40,7 @@ const proctoringIncidentSchema = new Schema(
                 "EXAM_ENDED",
                 "STREAM_STARTED",
                 "STREAM_ENDED",
+                "SCREEN_SHARE_STOPPED",
             ],
             trim: true,
         },

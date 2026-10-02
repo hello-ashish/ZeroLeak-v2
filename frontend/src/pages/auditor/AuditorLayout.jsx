@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
-import { LayoutDashboard, FileText, Database, Users, LogOut, ChevronDown, Search, Activity, ShieldAlert, GraduationCap, ClipboardList, RefreshCw, Map, Bell } from 'lucide-react'
+import { LayoutDashboard, FileText, Database, Users, LogOut, ChevronDown, Search, Activity, ShieldAlert, GraduationCap, ClipboardList, RefreshCw, Map, Bell, Mail } from 'lucide-react'
 import { HeaderThemeToggle } from '../../components/HeaderThemeToggle.jsx'
 import { NotificationDropdown } from '../../components/NotificationDropdown.jsx'
 import { SkeletonCard, Skeleton, SkeletonTable } from '../../components/SkeletonLoader.jsx'
 import { useNotifications } from '../../hooks/useNotifications.jsx'
+import { ZMailUnreadBadge } from '../../components/zmail/ZMailUnreadBadge.jsx'
 
 const NAV = [
     {
@@ -27,6 +28,12 @@ const NAV = [
             { label: 'Exams', icon: <ClipboardList size={18} />, path: '/auditor/exams' },
             { label: 'Students', icon: <GraduationCap size={18} />, path: '/auditor/students' },
             { label: 'Professors', icon: <Users size={18} />, path: '/auditor/professors' },
+        ]
+    },
+    {
+        section: 'Messaging',
+        items: [
+            { label: 'ZMail', icon: <Mail size={18} />, path: '/zmail', zmailBadge: true },
         ]
     }
 ]
@@ -107,7 +114,9 @@ export const AuditorLayout = ({ children, openAnomaliesCount = 0 }) => {
                                     onClick={() => setMobileOpen(false)}
                                     title={collapsed ? item.label : undefined}
                                 >
-                                    <span className="nav-icon" aria-hidden="true">{item.icon}</span>
+                                    <span className="nav-icon" aria-hidden="true">
+                                        {item.zmailBadge ? <ZMailUnreadBadge /> : item.icon}
+                                    </span>
                                     <span className="nav-label">{item.label}</span>
                                     {item.path === '/auditor/anomalies' && openAnomaliesCount > 0 && (
                                         <span className="nav-badge" style={{ background: 'var(--warning)', color: 'var(--bg-surface)' }}>
@@ -210,7 +219,7 @@ export const AuditorLayout = ({ children, openAnomaliesCount = 0 }) => {
                 </header>
 
                 {/* Content */}
-                <main className="page-content">
+                <main className={`page-content ${noPadding ? 'no-padding' : ''}`}>
                     {isRefreshing ? (
                         <div style={{ padding: '24px', display: 'grid', gap: '24px' }}>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>

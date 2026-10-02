@@ -4,6 +4,7 @@ import { app } from "./app.js"
 import http from "http"
 import { Server } from "socket.io"
 import { setupProctoringSockets } from "./sockets/proctoring.socket.js"
+import { initZMailNamespace } from "./sockets/zmail.socket.js"
 import { createAdapter } from "@socket.io/redis-adapter"
 import redisClient, { connectRedis } from "./redis/index.js"
 
@@ -47,9 +48,22 @@ connectDB()
 
         // Setup Proctoring Sockets
         setupProctoringSockets(io);
+
+        // Setup ZMail Sockets (user-private real-time mail rooms)
+        initZMailNamespace(io);
         
         server.listen(process.env.PORT || 4000, () => {
             console.log(`Server is running on port : ${process.env.PORT || 4000}`)
+
+            // Run ZMail backfill in the background after server is ready
+            // Ensures all existing users have ZMail accounts without blocking startup
+            import("./Services/zmail/zmailIdentity.service.js").then(({ backfillAllUsers }) => {
+                backfillAllUsers().then(results => {
+                    if (results.created > 0 || results.errors.length > 0) {
+                        console.log(`[ZMAIL] Backfill: created=${results.created} skipped=${results.skipped} errors=${results.errors.length}`);
+                    }
+                }).catch(err => console.warn("[ZMAIL] Backfill error:", err.message));
+            });
         })
     })
     .catch((error) => {

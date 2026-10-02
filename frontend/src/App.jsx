@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom"
 import { ToastProvider } from './components/Toast.jsx'
 import GlobalThemeSlider from './components/GlobalThemeSlider.jsx'
 import { Loader2 } from 'lucide-react'
+import { ZMailProvider } from './hooks/useZMail.jsx'
 import './index.css'
 
 // Layouts are kept static to ensure the app shell loads instantly
@@ -57,6 +58,9 @@ const AuditorExamsPage = lazy(() => import('./pages/auditor/AuditorExamsPage.jsx
 const AuditorPeoplePage = lazy(() => import('./pages/auditor/AuditorPeoplePage.jsx'))
 const AuditorBlockchainCenter = lazy(() => import('./pages/auditor/AuditorBlockchainCenter.jsx'))
 
+// ZMail
+const ZMailPage = lazy(() => import('./pages/ZMailPage.jsx'))
+
 const PageLoader = () => (
   <div style={{ display: 'flex', height: '100vh', width: '100vw', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-base)' }}>
     <Loader2 size={32} color="var(--brand-primary)" className="spin" />
@@ -66,6 +70,7 @@ const PageLoader = () => (
 function App() {
   return (
     <ToastProvider>
+      <ZMailProvider>
       <BrowserRouter>
         <Suspense fallback={<PageLoader />}>
           <Routes>
@@ -122,10 +127,15 @@ function App() {
             <Route path="/auditor/professors" element={<AuditorPeoplePage />} />
             <Route path="/auditor/blockchain" element={<AuditorBlockchainCenter />} />
 
+            {/* ── ZMail — accessible by all authenticated roles ── */}
+            <Route path="/zmail" element={<ZMailPage />} />
+            <Route path="/zmail/*" element={<ZMailPage />} />
+
           </Routes>
         </Suspense>
         <GlobalThemeSlider />
       </BrowserRouter>
+      </ZMailProvider>
     </ToastProvider>
   )
 }

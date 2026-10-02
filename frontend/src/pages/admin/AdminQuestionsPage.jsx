@@ -15,21 +15,43 @@ export default function AdminQuestionsPage() {
     const [questions, setQuestions] = useState([])
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
+    const [debouncedSearch, setDebouncedSearch] = useState('')
     const [filterDiff, setFilterDiff] = useState('')
     const [filterSubject, setFilterSubject] = useState('')
     const [chartFilter, setChartFilter] = useState('All')
     const [selectedQuestion, setSelectedQuestion] = useState(null)
+    const [page, setPage] = useState(1)
+    const ITEMS_PER_PAGE = 10
     const navigate = useNavigate()
     const toast = useToast()
+
+    const [stats, setStats] = useState({ total: 0, easy: 0, medium: 0, hard: 0, highSuccess: 0, lowSuccess: 0, flagged: 0 })
+    const [subjects, setSubjects] = useState([])
+    const [chartDataAll, setChartDataAll] = useState([])
+    const [topicsBySubject, setTopicsBySubject] = useState({})
+    const [totalFiltered, setTotalFiltered] = useState(0)
+
+    useEffect(() => {
+        const t = setTimeout(() => setDebouncedSearch(search), 300)
+        return () => clearTimeout(t)
+    }, [search])
 
     const fetchQuestions = async () => {
         const token = getToken()
         if (!token) { navigate('/admin/login'); return }
         try {
             setLoading(true)
-            const res = await axios.get(`${API}/questions`, { headers: { Authorization: `Bearer ${token}` } })
+            const res = await axios.get(`${API}/questions`, { 
+                headers: { Authorization: `Bearer ${token}` },
+                params: { page, limit: ITEMS_PER_PAGE, search: debouncedSearch, difficulty: filterDiff, subject: filterSubject }
+            })
 
             setQuestions(res.data.questions || [])
+            setTotalFiltered(res.data.totalFiltered || 0)
+            setStats(res.data.stats || { total: 0, easy: 0, medium: 0, hard: 0 })
+            setSubjects(res.data.subjects || [])
+            setChartDataAll(res.data.chartDataAll || [])
+            setTopicsBySubject(res.data.topicsBySubject || {})
         } catch {
             toast.error('Failed to load question bank')
         } finally {
@@ -37,55 +59,16 @@ export default function AdminQuestionsPage() {
         }
     }
 
-    useEffect(() => { fetchQuestions() }, [])
+    useEffect(() => { fetchQuestions() }, [page, debouncedSearch, filterDiff, filterSubject])
 
-    const subjects = useMemo(() => [...new Set(questions.map(q => q.subject).filter(Boolean))], [questions])
-
-    const filtered = useMemo(() => {
-        return questions.filter(q => {
-            const matchSearch = q.title?.toLowerCase().includes(search.toLowerCase()) ||
-                q.subject?.toLowerCase().includes(search.toLowerCase()) ||
-                q.topic?.toLowerCase().includes(search.toLowerCase())
-            const matchDiff = !filterDiff || q.difficultyLevel === filterDiff
-            const matchSubject = !filterSubject || q.subject === filterSubject
-            return matchSearch && matchDiff && matchSubject
-        })
-    }, [questions, search, filterDiff, filterSubject])
-
-    const stats = useMemo(() => {
-        return {
-            total: questions.length,
-            easy: questions.filter(q => q.difficultyLevel === 'easy').length,
-            medium: questions.filter(q => q.difficultyLevel === 'medium').length,
-            hard: questions.filter(q => q.difficultyLevel === 'hard').length,
-        }
-    }, [questions])
+    useEffect(() => {
+        setPage(1)
+    }, [debouncedSearch, filterDiff, filterSubject])
 
     const chartData = useMemo(() => {
-        if (chartFilter === 'All') {
-            return subjects.map(sub => {
-                const subQs = questions.filter(q => q.subject === sub);
-                return {
-                    name: sub,
-                    Easy: subQs.filter(q => q.difficultyLevel === 'easy').length,
-                    Medium: subQs.filter(q => q.difficultyLevel === 'medium').length,
-                    Hard: subQs.filter(q => q.difficultyLevel === 'hard').length,
-                }
-            })
-        } else {
-            const subjectQs = questions.filter(q => q.subject === chartFilter);
-            const topics = [...new Set(subjectQs.map(q => q.topic).filter(Boolean))];
-            return topics.map(top => {
-                const topQs = subjectQs.filter(q => q.topic === top);
-                return {
-                    name: top,
-                    Easy: topQs.filter(q => q.difficultyLevel === 'easy').length,
-                    Medium: topQs.filter(q => q.difficultyLevel === 'medium').length,
-                    Hard: topQs.filter(q => q.difficultyLevel === 'hard').length,
-                }
-            })
-        }
-    }, [subjects, questions, chartFilter])
+        if (chartFilter === 'All') return chartDataAll;
+        return topicsBySubject[chartFilter] || [];
+    }, [chartFilter, chartDataAll, topicsBySubject])
 
     const handleEditQuestion = () => {
         toast.info('Edit question functionality coming soon')
@@ -113,22 +96,22 @@ export default function AdminQuestionsPage() {
             <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 24 }}>
                 {[
                     { label: 'Total Questions', value: stats.total, icon: <Database size={20} color="var(--brand-primary)" />, bg: 'var(--brand-primary-subtle)' },
-                    { label: 'High Success (>70%)', value: questions.filter(q => q.health.successRate > 70).length, icon: <CheckCircle2 size={20} color="var(--success)" />, bg: 'var(--success-subtle)' },
-                    { label: 'Low Success (<40%)', value: questions.filter(q => q.health.successRate < 40).length, icon: <BarChart3 size={20} color="var(--warning)" />, bg: 'var(--warning-subtle)' },
-                    { label: 'Flagged / Needs Review', value: questions.filter(q => q.health.flagged).length, icon: questions.filter(q => q.health.flagged).length > 0 ? <AlertTriangle size={20} color="var(--danger)" /> : null, bg: questions.filter(q => q.health.flagged).length > 0 ? 'var(--danger-subtle)' : 'transparent' },
+                    { label: 'High Success (>70%)', value: stats.highSuccess, icon: <CheckCircle2 size={20} color="var(--success)" />, bg: 'var(--success-subtle)' },
+                    { label: 'Low Success (<40%)', value: stats.lowSuccess, icon: <BarChart3 size={20} color="var(--warning)" />, bg: 'var(--warning-subtle)' },
+                    { label: 'Flagged / Needs Review', value: stats.flagged, icon: stats.flagged > 0 ? <AlertTriangle size={20} color="var(--danger)" /> : null, bg: stats.flagged > 0 ? 'var(--danger-subtle)' : 'transparent' },
                 ].map(s => (
                     <div className="kpi-card" key={s.label}>
                         <div className="kpi-card-header">
                             <span className="kpi-label">{s.label}</span>
                             {s.icon && <span className="kpi-icon" style={{ background: s.bg }}>{s.icon}</span>}
                         </div>
-                        <div className="kpi-value">{loading ? '—' : s.value}</div>
+                        <div className="kpi-value">{loading && stats.total === 0 ? '—' : s.value}</div>
                     </div>
                 ))}
             </div>
 
             {/* Subject Difficulty Breakdown */}
-            {!loading && subjects.length > 0 && (
+            {subjects.length > 0 && (
                 <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', padding: '24px', marginBottom: 24, boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                         <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
@@ -186,7 +169,7 @@ export default function AdminQuestionsPage() {
                             </button>
                         )}
                         <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-tertiary)' }}>
-                            {filtered.length} of {questions.length} questions
+                            {totalFiltered} of {stats.total} questions
                         </span>
                     </div>
 
@@ -206,7 +189,7 @@ export default function AdminQuestionsPage() {
                                 <SkeletonTable rows={8} />
                             ) : (
                                 <tbody>
-                                    {filtered.length === 0 ? (
+                                    {questions.length === 0 ? (
                                         <tr><td colSpan={5}>
                                             <EmptyState
                                                 icon={<Database size={32} color="var(--text-tertiary)" />}
@@ -221,7 +204,7 @@ export default function AdminQuestionsPage() {
                                                 )}
                                             />
                                         </td></tr>
-                                    ) : filtered.map(q => {
+                                    ) : questions.map(q => {
                                         const isSelected = selectedQuestion?._id === q._id
                                         return (
                                             <tr key={q._id}
@@ -268,6 +251,30 @@ export default function AdminQuestionsPage() {
                                 </tbody>
                             )}
                         </table>
+                        
+                        {!loading && totalFiltered > ITEMS_PER_PAGE && (
+                            <div style={{ padding: '16px 20px', borderTop: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                                    Showing {(page - 1) * ITEMS_PER_PAGE + 1} to {Math.min(page * ITEMS_PER_PAGE, totalFiltered)} of {totalFiltered} questions
+                                </span>
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                    <button 
+                                        className="btn btn-outline btn-sm" 
+                                        onClick={() => setPage(p => Math.max(1, p - 1))} 
+                                        disabled={page === 1}
+                                    >
+                                        Previous
+                                    </button>
+                                    <button 
+                                        className="btn btn-outline btn-sm" 
+                                        onClick={() => setPage(p => Math.min(Math.ceil(totalFiltered / ITEMS_PER_PAGE), p + 1))} 
+                                        disabled={page >= Math.ceil(totalFiltered / ITEMS_PER_PAGE)}
+                                    >
+                                        Next
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -313,31 +320,17 @@ export default function AdminQuestionsPage() {
                                 <DifficultyBadge level={selectedQuestion.difficultyLevel} />
                             </div>
 
-                            <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.5, marginBottom: 24 }}>
-                                {selectedQuestion.title}
-                            </p>
+                            <div style={{ marginBottom: 24, padding: '12px 16px', background: 'var(--bg-surface)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
+                                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 8, letterSpacing: '0.05em' }}>Content Hash</div>
+                                <code style={{ fontSize: 13, color: 'var(--brand-primary)', wordBreak: 'break-all' }}>
+                                    {selectedQuestion.title}
+                                </code>
+                            </div>
 
-                            <h4 style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', marginBottom: 12 }}>Options</h4>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
-                                {selectedQuestion.options?.map((opt, i) => {
-                                    const isCorrect = selectedQuestion.correctAnswerIndex === i;
-                                    const text = typeof opt === 'string' ? opt : (opt.text || '');
-                                    return (
-                                        <div key={i} style={{
-                                            padding: '10px 14px',
-                                            borderRadius: 'var(--radius-sm)',
-                                            border: isCorrect ? '1px solid var(--success-border)' : '1px solid var(--border-subtle)',
-                                            background: isCorrect ? 'var(--success-subtle)' : 'var(--bg-surface)',
-                                            display: 'flex', gap: 12, alignItems: 'center',
-                                            fontSize: 13
-                                        }}>
-                                            <div style={{ width: 24, height: 24, borderRadius: '50%', background: isCorrect ? 'var(--success)' : 'var(--bg-elevated)', color: isCorrect ? '#fff' : 'var(--text-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600 }}>
-                                                {String.fromCharCode(65 + i)}
-                                            </div>
-                                            <span style={{ color: isCorrect ? 'var(--success)' : 'var(--text-primary)', fontWeight: isCorrect ? 600 : 400 }}>{text}</span>
-                                        </div>
-                                    )
-                                })}
+                            <div style={{ marginBottom: 24, padding: 12, background: 'var(--warning-subtle)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--warning-border)' }}>
+                                <p style={{ fontSize: 13, color: 'var(--warning)', margin: 0 }}>
+                                    <strong>Content Protected:</strong> Question body and options are end-to-end encrypted. Admins can only view the full question content while reviewing pending batches.
+                                </p>
                             </div>
 
                             <h4 style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', marginBottom: 12 }}>Health & Usage</h4>

@@ -151,6 +151,9 @@ export const updateExaminationStatus = async (req, res) => {
         const examination = await Examination.findByIdAndUpdate(id, { status }, { new: true });
         if (!examination) return res.status(404).json({ message: "Examination not found" });
 
+        // Update child exams to match the new status
+        await Exam.updateMany({ examinationId: id }, { status });
+
         return res.status(200).json({ message: "Status updated successfully", examination });
     } catch (error) {
         console.error("Error updating examination status:", error);

@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
-import { LayoutDashboard, ClipboardList, Database, BarChart3, GraduationCap, Users, PackageOpen, ScrollText, Blocks, Settings, Search, LogOut, ChevronDown, Command, Bell, Plus, RefreshCw, ShieldAlert, Map, Beaker, Activity } from 'lucide-react'
+import { LayoutDashboard, ClipboardList, Database, BarChart3, GraduationCap, Users, PackageOpen, ScrollText, Blocks, Settings, Search, LogOut, ChevronDown, Command, Bell, Plus, RefreshCw, ShieldAlert, Map, Beaker, Activity, Mail } from 'lucide-react'
 import { CommandPalette } from '../../components/CommandPalette.jsx'
 import { HeaderThemeToggle } from '../../components/HeaderThemeToggle.jsx'
 import { NotificationDropdown } from '../../components/NotificationDropdown.jsx'
 import { SkeletonCard, Skeleton, SkeletonTable } from '../../components/SkeletonLoader.jsx'
 import { useNotifications } from '../../hooks/useNotifications.jsx'
+import { ZMailUnreadBadge } from '../../components/zmail/ZMailUnreadBadge.jsx'
 
 const NAV = [
     {
@@ -45,10 +46,16 @@ const NAV = [
         items: [
             { label: 'Settings', icon: <Settings size={18} />, path: '/admin/settings' },
         ]
+    },
+    {
+        section: 'Messaging',
+        items: [
+            { label: 'ZMail', icon: <Mail size={18} />, path: '/zmail', zmailBadge: true },
+        ]
     }
 ]
 
-export const AdminLayout = ({ children, pendingBatchCount = 0 }) => {
+export const AdminLayout = ({ children, pendingBatchCount = 0, noPadding = false }) => {
     const [collapsed, setCollapsed] = useState(false)
     const [mobileOpen, setMobileOpen] = useState(false)
     const [showCommand, setShowCommand] = useState(false)
@@ -63,6 +70,31 @@ export const AdminLayout = ({ children, pendingBatchCount = 0 }) => {
     const navigate = useNavigate()
     const location = useLocation()
     const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications('admin');
+
+    const handleSidebarResize = (e) => {
+        if (collapsed) return;
+        e.preventDefault();
+        const startX = e.pageX;
+        const currentWidth = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sidebar-width')) || 260;
+        
+        const onMouseMove = (moveEvent) => {
+            const newWidth = currentWidth + (moveEvent.pageX - startX);
+            const clamped = Math.min(Math.max(newWidth, 200), 450); // min 200px, max 450px
+            document.documentElement.style.setProperty('--sidebar-width', `${clamped}px`);
+        };
+        
+        const onMouseUp = () => {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+            document.body.style.cursor = '';
+            document.documentElement.classList.remove('sidebar-is-dragging');
+        };
+        
+        document.body.style.cursor = 'col-resize';
+        document.documentElement.classList.add('sidebar-is-dragging');
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+    };
 
     const adminData = JSON.parse(localStorage.getItem('adminData') || '{}')
 
@@ -143,7 +175,9 @@ export const AdminLayout = ({ children, pendingBatchCount = 0 }) => {
                                     title={collapsed ? item.label : undefined}
                                     aria-current={isActive(item.path) ? 'page' : undefined}
                                 >
-                                    <span className="nav-icon" aria-hidden="true">{item.icon}</span>
+                                    <span className="nav-icon" aria-hidden="true">
+                                        {item.zmailBadge ? <ZMailUnreadBadge /> : item.icon}
+                                    </span>
                                     <span className="nav-label">{item.label}</span>
                                     {item.badgeKey === 'pendingBatches' && pendingBatchCount > 0 && (
                                         <span className="nav-badge" aria-label={`${pendingBatchCount} pending`}>
@@ -169,6 +203,7 @@ export const AdminLayout = ({ children, pendingBatchCount = 0 }) => {
                         <span className="nav-label" style={{ color: 'var(--danger)' }}>Logout</span>
                     </div>
                 </div>
+                {!collapsed && <div className="sidebar-resizer" onMouseDown={handleSidebarResize} />}
             </nav>
 
             {/* Mobile overlay */}
@@ -286,7 +321,7 @@ export const AdminLayout = ({ children, pendingBatchCount = 0 }) => {
                 </header>
 
                 {/* Content */}
-                <main className="page-content" id="main-content">
+                <main className={`page-content ${noPadding ? 'no-padding' : ''}`} id="main-content">
                     {isRefreshing ? (
                         <div style={{ padding: '24px', display: 'grid', gap: '24px' }}>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>

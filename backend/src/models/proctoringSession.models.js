@@ -27,6 +27,11 @@ const proctoringSessionSchema = new Schema(
             enum: ["CONNECTED", "DISCONNECTED", "PERMISSION_DENIED", "NOT_FOUND", "DEVICE_ERROR", "ENDED", "UNKNOWN"],
             default: "UNKNOWN",
         },
+        screenStatus: {
+            type: String,
+            enum: ["CONNECTED", "STOPPED", "PERMISSION_DENIED", "NOT_AVAILABLE", "UNKNOWN"],
+            default: "UNKNOWN",
+        },
         connectionStatus: {
             type: String,
             enum: ["ONLINE", "UNSTABLE", "OFFLINE"],

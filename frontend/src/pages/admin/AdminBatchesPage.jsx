@@ -360,31 +360,48 @@ export default function AdminBatchesPage() {
                                                         <DifficultyBadge level={q.difficultyLevel} />
                                                         <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{q.topic || 'No topic'}</span>
                                                     </div>
-                                                    <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.5, marginBottom: 16 }}>{q.title}</p>
-
-                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                                                        {q.options?.map((opt, j) => {
-                                                            const isCorrect = opt === q.correctAnswer
-                                                            return (
-                                                                <div key={j} style={{
-                                                                    padding: '10px 14px', borderRadius: 'var(--radius-sm)',
-                                                                    background: isCorrect ? 'var(--success-subtle)' : 'var(--bg-surface)',
-                                                                    border: `1px solid ${isCorrect ? 'var(--success-border)' : 'var(--border-subtle)'}`,
-                                                                    display: 'flex', gap: 10, alignItems: 'center', fontSize: 13
-                                                                }}>
-                                                                    <div style={{
-                                                                        width: 20, height: 20, borderRadius: '50%',
-                                                                        background: isCorrect ? 'var(--success)' : 'var(--bg-elevated)',
-                                                                        color: isCorrect ? '#fff' : 'var(--text-tertiary)',
-                                                                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 600
-                                                                    }}>
-                                                                        {String.fromCharCode(65 + j)}
-                                                                    </div>
-                                                                    <span style={{ color: isCorrect ? 'var(--success)' : 'var(--text-primary)', fontWeight: isCorrect ? 600 : 400 }}>{opt}</span>
-                                                                </div>
-                                                            )
-                                                        })}
-                                                    </div>
+                                                    {activeBatch.status === 'Accepted' ? (
+                                                        <>
+                                                            <div style={{ marginBottom: 16, padding: '12px 16px', background: 'var(--bg-surface)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
+                                                                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 8, letterSpacing: '0.05em' }}>Content Hash</div>
+                                                                <code style={{ fontSize: 13, color: 'var(--brand-primary)', wordBreak: 'break-all' }}>
+                                                                    {q.title}
+                                                                </code>
+                                                            </div>
+                                                            <div style={{ padding: 12, background: 'var(--warning-subtle)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--warning-border)' }}>
+                                                                <p style={{ fontSize: 13, color: 'var(--warning)', margin: 0 }}>
+                                                                    <strong>Content Protected:</strong> Question body and options are end-to-end encrypted. Admins can only view the full question content while reviewing pending batches.
+                                                                </p>
+                                                            </div>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.5, marginBottom: 16 }}>{q.title}</p>
+                                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                                                {q.options?.map((opt, j) => {
+                                                                    const isCorrect = opt === q.correctAnswer
+                                                                    return (
+                                                                        <div key={j} style={{
+                                                                            padding: '10px 14px', borderRadius: 'var(--radius-sm)',
+                                                                            background: isCorrect ? 'var(--success-subtle)' : 'var(--bg-surface)',
+                                                                            border: `1px solid ${isCorrect ? 'var(--success-border)' : 'var(--border-subtle)'}`,
+                                                                            display: 'flex', gap: 10, alignItems: 'center', fontSize: 13
+                                                                        }}>
+                                                                            <div style={{
+                                                                                width: 20, height: 20, borderRadius: '50%',
+                                                                                background: isCorrect ? 'var(--success)' : 'var(--bg-elevated)',
+                                                                                color: isCorrect ? '#fff' : 'var(--text-tertiary)',
+                                                                                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 600
+                                                                            }}>
+                                                                                {String.fromCharCode(65 + j)}
+                                                                            </div>
+                                                                            <span style={{ color: isCorrect ? 'var(--success)' : 'var(--text-primary)', fontWeight: isCorrect ? 600 : 400 }}>{opt}</span>
+                                                                        </div>
+                                                                    )
+                                                                })}
+                                                            </div>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>

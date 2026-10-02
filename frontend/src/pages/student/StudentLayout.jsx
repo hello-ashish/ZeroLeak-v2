@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation, Link, Outlet } from 'react-router-dom'
-import { LayoutDashboard, ClipboardList, BarChart3, Target, User, Settings, Search, LogOut, ChevronDown, Bell , RefreshCw } from 'lucide-react'
+import { LayoutDashboard, ClipboardList, BarChart3, Target, User, Settings, Search, LogOut, ChevronDown, Bell , RefreshCw, Mail } from 'lucide-react'
 import { CommandPalette } from '../../components/CommandPalette.jsx'
 import { Modal } from '../../components/Modal.jsx'
 import { HeaderThemeToggle } from '../../components/HeaderThemeToggle.jsx'
 import { NotificationDropdown } from '../../components/NotificationDropdown.jsx'
 import { SkeletonCard, Skeleton, SkeletonTable } from '../../components/SkeletonLoader.jsx'
 import { useNotifications } from '../../hooks/useNotifications.jsx'
+import { ZMailUnreadBadge } from '../../components/zmail/ZMailUnreadBadge.jsx'
 
 import axios from 'axios';
 
@@ -29,10 +30,16 @@ const NAV = [
         section: 'Identity',
         items: [
             { label: 'Profile', icon: <User size={18} />, path: '/student/profile' },]
+    },
+    {
+        section: 'Messaging',
+        items: [
+            { label: 'ZMail', icon: <Mail size={18} />, path: '/zmail', zmailBadge: true },
+        ]
     }
 ]
 
-export const StudentLayout = () => {
+export const StudentLayout = ({ children, noPadding = false }) => {
     const [collapsed, setCollapsed] = useState(false)
     const [mobileOpen, setMobileOpen] = useState(false)
     const [showCommand, setShowCommand] = useState(false)
@@ -136,7 +143,9 @@ export const StudentLayout = () => {
                                     title={collapsed ? item.label : undefined}
                                     aria-current={isActive(item.path) ? 'page' : undefined}
                                 >
-                                    <span className="nav-icon" aria-hidden="true">{item.icon}</span>
+                                    <span className="nav-icon" aria-hidden="true">
+                                        {item.zmailBadge ? <ZMailUnreadBadge /> : item.icon}
+                                    </span>
                                     <span className="nav-label">{item.label}</span>
                                 </Link>
                             ))}
@@ -250,7 +259,7 @@ export const StudentLayout = () => {
                 </header>
 
                 {/* Content */}
-                <main className="page-content" id="main-content">
+                <main className={`page-content ${noPadding ? 'no-padding' : ''}`} id="main-content">
                     {isRefreshing ? (
                         <div style={{ padding: '24px', display: 'grid', gap: '24px' }}>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
@@ -270,7 +279,7 @@ export const StudentLayout = () => {
                             </div>
                         </div>
                     ) : (
-                        <Outlet key={refreshKey} />
+                        children || <Outlet key={refreshKey} />
                     )}
                 </main>
             </div>

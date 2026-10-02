@@ -8,6 +8,7 @@ import { Result } from "../models/result.models.js";
 import { AuditLog } from "../models/auditlog.models.js";
 import { buildMerkleRoot } from "../Services/merkle.service.js";
 import { createCommitment } from "../blockchain/commitment.service.js";
+import { ensureZMailAccount } from "../Services/zmail/zmailIdentity.service.js";
 import {
     encryptQuestionContent,
     hashQuestionContent,
@@ -84,6 +85,10 @@ export const createProfessor = async (req, res) => {
         delete createdProfessor.password;
 
         await logAction({ actor: req.admin?.email, action: "PROFESSOR_CREATED", targetType: "Professor", targetId: professor._id, targetLabel: name });
+
+        // Provision ZMail account for the new professor (non-blocking)
+        ensureZMailAccount({ userId: professor._id, userType: "Professor", displayName: name, loginEmail: email })
+            .catch(err => console.warn("[ZMAIL] Failed to provision account for professor", professor._id, err.message));
 
         return res.status(201).json({ message: "Professor created successfully", professor: createdProfessor });
     } catch (error) {
@@ -169,7 +174,25 @@ export const openBatchDetails = async (req, res) => {
             req.params.batchId,
             { openedByAdmin: true },
             { new: true }
-        ).populate('createdBy', 'name email');
+        ).populate('createdBy', 'name email').lean();
+
+        if (batch && batch.status === 'Accepted') {
+            batch.questions = batch.questions.map(q => {
+                const sensitiveContent = {
+                    title: q.title,
+                    options: q.options,
+                    correctAnswer: q.correctAnswer,
+                    correctAnswerIndex: q.correctAnswerIndex,
+                };
+                const contentHash = hashQuestionContent(sensitiveContent);
+                return {
+                    ...q,
+                    title: contentHash,
+                    options: []
+                };
+            });
+        }
+
         res.status(200).json({ batch });
     } catch (error) {
         res.status(500).json({ message: error.message });
