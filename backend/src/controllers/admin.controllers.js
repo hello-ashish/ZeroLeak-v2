@@ -15,7 +15,7 @@ import {
 import { createNotification } from "./notification.controllers.js";
 
 // ─── Audit Log Helper ────────────────────────────────────────────────────────
-const logAction = async ({ actor, actorRole = "Admin", action, targetType, targetId, targetLabel, details, status = "success" }) => {
+export const logAction = async ({ actor, actorRole = "Admin", action, targetType, targetId, targetLabel, details, status = "success" }) => {
     try {
         await AuditLog.create({ actor, actorRole, action, targetType, targetId: String(targetId || ""), targetLabel, details, status });
     } catch (err) {
@@ -55,6 +55,10 @@ export const loginAdmin = async (req, res) => {
         if (!admin) return res.status(401).json({ message: "Invalid email or password" });
         const isPasswordCorrect = await admin.isPasswordCorrect(password);
         if (!isPasswordCorrect) return res.status(401).json({ message: "Invalid credentials" });
+        
+        admin.sessionVersion = (admin.sessionVersion || 0) + 1;
+        await admin.save({ validateBeforeSave: false });
+        
         const token = admin.generateAccessToken();
         const loggedInAdmin = admin.toObject();
         delete loggedInAdmin.password;
@@ -560,9 +564,22 @@ export const getAuditLogs = async (req, res) => {
 export const updateExamStatus = async (req, res) => {
     try {
         const { id } = req.params;
-        const { status, scheduledAt, endsAt } = req.body;
+        const { status } = req.body;
+        let { scheduledAt, endsAt } = req.body;
+        
+        const examObj = await Exam.findById(id);
+        if (!examObj) return res.status(404).json({ message: "Exam not found" });
+
+        if (status === "Live" && examObj.status !== "Live") {
+            if (!scheduledAt) scheduledAt = new Date();
+            else scheduledAt = new Date(scheduledAt);
+            
+            if (!endsAt) {
+                endsAt = new Date(scheduledAt.getTime() + (examObj.durationMinutes || 60) * 60 * 1000);
+            }
+        }
+        
         const exam = await Exam.findByIdAndUpdate(id, { status, scheduledAt, endsAt }, { new: true });
-        if (!exam) return res.status(404).json({ message: "Exam not found" });
         await logAction({ actor: req.admin?.email, action: `EXAM_${status.toUpperCase()}`, targetType: "Exam", targetId: exam._id, targetLabel: exam.title });
         return res.status(200).json({ message: "Exam status updated", exam });
     } catch (error) {

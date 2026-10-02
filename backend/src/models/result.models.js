@@ -29,6 +29,10 @@ const resultSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "Question"
     }],
+    latestAnswers: {
+        type: Array,
+        default: []
+    },
     isTerminated: {
         type: Boolean,
         default: false

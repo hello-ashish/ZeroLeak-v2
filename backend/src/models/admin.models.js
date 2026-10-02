@@ -19,6 +19,10 @@ const adminSchema = new Schema(
         password: {
             type: String,
             required: [true, "Password is required"],
+        },
+        sessionVersion: {
+            type: Number,
+            default: 0
         }
     }, { timestamps: true }
 )
@@ -37,6 +41,7 @@ adminSchema.methods.generateAccessToken = function () {
         {
             id: this._id,
             email: this.email,
+            sessionVersion: this.sessionVersion,
         },
         process.env.ACCESS_TOKEN_SECRET,
         {

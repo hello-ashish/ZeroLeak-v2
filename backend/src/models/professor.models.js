@@ -40,6 +40,10 @@ const professorSchema = new Schema(
         isBlocked: { 
             type: Boolean, 
             default: false 
+        },
+        sessionVersion: {
+            type: Number,
+            default: 0
         }
     }, { timestamps: true }
 )
@@ -62,6 +66,7 @@ professorSchema.methods.generateAccessToken = function () {
         {
             id: this._id,
             email: this.email,
+            sessionVersion: this.sessionVersion,
         },
         process.env.ACCESS_TOKEN_SECRET,
         {

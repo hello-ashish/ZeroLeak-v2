@@ -7,6 +7,7 @@ import { HeaderThemeToggle } from '../../components/HeaderThemeToggle.jsx'
 import { NotificationDropdown } from '../../components/NotificationDropdown.jsx'
 import { SkeletonCard, Skeleton, SkeletonTable } from '../../components/SkeletonLoader.jsx'
 import { useNotifications } from '../../hooks/useNotifications.jsx'
+import { ReportIssueButton } from '../../components/ReportIssueButton.jsx'
 
 import axios from 'axios';
 
@@ -276,6 +277,8 @@ export const StudentLayout = () => {
             </div>
 
             <CommandPalette open={showCommand} onClose={() => setShowCommand(false)} />
+            
+            <ReportIssueButton />
 
             <Modal 
                 open={showRestrictedModal} 

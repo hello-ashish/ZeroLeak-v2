@@ -11,6 +11,7 @@ import {
 import { useAntiCheating } from './utils/useAntiCheating';
 import { useProctoring } from './hooks/useProctoring';
 import { ProctoringStatusPanel } from './components/ProctoringStatusPanel';
+import { ReportIssueButton } from './components/ReportIssueButton.jsx';
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 const MAX_WARNINGS = 3;
 
@@ -150,13 +151,17 @@ const TakeExam = () => {
                         setConfidenceLevels(parsed.confidenceLevels || {});
                         setScratchpad(parsed.scratchpad || "");
                         setCurrentQuestionIndex(parsed.currentQuestionIndex || 0);
-                        if (parsed.timeLeft > 0) {
-                            setTimeLeft(parsed.timeLeft);
+                        if (parsed.isStarted) {
                             setIsStarted(true);
                         }
                     } catch (e) {
                         console.error("Failed to restore session", e);
                     }
+                }
+                
+                if (response.data.examEndsAt && response.data.serverNow) {
+                    const diffMs = new Date(response.data.examEndsAt).getTime() - new Date(response.data.serverNow).getTime();
+                    setTimeLeft(Math.max(0, Math.floor(diffMs / 1000)));
                 }
             } catch (error) {
                 console.error("Failed to fetch exam", error);
@@ -311,6 +316,7 @@ const TakeExam = () => {
     // Timer Logic
     useEffect(() => {
         if (isStarted && score === null && !isTerminated && exam && timeLeft === null) {
+            // Fallback if examEndsAt is not present
             setTimeLeft(exam.durationMinutes * 60);
         }
     }, [isStarted, exam, score, isTerminated, timeLeft]);
@@ -432,11 +438,11 @@ const TakeExam = () => {
                 confidenceLevels,
                 scratchpad,
                 currentQuestionIndex,
-                timeLeft
+                isStarted: true
             };
             localStorage.setItem(sessionKey, JSON.stringify(sessionData));
         }
-    }, [answers, markedForReview, confidenceLevels, scratchpad, currentQuestionIndex, timeLeft, isStarted, score, isTerminated, sessionKey]);
+    }, [answers, markedForReview, confidenceLevels, scratchpad, currentQuestionIndex, isStarted, score, isTerminated, sessionKey]);
 
     // Keyboard Navigation
     useEffect(() => {
@@ -1176,6 +1182,7 @@ const TakeExam = () => {
                 </aside>
 
             </div>
+            <ReportIssueButton contextData={{ examId: id }} />
         </div>
     );
 };

@@ -43,6 +43,9 @@ export const loginAuditor = async (req, res) => {
         const isPasswordCorrect = await auditor.isPasswordCorrect(password);
         if (!isPasswordCorrect) return res.status(401).json({ message: "Invalid credentials" });
 
+        auditor.sessionVersion = (auditor.sessionVersion || 0) + 1;
+        await auditor.save({ validateBeforeSave: false });
+
         const token = auditor.generateAccessToken();
         const loggedIn = auditor.toObject();
         delete loggedIn.password;

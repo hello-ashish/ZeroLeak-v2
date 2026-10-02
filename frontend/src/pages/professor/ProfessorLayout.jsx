@@ -6,6 +6,7 @@ import { HeaderThemeToggle } from '../../components/HeaderThemeToggle.jsx'
 import { NotificationDropdown } from '../../components/NotificationDropdown.jsx'
 import { SkeletonCard, Skeleton, SkeletonTable } from '../../components/SkeletonLoader.jsx'
 import { useNotifications } from '../../hooks/useNotifications.jsx'
+import { ReportIssueButton } from '../../components/ReportIssueButton.jsx'
 
 const NAV = [
     {
@@ -260,6 +261,7 @@ export const ProfessorLayout = () => {
             </div>
 
             <CommandPalette open={showCommand} onClose={() => setShowCommand(false)} />
+            <ReportIssueButton />
         </div>
     )
 }

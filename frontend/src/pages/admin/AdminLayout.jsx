@@ -44,6 +44,7 @@ const NAV = [
         section: 'System',
         items: [
             { label: 'Settings', icon: <Settings size={18} />, path: '/admin/settings' },
+            { label: 'Reports & Feedback', icon: <ScrollText size={18} />, path: '/admin/feedback' },
         ]
     }
 ]

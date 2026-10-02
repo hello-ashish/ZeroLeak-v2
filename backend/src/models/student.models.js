@@ -20,7 +20,8 @@ const studentSchema = new Schema(
         blockedReason: { type: String, default: null },
         unblockedAt: { type: Date, default: null },
         lastActiveAt: { type: Date, default: null },
-        currentExamId: { type: Schema.Types.ObjectId, ref: 'Exam', default: null }
+        currentExamId: { type: Schema.Types.ObjectId, ref: 'Exam', default: null },
+        sessionVersion: { type: Number, default: 0 }
     },
     { timestamps: true }
 );
@@ -49,7 +50,8 @@ studentSchema.methods.generateAccessToken = function () {
         {
             id: this._id,
             email: this.email,
-            studentId: this.studentId
+            studentId: this.studentId,
+            sessionVersion: this.sessionVersion
         },
         process.env.ACCESS_TOKEN_SECRET,
         { expiresIn: process.env.ACCESS_TOKEN_EXPIRY || "1d" }
