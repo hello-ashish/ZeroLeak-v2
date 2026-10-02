@@ -34,6 +34,8 @@ export default function AdminStudentsPage() {
     const [blockingId, setBlockingId] = useState(null)
     const [previewModal, setPreviewModal] = useState({ isOpen: false, title: '', content: '', headers: [], rows: [], filename: '' })
     const [importPreview, setImportPreview] = useState(null)
+    const [isAnalyzing, setIsAnalyzing] = useState(false)
+    const [aiAnalysis, setAiAnalysis] = useState(null)
     const navigate = useNavigate()
     const [searchParams, setSearchParams] = useSearchParams()
     const toast = useToast()
@@ -100,6 +102,22 @@ export default function AdminStudentsPage() {
             setBlockingId(null);
         }
     }
+
+    const handleGenerateInsight = async () => {
+        if (!selectedStudent) return;
+        setIsAnalyzing(true);
+        setAiAnalysis(null);
+        try {
+            const res = await axios.get(`${API}/ai/admin/student/${selectedStudent._id}/performance`, {
+                headers: { Authorization: `Bearer ${getToken()}` }
+            });
+            setAiAnalysis(res.data);
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to generate AI analysis');
+        } finally {
+            setIsAnalyzing(false);
+        }
+    };
 
     // Compute per-student stats from results
     const studentStats = useMemo(() => {
@@ -524,6 +542,7 @@ export default function AdminStudentsPage() {
                                             <tr key={stu._id}
                                                 onClick={() => {
                                                     setSelectedStudent(stu)
+                                                    setAiAnalysis(null)
                                                     if (searchParams.has('studentId')) {
                                                         const p = new URLSearchParams(searchParams)
                                                         p.delete('studentId')
@@ -672,7 +691,54 @@ export default function AdminStudentsPage() {
                                 </>
                             )}
 
-                            <div style={{ marginTop: 32, display: 'flex', gap: 12 }}>
+                            <div style={{ marginTop: 24, padding: 16, background: 'var(--bg-surface)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--brand-primary-subtle)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: aiAnalysis ? 16 : 0 }}>
+                                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--brand-primary)' }}>✨ AI Performance Analysis</div>
+                                    <button 
+                                        className="btn btn-sm btn-primary" 
+                                        onClick={handleGenerateInsight} 
+                                        disabled={isAnalyzing || examsForStudent(selectedStudent._id) === 0}
+                                        title={examsForStudent(selectedStudent._id) === 0 ? "Student must complete at least one exam." : ""}
+                                    >
+                                        {isAnalyzing ? <Loader2 size={14} className="spin" /> : "Analyze"}
+                                    </button>
+                                </div>
+                                {aiAnalysis && (
+                                    <div style={{ animation: 'fadeIn 0.3s ease' }}>
+                                        <p style={{ fontSize: 13, color: 'var(--text-primary)', marginBottom: 12, lineHeight: 1.5 }}>
+                                            {aiAnalysis.summary}
+                                        </p>
+                                        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                                            <span style={{ fontSize: 11, background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', padding: '2px 8px', borderRadius: 12 }}>Avg: {aiAnalysis.averagePerformance}</span>
+                                            <span style={{ fontSize: 11, background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', padding: '2px 8px', borderRadius: 12 }}>Trend: {aiAnalysis.performanceTrend}</span>
+                                        </div>
+                                        {aiAnalysis.strengths?.length > 0 && (
+                                            <div style={{ marginBottom: 8 }}>
+                                                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--success)' }}>Strengths</div>
+                                                <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{aiAnalysis.strengths.join(', ')}</div>
+                                            </div>
+                                        )}
+                                        {aiAnalysis.weakAreas?.length > 0 && (
+                                            <div style={{ marginBottom: 8 }}>
+                                                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--danger)' }}>Weak Areas</div>
+                                                <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{aiAnalysis.weakAreas.join(', ')}</div>
+                                            </div>
+                                        )}
+                                        {aiAnalysis.observations?.length > 0 && (
+                                            <div>
+                                                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)' }}>Observations</div>
+                                                <ul style={{ margin: 0, paddingLeft: 16, marginTop: 4 }}>
+                                                    {aiAnalysis.observations.map((obs, idx) => (
+                                                        <li key={idx} style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 2 }}>{obs}</li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div style={{ marginTop: 24, display: 'flex', gap: 12 }}>
                                 <button className="btn btn-danger" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setDeleteTarget(selectedStudent)}>
                                     <Trash2 size={16} /> Remove Student
                                 </button>

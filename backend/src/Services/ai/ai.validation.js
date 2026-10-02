@@ -228,3 +228,57 @@ export function validateBatchCsvRepairResponse(dataArray, rows) {
 function clampConfidence(val) {
     return Math.max(0, Math.min(1, val))
 }
+
+export function validateStudentPerformanceResponse(data) {
+    if (!data || typeof data !== "object") {
+        return { valid: false, error: "AI returned invalid data structure" }
+    }
+    
+    const errors = []
+    
+    if (typeof data.summary !== "string") errors.push("Missing or invalid summary")
+    if (typeof data.averagePerformance !== "string") errors.push("Missing or invalid averagePerformance")
+    
+    const validTrends = ["Improving", "Declining", "Stable", "Inconsistent", "Insufficient Data"]
+    if (!validTrends.includes(data.performanceTrend)) {
+        errors.push("Invalid performanceTrend")
+    }
+    
+    if (!Array.isArray(data.strengths)) errors.push("strengths must be an array")
+    if (!Array.isArray(data.weakAreas)) errors.push("weakAreas must be an array")
+    if (!Array.isArray(data.observations)) errors.push("observations must be an array")
+    
+    if (errors.length > 0) {
+        return { valid: false, error: errors.join("; ") }
+    }
+    
+    return { valid: true, data }
+}
+
+
+export function validateStudentSelfPerformanceResponse(data) {
+    if (!data || typeof data !== "object") {
+        return { valid: false, error: "AI returned invalid data structure" }
+    }
+    
+    const errors = []
+    
+    if (typeof data.summary !== "string") errors.push("Missing or invalid summary")
+    if (typeof data.averagePerformance !== "string") errors.push("Missing or invalid averagePerformance")
+    
+    const validTrends = ["Improving", "Declining", "Stable", "Inconsistent", "Insufficient Data"]
+    if (!validTrends.includes(data.performanceTrend)) {
+        errors.push("Invalid performanceTrend")
+    }
+    
+    if (!Array.isArray(data.strengths)) errors.push("strengths must be an array")
+    if (!Array.isArray(data.weakAreas)) errors.push("weakAreas must be an array")
+    if (!Array.isArray(data.observations)) errors.push("observations must be an array")
+    if (!Array.isArray(data.improvementFocus)) errors.push("improvementFocus must be an array")
+    
+    if (errors.length > 0) {
+        return { valid: false, error: errors.join("; ") }
+    }
+    
+    return { valid: true, data }
+}
