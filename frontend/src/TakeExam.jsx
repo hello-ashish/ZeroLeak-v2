@@ -11,7 +11,6 @@ import {
 import { useAntiCheating } from './utils/useAntiCheating';
 import { useProctoring } from './hooks/useProctoring';
 import { ProctoringStatusPanel } from './components/ProctoringStatusPanel';
-import { ReportIssueButton } from './components/ReportIssueButton.jsx';
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 const MAX_WARNINGS = 3;
 
@@ -1192,7 +1191,6 @@ const TakeExam = () => {
                 </aside>
 
             </div>
-            <ReportIssueButton contextData={{ examId: id }} />
         </div>
     );
 };

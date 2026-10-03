@@ -291,7 +291,6 @@ export const ProfessorLayout = ({ children, noPadding = false }) => {
             </div>
 
             <CommandPalette open={showCommand} onClose={() => setShowCommand(false)} />
-            <ReportIssueButton />
         </div>
     )
 }

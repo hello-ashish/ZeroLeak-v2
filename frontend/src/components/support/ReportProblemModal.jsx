@@ -83,6 +83,7 @@ export function ReportProblemModal({ onClose, examId, sessionId, context }) {
             });
             setTicketNumber(result.ticket?.ticketNumber || '');
             setSubmitted(true);
+            window.dispatchEvent(new CustomEvent('support-ticket-created'));
         } catch (err) {
             toast.error(err.message || 'Failed to submit report. Please try again.');
         } finally {

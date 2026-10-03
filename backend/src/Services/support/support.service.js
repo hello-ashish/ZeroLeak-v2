@@ -423,6 +423,21 @@ export async function changeStatus({ ticketId, newStatus, agentId, agentRole, ag
     await recordHistory(ticket._id, ticket.ticketNumber, "status_changed",
         agentId, agentRole, agentName, { from: oldStatus, to: newStatus });
 
+    if (newStatus === "RESOLVED" && oldStatus !== "RESOLVED") {
+        try {
+            const body = `Hello ${ticket.reporterName},\n\nYour support ticket #${ticket.ticketNumber} ("${ticket.title}") has been marked as RESOLVED by ${agentName}.\n\nIf you have any further questions or if the issue persists, please reply to this thread to reopen the ticket.`;
+            await supportReply({ 
+                ticketId: ticket._id, 
+                agentId, 
+                agentName: "ZeroLeak Support", 
+                agentRole: "system", 
+                body 
+            });
+        } catch (err) {
+            console.error("[SUPPORT] Failed to send resolution notification:", err.message);
+        }
+    }
+
     return ticket;
 }
 

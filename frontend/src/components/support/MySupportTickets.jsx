@@ -163,6 +163,14 @@ export function MySupportTickets() {
 
     useEffect(() => { load(1); }, [load]);
 
+    useEffect(() => {
+        const handleTicketCreated = () => {
+            load(1);
+        };
+        window.addEventListener('support-ticket-created', handleTicketCreated);
+        return () => window.removeEventListener('support-ticket-created', handleTicketCreated);
+    }, [load]);
+
     if (selectedId) {
         return <ConversationView ticketId={selectedId} onBack={() => setSelectedId(null)} />;
     }

@@ -49,7 +49,6 @@ const NAV = [
         section: 'System',
         items: [
             { label: 'Settings', icon: <Settings size={18} />, path: '/admin/settings' },
-            { label: 'Reports & Feedback', icon: <ScrollText size={18} />, path: '/admin/feedback', badgeKey: 'feedbackBadge' },
         ]
     },
     {
@@ -84,7 +83,6 @@ export const AdminLayout = ({ children, pendingBatchCount = 0, noPadding = false
     const navigate = useNavigate()
     const location = useLocation()
     const { notifications, unreadCount, fetchNotifications, markAsRead, markAllAsRead } = useNotifications('admin');
-    const pendingFeedbackCount = notifications.filter(n => !n.isRead && n.relatedLink === '/admin/feedback').length;
 
     const handleSidebarResize = (e) => {
         if (collapsed) return;
@@ -222,11 +220,6 @@ export const AdminLayout = ({ children, pendingBatchCount = 0, noPadding = false
                                     {item.badgeKey === 'pendingBatches' && pendingBatchCount > 0 && (
                                         <span className="nav-badge" aria-label={`${pendingBatchCount} pending`}>
                                             {pendingBatchCount}
-                                        </span>
-                                    )}
-                                    {item.badgeKey === 'feedbackBadge' && pendingFeedbackCount > 0 && (
-                                        <span className="nav-badge" aria-label={`${pendingFeedbackCount} new issues`}>
-                                            <span style={{ width: 8, height: 8, backgroundColor: 'var(--danger)', borderRadius: '50%', display: 'inline-block' }}></span>
                                         </span>
                                     )}
                                 </Link>

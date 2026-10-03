@@ -307,8 +307,6 @@ export const StudentLayout = ({ children, noPadding = false }) => {
             </div>
 
             <CommandPalette open={showCommand} onClose={() => setShowCommand(false)} />
-            
-            <ReportIssueButton />
 
             <Modal 
                 open={showRestrictedModal} 

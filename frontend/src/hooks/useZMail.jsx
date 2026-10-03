@@ -94,6 +94,10 @@ export function ZMailProvider({ children }) {
 
         socket.on('disconnect', () => setConnected(false));
 
+        socket.on('connect_error', (err) => {
+            console.error('[ZMail Socket] Connect Error:', err.message, err);
+        });
+
         socket.on('zmail:unread-count', ({ count }) => {
             setUnreadCount(count || 0);
         });
