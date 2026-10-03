@@ -65,7 +65,7 @@ connectDB()
             ensureSupportMailbox().catch(err => console.warn("[SUPPORT] Failed to provision support mailbox:", err.message));
         });
         
-        server.listen(process.env.PORT || 4000, () => {
+        server.listen(process.env.PORT || 4000, "0.0.0.0", () => {
             console.log(`Server is running on port : ${process.env.PORT || 4000}`)
 
             // Run ZMail backfill in the background after server is ready

@@ -5,12 +5,23 @@
 const API = "/api/support";
 
 function getAuthHeader() {
-    const token =
-        localStorage.getItem("supportToken") ||
-        localStorage.getItem("adminToken") ||
-        localStorage.getItem("profToken") ||
-        localStorage.getItem("studentToken") ||
-        localStorage.getItem("auditorToken");
+    const path = window.location.pathname;
+    let token = null;
+
+    if (path.startsWith("/admin")) token = localStorage.getItem("adminToken");
+    else if (path.startsWith("/professor")) token = localStorage.getItem("profToken");
+    else if (path.startsWith("/student") || path.startsWith("/take-exam")) token = localStorage.getItem("studentToken");
+    else if (path.startsWith("/auditor")) token = localStorage.getItem("auditorToken");
+    else if (path.startsWith("/support")) token = localStorage.getItem("supportToken");
+    
+    if (!token) {
+        token = localStorage.getItem("supportToken") ||
+                localStorage.getItem("adminToken") ||
+                localStorage.getItem("profToken") ||
+                localStorage.getItem("studentToken") ||
+                localStorage.getItem("auditorToken");
+    }
+    
     return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
