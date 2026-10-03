@@ -60,9 +60,15 @@ const AuditorAnomaliesPage = lazy(() => import('./pages/auditor/AuditorAnomalies
 const AuditorExamsPage = lazy(() => import('./pages/auditor/AuditorExamsPage.jsx'))
 const AuditorPeoplePage = lazy(() => import('./pages/auditor/AuditorPeoplePage.jsx'))
 const AuditorBlockchainCenter = lazy(() => import('./pages/auditor/AuditorBlockchainCenter.jsx'))
+const AuditorSupportPage = lazy(() => import('./pages/auditor/AuditorSupportPage.jsx'))
 
 // ZMail
 const ZMailPage = lazy(() => import('./pages/ZMailPage.jsx'))
+
+// Support
+const SupportPage = lazy(() => import('./pages/support/SupportPage.jsx'))
+const MySupportPage = lazy(() => import('./pages/support/MySupportPage.jsx'))
+const SupportLogin = lazy(() => import('./pages/support/SupportLogin.jsx'))
 
 const PageLoader = () => (
   <div style={{ display: 'flex', height: '100vh', width: '100vw', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-base)' }}>
@@ -100,6 +106,10 @@ function App() {
             <Route path="/admin/blockchain" element={<AdminBlockchainCenter />} />
             <Route path="/admin/settings" element={<AdminSettingsPage />} />
             <Route path="/admin/feedback" element={<AdminFeedbackPage />} />
+            
+            {/* ── Support Team Route ── */}
+            <Route path="/support/login" element={<SupportLogin />} />
+            <Route path="/support" element={<SupportPage />} />
 
             {/* ── Professor Routes ── */}
             <Route path="/professor/login" element={<ProfessorLogin />} />
@@ -109,6 +119,7 @@ function App() {
               <Route path="/professor/batches/create" element={<ProfessorCreateBatchPage />} />
               <Route path="/professor/batches/:id/edit" element={<ProfessorCreateBatchPage />} />
               <Route path="/professor/profile" element={<ProfessorProfile />} />
+              <Route path="/professor/support" element={<MySupportPage />} />
             </Route>
 
             {/* ── Student Routes ── */}
@@ -121,6 +132,7 @@ function App() {
               <Route path="/student/performance" element={<StudentPerformancePage />} />
               <Route path="/student/profile" element={<StudentProfile />} />
               <Route path="/student/settings" element={<StudentSettingsPage />} />
+              <Route path="/student/support" element={<MySupportPage />} />
             </Route>
 
             {/* ── Auditor Routes ── */}
@@ -132,6 +144,7 @@ function App() {
             <Route path="/auditor/students" element={<AuditorPeoplePage />} />
             <Route path="/auditor/professors" element={<AuditorPeoplePage />} />
             <Route path="/auditor/blockchain" element={<AuditorBlockchainCenter />} />
+            <Route path="/auditor/support" element={<AuditorSupportPage />} />
 
             {/* ── ZMail — accessible by all authenticated roles ── */}
             <Route path="/zmail" element={<ZMailPage />} />

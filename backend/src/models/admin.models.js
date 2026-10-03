@@ -9,6 +9,11 @@ const adminSchema = new Schema(
             required: true,
             unique: true,
         },
+        name: {
+            type: String,
+            trim: true,
+            default: "",
+        },
         email: {
             type: String,
             required: true,
@@ -28,7 +33,13 @@ const adminSchema = new Schema(
         sessionVersion: {
             type: Number,
             default: 0
-        }
+        },
+        // When true, this admin is a member of the support team
+        isSupport: {
+            type: Boolean,
+            default: false,
+            index: true,
+        },
     }, { timestamps: true }
 )
 

@@ -22,7 +22,10 @@ import fs from "fs";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+import { SUPPORT_SYSTEM_ID } from "../Services/support/supportIdentity.service.js";
+
 function getUserId(req) {
+    if (req.userRole === "Support") return SUPPORT_SYSTEM_ID;
     return (req.user || req.admin || req.professor || req.student || req.auditor)?._id;
 }
 

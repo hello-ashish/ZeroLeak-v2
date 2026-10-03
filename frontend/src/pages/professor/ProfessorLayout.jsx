@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation, Link, Outlet } from 'react-router-dom'
-import { LayoutDashboard, PackageOpen, Settings, Search, LogOut, ChevronDown, Bell, Plus, FileText, RefreshCw, Mail } from 'lucide-react'
+import { LayoutDashboard, PackageOpen, Settings, Search, LogOut, ChevronDown, Bell, Plus, FileText, RefreshCw, Mail, AlertCircle, Headset, Ticket } from 'lucide-react'
 import { CommandPalette } from '../../components/CommandPalette.jsx'
 import { HeaderThemeToggle } from '../../components/HeaderThemeToggle.jsx'
 import { NotificationDropdown } from '../../components/NotificationDropdown.jsx'
 import { SkeletonCard, Skeleton, SkeletonTable } from '../../components/SkeletonLoader.jsx'
 import { useNotifications } from '../../hooks/useNotifications.jsx'
 import { ZMailUnreadBadge } from '../../components/zmail/ZMailUnreadBadge.jsx'
-import { ReportIssueButton } from '../../components/ReportIssueButton.jsx'
+import { ReportProblemModal } from '../../components/support/ReportProblemModal.jsx'
+import '../../components/support/support.css'
 
 const NAV = [
     {
@@ -32,7 +33,13 @@ const NAV = [
     {
         section: 'Messaging',
         items: [
-            { label: 'ZMail', icon: <Mail size={18} />, path: '/zmail', zmailBadge: true },
+            { label: 'ZMail', icon: <Mail size={18} />, path: '/zmail?role=professor', zmailBadge: true },
+        ]
+    },
+    {
+        section: 'Support',
+        items: [
+            { label: 'My Tickets', icon: <Ticket size={18} />, path: '/professor/support' },
         ]
     }
 ]
@@ -46,6 +53,7 @@ export const ProfessorLayout = ({ children, noPadding = false }) => {
     const [showNotifications, setShowNotifications] = useState(false)
     const [isRefreshing, setIsRefreshing] = useState(false)
     const [refreshKey, setRefreshKey] = useState(0)
+    const [showReportModal, setShowReportModal] = useState(false)
     const notifRef = useRef(null)
     const profileRef = useRef(null)
     const navigate = useNavigate()
@@ -138,6 +146,15 @@ export const ProfessorLayout = ({ children, noPadding = false }) => {
                 </div>
 
                 <div className="sidebar-footer">
+                    <button
+                        type="button"
+                        className="support-report-btn"
+                        onClick={() => setShowReportModal(true)}
+                        title="Report a Problem"
+                    >
+                        <AlertCircle size={16} className="support-btn-icon" />
+                        <span>Report a Problem</span>
+                    </button>
                     <div
                         className="nav-item"
                         onClick={handleLogout}
@@ -151,6 +168,10 @@ export const ProfessorLayout = ({ children, noPadding = false }) => {
                     </div>
                 </div>
             </nav>
+
+            {showReportModal && (
+                <ReportProblemModal onClose={() => setShowReportModal(false)} />
+            )}
 
             {/* Mobile overlay */}
             {mobileOpen && (

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { AdminLayout } from './AdminLayout.jsx';
-import { SkeletonTable } from '../../components/SkeletonLoader.jsx';
+import { SkeletonTable, Skeleton } from '../../components/SkeletonLoader.jsx';
 import { StatusBadge } from '../../components/StatusBadge.jsx';
 import { Modal } from '../../components/Modal.jsx';
 import { ScrollText, CheckCircle2, MessageSquare, AlertCircle, X, Search } from 'lucide-react';
@@ -133,7 +133,15 @@ export default function AdminFeedbackPage() {
                         </thead>
                         <tbody>
                             {loading ? (
-                                <SkeletonTable rows={5} cols={7} />
+                                [...Array(5)].map((_, i) => (
+                                    <tr key={i}>
+                                        {[...Array(7)].map((_, j) => (
+                                            <td key={j} style={{ padding: '12px 16px' }}>
+                                                <Skeleton height={14} width={j === 0 ? '80%' : '60%'} />
+                                            </td>
+                                        ))}
+                                    </tr>
+                                ))
                             ) : filteredFeedbacks.length === 0 ? (
                                 <tr>
                                     <td colSpan={7} style={{ textAlign: 'center', padding: '48px 0', color: 'var(--text-secondary)' }}>

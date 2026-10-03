@@ -18,8 +18,14 @@ const zmailAccountSchema = new Schema(
         },
         userType: {
             type: String,
-            enum: ["Student", "Professor", "Admin", "Auditor"],
+            enum: ["Student", "Professor", "Admin", "Auditor", "SYSTEM", "Support"],
             required: true,
+        },
+        // Whether this is the special support system mailbox
+        isSupportMailbox: {
+            type: Boolean,
+            default: false,
+            index: true,
         },
         // e.g. "rahul@zeroleak.com" — stable, never mutated by display-name changes
         zmailAddress: {

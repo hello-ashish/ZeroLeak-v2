@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
-import { LayoutDashboard, ClipboardList, Database, BarChart3, GraduationCap, Users, PackageOpen, ScrollText, Blocks, Settings, Search, LogOut, ChevronDown, Command, Bell, Plus, RefreshCw, ShieldAlert, Map, Beaker, Activity, Megaphone } from 'lucide-react'
+import { LayoutDashboard, ClipboardList, Database, BarChart3, GraduationCap, Users, PackageOpen, ScrollText, Blocks, Settings, Search, LogOut, ChevronDown, Command, Bell, Plus, RefreshCw, ShieldAlert, Map, Beaker, Activity, Megaphone, AlertCircle, Headset, Ticket } from 'lucide-react'
 import { CommandPalette } from '../../components/CommandPalette.jsx'
 import { HeaderThemeToggle } from '../../components/HeaderThemeToggle.jsx'
 import { NotificationDropdown } from '../../components/NotificationDropdown.jsx'
@@ -9,6 +9,8 @@ import { useNotifications } from '../../hooks/useNotifications.jsx'
 import axios from 'axios'
 import { Modal } from '../../components/Modal.jsx'
 import { ZMailUnreadBadge } from '../../components/zmail/ZMailUnreadBadge.jsx'
+import { ReportProblemModal } from '../../components/support/ReportProblemModal.jsx'
+import '../../components/support/support.css'
 
 const NAV = [
     {
@@ -53,7 +55,7 @@ const NAV = [
     {
         section: 'Messaging',
         items: [
-            { label: 'ZMail', icon: <Mail size={18} />, path: '/zmail', zmailBadge: true },
+            { label: 'ZMail', icon: <Mail size={18} />, path: '/zmail?role=admin', zmailBadge: true },
         ]
     }
 ]
@@ -67,6 +69,7 @@ export const AdminLayout = ({ children, pendingBatchCount = 0, noPadding = false
     const [showNotifications, setShowNotifications] = useState(false)
     const [isRefreshing, setIsRefreshing] = useState(false)
     const [refreshKey, setRefreshKey] = useState(0)
+    const [showReportModal, setShowReportModal] = useState(false)
 
     // Broadcast State
     const [showBroadcast, setShowBroadcast] = useState(false);
@@ -232,7 +235,17 @@ export const AdminLayout = ({ children, pendingBatchCount = 0, noPadding = false
                     ))}
                 </div>
 
+                {/* Sidebar footer: Report a Problem + Logout */}
                 <div className="sidebar-footer">
+                    <button
+                        type="button"
+                        className="support-report-btn"
+                        onClick={() => setShowReportModal(true)}
+                        title="Report a Problem"
+                    >
+                        <AlertCircle size={16} className="support-btn-icon" />
+                        <span>Report a Problem</span>
+                    </button>
                     <div
                         className="nav-item"
                         onClick={handleLogout}
@@ -247,6 +260,10 @@ export const AdminLayout = ({ children, pendingBatchCount = 0, noPadding = false
                 </div>
                 {!collapsed && <div className="sidebar-resizer" onMouseDown={handleSidebarResize} />}
             </nav>
+
+            {showReportModal && (
+                <ReportProblemModal onClose={() => setShowReportModal(false)} />
+            )}
 
             {/* Mobile overlay */}
             {mobileOpen && (

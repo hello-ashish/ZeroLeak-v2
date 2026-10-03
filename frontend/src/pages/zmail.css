@@ -1,1089 +1,246 @@
 /* ═══════════════════════════════════════════════════════════
-   ZMail — ZeroLeakMail Design System
-   Integrated with ZeroLeak Design Tokens
+   ZMail — ZeroLeak Private Communication Workspace
    ═══════════════════════════════════════════════════════════ */
 
-/* ─── ZMail Page Layout ──────────────────────────────────────── */
-.zmail-page {
-    display: flex;
-    height: calc(100vh - var(--topbar-height, 64px));
-    background: var(--bg-app);
-    overflow: hidden;
-    position: relative;
+:root {
+  --zm-bg-base: #0a0a0b;
+  --zm-bg-surface: #121214;
+  --zm-bg-surface-hover: #1c1c1f;
+  --zm-bg-elevated: #1a1a1d;
+  --zm-bg-compose: #161619;
+  
+  --zm-border-subtle: #27272a;
+  --zm-border-focus: #3b82f6;
+  
+  --zm-brand-blue: #2563eb;
+  --zm-brand-blue-hover: #1d4ed8;
+  --zm-brand-glow: rgba(37, 99, 235, 0.15);
+  --zm-support-accent: #8b5cf6;
+  
+  --zm-text-primary: #f4f4f5;
+  --zm-text-secondary: #a1a1aa;
+  --zm-text-muted: #71717a;
+  
+  --zm-radius-sm: 8px;
+  --zm-radius-md: 12px;
+  --zm-radius-lg: 16px;
+  --zm-radius-xl: 24px;
+  
+  --zm-shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.2);
+  --zm-shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5);
+  
+  --zm-transition: 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.zmail-page.embedded {
-    width: 100%;
-    height: calc(100vh - var(--topbar-height, 64px));
+/* Shell Layout */
+.zmail-shell {
+  display: flex;
+  height: calc(100vh - 64px);
+  background: var(--zm-bg-base);
+  color: var(--zm-text-primary);
+  font-family: 'Inter', system-ui, sans-serif;
+  overflow: hidden;
+  position: relative;
+}
+.zmail-shell.full-screen { height: 100vh; }
+
+/* Rail (Sidebar) */
+.zm-rail {
+  width: 240px;
+  background: var(--zm-bg-surface);
+  border-right: 1px solid var(--zm-border-subtle);
+  display: flex;
+  flex-direction: column;
+  padding: 16px 12px;
+  flex-shrink: 0;
+  transition: width var(--zm-transition);
+}
+.zm-rail.collapsed { width: 72px; padding: 16px 8px; }
+.zm-rail-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; padding: 0 8px; }
+.zm-rail-brand { font-weight: 700; font-size: 16px; letter-spacing: -0.02em; display: flex; align-items: center; gap: 8px; }
+.zm-rail-brand .icon { color: var(--zm-brand-blue); }
+.zm-rail-brand .text { display: var(--rail-text-display, block); }
+
+.zm-compose-btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  background: var(--zm-brand-blue); color: #fff;
+  border: none; border-radius: var(--zm-radius-md);
+  padding: 12px; font-size: 14px; font-weight: 600; cursor: pointer;
+  margin-bottom: 24px; transition: all var(--zm-transition);
+  box-shadow: 0 4px 12px var(--zm-brand-glow);
+}
+.zm-compose-btn:hover { background: var(--zm-brand-blue-hover); transform: translateY(-1px); }
+
+.zm-nav-list { display: flex; flex-direction: column; gap: 4px; }
+.zm-nav-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 12px; border-radius: var(--zm-radius-sm);
+  color: var(--zm-text-secondary); cursor: pointer;
+  transition: all var(--zm-transition); font-size: 14px; font-weight: 500;
+}
+.zm-nav-item:hover { background: var(--zm-bg-surface-hover); color: var(--zm-text-primary); }
+.zm-nav-item.active { background: var(--zm-bg-elevated); color: var(--zm-brand-blue); }
+.zm-nav-item .nav-left { display: flex; align-items: center; gap: 12px; }
+.zm-nav-badge { background: var(--zm-brand-blue); color: #fff; font-size: 11px; padding: 2px 6px; border-radius: 12px; font-weight: 600; }
+
+/* Main Area */
+.zm-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+/* Header */
+.zm-header {
+  height: 64px; border-bottom: 1px solid var(--zm-border-subtle);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 24px; background: var(--zm-bg-surface); flex-shrink: 0;
+}
+.zm-search-capsule {
+  display: flex; align-items: center; background: var(--zm-bg-base);
+  border: 1px solid var(--zm-border-subtle); border-radius: 24px;
+  padding: 10px 18px; width: 420px; transition: all var(--zm-transition);
+}
+.zm-search-capsule:focus-within { border-color: var(--zm-border-focus); box-shadow: 0 0 0 3px var(--zm-brand-glow); }
+.zm-search-capsule input {
+  background: transparent; border: none; outline: none; color: var(--zm-text-primary);
+  margin-left: 12px; width: 100%; font-size: 14px;
+}
+.zm-search-capsule input::placeholder { color: var(--zm-text-muted); }
+.zm-search-capsule .shortcut { 
+  color: var(--zm-text-muted); font-size: 12px; border: 1px solid var(--zm-border-subtle); 
+  padding: 2px 6px; border-radius: 4px; white-space: nowrap; flex-shrink: 0;
+}
+.zm-header-actions { display: flex; align-items: center; gap: 16px; color: var(--zm-text-secondary); }
+
+/* Workspace Split */
+.zm-workspace { display: flex; flex: 1; overflow: hidden; }
+
+/* Conversation List */
+.zm-conv-list {
+  width: 380px; border-right: 1px solid var(--zm-border-subtle);
+  display: flex; flex-direction: column; background: var(--zm-bg-base); flex-shrink: 0;
+}
+.zm-list-scroll { flex: 1; overflow-y: auto; padding: 16px; }
+.zm-list-group { margin-bottom: 28px; }
+.zm-list-group-title {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  color: var(--zm-text-secondary); margin-bottom: 12px; padding-left: 12px; letter-spacing: 0.05em;
 }
 
+/* Conversation Card */
+.zm-conv-card {
+  padding: 16px; border-radius: var(--zm-radius-md); border: 1px solid transparent;
+  cursor: pointer; transition: all var(--zm-transition); margin-bottom: 8px;
+  position: relative; background: transparent;
+}
+.zm-conv-card:hover { background: var(--zm-bg-surface-hover); }
+.zm-conv-card.selected { background: var(--zm-bg-surface); border-color: var(--zm-border-subtle); box-shadow: var(--zm-shadow-sm); }
+.zm-conv-card.unread { background: rgba(37, 99, 235, 0.05); }
+.zm-conv-card.unread:hover { background: rgba(37, 99, 235, 0.08); }
+.zm-conv-card.unread.selected { background: var(--zm-bg-surface); border-color: var(--zm-brand-blue); }
+.zm-card-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; gap: 12px; }
+.zm-card-sender { font-size: 14px; font-weight: 600; color: var(--zm-text-primary); display: flex; align-items: center; gap: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+.zm-card-time { font-size: 11px; color: var(--zm-text-muted); flex-shrink: 0; }
+.zm-card-subject { font-size: 13px; font-weight: 500; color: var(--zm-text-primary); margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.zm-card-preview { font-size: 13px; color: var(--zm-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.zm-card-meta { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 12px; color: var(--zm-text-muted); }
+.zm-unread-dot { width: 8px; height: 8px; background: var(--zm-brand-blue); border-radius: 50%; box-shadow: 0 0 8px var(--zm-brand-blue); flex-shrink: 0; }
+.zm-support-badge { font-size: 10px; color: var(--zm-support-accent); border: 1px solid var(--zm-support-accent); padding: 2px 6px; border-radius: 10px; }
+
+/* Conversation View */
+.zm-conv-view { flex: 1; display: flex; flex-direction: column; background: var(--zm-bg-base); overflow: hidden; }
+.zm-view-header {
+  padding: 24px 32px; border-bottom: 1px solid var(--zm-border-subtle);
+  display: flex; justify-content: space-between; align-items: flex-start; flex-shrink: 0;
+}
+.zm-view-subject { font-size: 20px; font-weight: 700; color: var(--zm-text-primary); margin-bottom: 8px; }
+.zm-view-tags { display: flex; gap: 8px; }
+.zm-tag { padding: 4px 10px; font-size: 11px; border-radius: 12px; font-weight: 600; background: var(--zm-bg-elevated); color: var(--zm-text-secondary); }
+.zm-view-actions { display: flex; gap: 8px; }
+.zm-action-btn {
+  background: transparent; border: 1px solid var(--zm-border-subtle); color: var(--zm-text-secondary);
+  width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all var(--zm-transition);
+}
+.zm-action-btn:hover { background: var(--zm-bg-surface-hover); color: var(--zm-text-primary); }
+
+.zm-thread-scroll { flex: 1; overflow-y: auto; padding: 24px 32px; display: flex; flex-direction: column; gap: 24px; }
+
+/* Message Bubble */
+.zm-msg-bubble { display: flex; flex-direction: column; gap: 8px; max-width: 80%; }
+.zm-msg-bubble.self { align-self: flex-end; }
+.zm-msg-bubble.other { align-self: flex-start; }
+.zm-msg-header { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--zm-text-secondary); }
+.zm-msg-bubble.self .zm-msg-header { flex-direction: row-reverse; }
+.zm-msg-content {
+  background: var(--zm-bg-surface); padding: 16px; border-radius: var(--zm-radius-md);
+  font-size: 14px; line-height: 1.6; color: var(--zm-text-primary); border: 1px solid var(--zm-border-subtle);
+  white-space: pre-wrap; word-wrap: break-word;
+}
+.zm-msg-bubble.self .zm-msg-content { background: var(--zm-brand-blue); border-color: var(--zm-brand-blue); color: #fff; }
+.zm-msg-bubble.support .zm-msg-content { background: rgba(139, 92, 246, 0.1); border-color: rgba(139, 92, 246, 0.3); }
+.zm-attachments { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; }
+.zm-attachment {
+  display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.2);
+  padding: 8px 12px; border-radius: var(--zm-radius-sm); font-size: 12px; cursor: pointer;
+  border: 1px solid var(--zm-border-subtle); transition: var(--zm-transition);
+}
+.zm-attachment:hover { border-color: var(--zm-text-secondary); }
+
+/* Context Panel */
+.zm-context-panel {
+  width: 280px; border-left: 1px solid var(--zm-border-subtle); background: var(--zm-bg-surface);
+  padding: 24px; flex-shrink: 0; overflow-y: auto;
+}
+.zm-contact-hero { display: flex; flex-direction: column; align-items: center; text-align: center; margin-bottom: 32px; }
+.zm-avatar-lg { width: 64px; height: 64px; border-radius: 50%; background: var(--zm-bg-elevated); display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; color: var(--zm-text-primary); margin-bottom: 16px; border: 1px solid var(--zm-border-subtle); }
+.zm-contact-name { font-size: 16px; font-weight: 600; color: var(--zm-text-primary); margin-bottom: 4px; }
+.zm-contact-email { font-size: 13px; color: var(--zm-text-secondary); }
+.zm-context-section { margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--zm-border-subtle); }
+.zm-context-label { font-size: 11px; font-weight: 700; color: var(--zm-text-muted); text-transform: uppercase; margin-bottom: 12px; letter-spacing: 0.05em; }
+
+/* Compose Workspace (Floating) */
+.zm-compose-workspace {
+  position: absolute; bottom: 24px; right: 24px; width: 600px; max-height: 80vh;
+  background: var(--zm-bg-compose); border: 1px solid var(--zm-border-subtle);
+  border-radius: var(--zm-radius-lg); box-shadow: var(--zm-shadow-lg);
+  display: flex; flex-direction: column; z-index: 100; overflow: hidden;
+  transform-origin: bottom right; animation: popIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes popIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+.zm-compose-workspace.minimized { height: 48px; cursor: pointer; }
+.zm-compose-header {
+  padding: 12px 16px; background: var(--zm-bg-elevated); border-bottom: 1px solid var(--zm-border-subtle);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.zm-compose-title { font-size: 14px; font-weight: 600; }
+.zm-compose-body { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+.zm-compose-field { display: flex; border-bottom: 1px solid var(--zm-border-subtle); padding: 12px 16px; align-items: center; }
+.zm-compose-label { width: 60px; font-size: 13px; color: var(--zm-text-muted); }
+.zm-compose-input { flex: 1; background: transparent; border: none; outline: none; color: var(--zm-text-primary); font-size: 14px; }
+.zm-compose-textarea { flex: 1; background: transparent; border: none; outline: none; color: var(--zm-text-primary); font-size: 14px; padding: 16px; resize: none; min-height: 200px; font-family: inherit; line-height: 1.5; }
+.zm-compose-footer { padding: 12px 16px; border-top: 1px solid var(--zm-border-subtle); display: flex; justify-content: space-between; align-items: center; }
+.zm-send-btn { background: var(--zm-brand-blue); color: #fff; border: none; padding: 8px 24px; border-radius: var(--zm-radius-sm); font-weight: 600; cursor: pointer; transition: var(--zm-transition); }
+.zm-send-btn:hover { background: var(--zm-brand-blue-hover); }
+
+/* Empty State */
+.zm-empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 48px; }
+.zm-empty-circle { width: 80px; height: 80px; border-radius: 50%; border: 1px dashed var(--zm-border-subtle); display: flex; align-items: center; justify-content: center; color: var(--zm-text-muted); margin-bottom: 24px; }
+.zm-empty-title { font-size: 18px; font-weight: 600; color: var(--zm-text-primary); margin-bottom: 8px; }
+.zm-empty-desc { font-size: 14px; color: var(--zm-text-secondary); max-width: 250px; }
+
+/* Overview */
+.zm-overview { flex: 1; padding: 64px 48px; overflow-y: auto; max-width: 900px; margin: 0 auto; width: 100%; }
+.zm-greeting { font-size: 32px; font-weight: 700; margin-bottom: 16px; color: var(--zm-text-primary); letter-spacing: -0.02em; }
+.zm-overview-stats { display: flex; gap: 32px; margin-bottom: 56px; }
+.zm-stat-item { color: var(--zm-text-secondary); font-size: 15px; display: flex; align-items: center; gap: 8px; }
+.zm-stat-item strong { color: var(--zm-text-primary); font-size: 20px; font-weight: 600; }
+.zm-overview-recent { padding: 24px; background: var(--zm-bg-surface); border-radius: var(--zm-radius-lg); border: 1px solid var(--zm-border-subtle); }
+.zm-overview-recent .zm-context-label { margin-bottom: 16px; font-size: 12px; }
+
+@media (max-width: 1024px) {
+  .zm-context-panel { display: none; }
+}
 @media (max-width: 768px) {
-    .zmail-page.embedded {
-        width: 100%;
-    }
-}
-
-/* ─── ZMail Sidebar ──────────────────────────────────────────── */
-.zmail-sidebar {
-    width: 220px;
-    min-width: 180px;
-    max-width: 400px;
-    background: var(--bg-surface);
-    border-right: 1px solid var(--border-default);
-    display: flex;
-    flex-direction: column;
-    padding: 12px 8px;
-    gap: 4px;
-    overflow-y: auto;
-    overflow-x: hidden;
-    position: relative;
-    flex-shrink: 0;
-}
-
-.zmail-resizer {
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 4px;
-    height: 100%;
-    cursor: col-resize;
-    z-index: 10;
-}
-
-.zmail-resizer:hover {
-    background-color: var(--brand-primary);
-    opacity: 0.5;
-}
-
-.zmail-compose-btn {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 16px;
-    background: var(--brand-primary);
-    color: #fff;
-    border: none;
-    border-radius: var(--radius-lg);
-    font-size: 14px;
-    font-weight: 600;
-    font-family: var(--font-sans);
-    cursor: pointer;
-    margin: 4px 4px 12px;
-    transition: background var(--transition-fast), box-shadow var(--transition-fast);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-}
-
-.zmail-compose-btn:hover {
-    background: var(--brand-primary-hover);
-    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.45);
-}
-
-.zmail-folder-list {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.zmail-folder-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 9px 12px;
-    background: transparent;
-    border: none;
-    border-radius: var(--radius-md);
-    color: var(--text-secondary);
-    font-size: 13.5px;
-    font-family: var(--font-sans);
-    font-weight: 500;
-    cursor: pointer;
-    transition: background var(--transition-fast), color var(--transition-fast);
-    width: 100%;
-    text-align: left;
-}
-
-.zmail-folder-item:hover {
-    background: var(--bg-hover);
-    color: var(--text-primary);
-}
-
-.zmail-folder-item.active {
-    background: var(--brand-primary-subtle);
-    color: var(--brand-primary);
-}
-
-.zmail-folder-icon {
-    flex-shrink: 0;
-}
-
-.zmail-folder-label {
-    flex: 1;
-}
-
-.zmail-folder-badge {
-    background: var(--brand-primary);
-    color: #fff;
-    font-size: 11px;
-    font-weight: 700;
-    padding: 2px 7px;
-    border-radius: var(--radius-pill);
-    min-width: 20px;
-    text-align: center;
-}
-
-/* ─── ZMail Main Area ────────────────────────────────────────── */
-.zmail-main {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    min-width: 0;
-}
-
-.zmail-main-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 20px;
-    background: var(--bg-surface);
-    border-bottom: 1px solid var(--border-default);
-    flex-shrink: 0;
-}
-
-.zmail-search-bar {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: var(--bg-input);
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-md);
-    padding: 8px 14px;
-    transition: border-color var(--transition-fast);
-}
-
-.zmail-search-bar:focus-within {
-    border-color: var(--border-focus);
-}
-
-.zmail-search-icon {
-    color: var(--text-tertiary);
-    flex-shrink: 0;
-}
-
-.zmail-search-input {
-    flex: 1;
-    background: transparent;
-    border: none;
-    outline: none;
-    color: var(--text-primary);
-    font-size: 13.5px;
-    font-family: var(--font-sans);
-}
-
-.zmail-search-input::placeholder {
-    color: var(--text-tertiary);
-}
-
-.zmail-main-header-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.zmail-connection-status {
-    display: flex;
-    align-items: center;
-}
-
-/* ─── Content area (list + message split) ────────────────────── */
-.zmail-content-area {
-    flex: 1;
-    display: flex;
-    overflow: hidden;
-}
-
-/* ─── Message List Panel ─────────────────────────────────────── */
-.zmail-list-panel {
-    width: 420px;
-    min-width: 280px;
-    max-width: 600px;
-    flex-shrink: 0;
-    display: flex;
-    flex-direction: column;
-    border-right: 1px solid var(--border-default);
-    overflow: hidden;
-    position: relative;
-}
-
-.zmail-list-panel.has-message {
-    width: 380px;
-}
-
-.zmail-list-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 16px 8px;
-    flex-shrink: 0;
-}
-
-.zmail-list-title {
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--text-primary);
-}
-
-.zmail-list-count {
-    font-size: 13px;
-    font-weight: 400;
-    color: var(--text-tertiary);
-}
-
-.zmail-pagination {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.zmail-page-info {
-    font-size: 12px;
-    color: var(--text-secondary);
-}
-
-/* ─── Message List ───────────────────────────────────────────── */
-.zmail-list {
-    overflow-y: auto;
-    flex: 1;
-}
-
-.zmail-list-item {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    grid-template-rows: auto auto;
-    gap: 2px 8px;
-    padding: 10px 16px;
-    border-bottom: 1px solid var(--border-subtle);
-    cursor: pointer;
-    transition: background var(--transition-fast);
-    position: relative;
-}
-
-.zmail-list-item:hover {
-    background: var(--bg-hover);
-}
-
-.zmail-list-item.selected {
-    background: var(--brand-primary-subtle);
-}
-
-.zmail-list-item.unread {
-    background: var(--bg-elevated);
-}
-
-.zmail-list-item.unread .zmail-sender-name {
-    font-weight: 700;
-}
-
-.zmail-list-item.unread .zmail-subject {
-    font-weight: 600;
-}
-
-.zmail-unread-dot {
-    position: absolute;
-    left: 5px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 6px;
-    height: 6px;
-    background: var(--brand-primary);
-    border-radius: 50%;
-}
-
-.zmail-list-item-sender {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    grid-column: 1;
-    grid-row: 1;
-}
-
-.zmail-sender-name {
-    font-size: 13.5px;
-    color: var(--text-primary);
-    font-weight: 500;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.zmail-draft-tag {
-    font-size: 11px;
-    padding: 2px 6px;
-    background: var(--warning-subtle);
-    color: var(--warning);
-    border-radius: var(--radius-xs);
-    font-weight: 600;
-}
-
-.zmail-list-item-content {
-    grid-column: 1;
-    grid-row: 2;
-    display: flex;
-    align-items: center;
-    overflow: hidden;
-}
-
-.zmail-subject {
-    font-size: 13px;
-    color: var(--text-primary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.zmail-snippet {
-    font-size: 12.5px;
-    color: var(--text-tertiary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    flex: 1;
-}
-
-.zmail-list-item-meta {
-    grid-column: 2;
-    grid-row: 1 / 3;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 4px;
-    justify-content: center;
-    flex-shrink: 0;
-}
-
-.zmail-timestamp {
-    font-size: 11.5px;
-    color: var(--text-tertiary);
-    white-space: nowrap;
-}
-
-.zmail-attachment-icon {
-    color: var(--text-tertiary);
-}
-
-.zmail-star-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--text-tertiary);
-    padding: 2px;
-    display: flex;
-    align-items: center;
-    transition: color var(--transition-fast);
-}
-
-.zmail-star-btn:hover,
-.zmail-star-btn.starred {
-    color: #f59e0b;
-}
-
-/* ─── Message View Panel ─────────────────────────────────────── */
-.zmail-message-panel {
-    flex: 1;
-    overflow-y: auto;
-    min-width: 0;
-}
-
-.zmail-message-view {
-    padding: 24px;
-    max-width: 860px;
-    margin: 0 auto;
-}
-
-.zmail-message-header {
-    border-bottom: 1px solid var(--border-default);
-    padding-bottom: 16px;
-    margin-bottom: 16px;
-}
-
-.zmail-message-subject-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 12px;
-    flex-wrap: wrap;
-}
-
-.zmail-back-btn {
-    background: none;
-    border: none;
-    color: var(--brand-primary);
-    cursor: pointer;
-    font-size: 13px;
-    font-family: var(--font-sans);
-    padding: 4px 8px;
-    border-radius: var(--radius-sm);
-    flex-shrink: 0;
-    transition: background var(--transition-fast);
-}
-
-.zmail-back-btn:hover {
-    background: var(--brand-primary-subtle);
-}
-
-.zmail-message-subject {
-    flex: 1;
-    font-size: 20px;
-    font-weight: 700;
-    color: var(--text-primary);
-    margin: 0;
-    line-height: 1.3;
-}
-
-.zmail-message-actions {
-    display: flex;
-    gap: 4px;
-    flex-shrink: 0;
-}
-
-.zmail-message-meta {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 12px;
-    flex-wrap: wrap;
-}
-
-.zmail-sender-block {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-}
-
-.zmail-avatar-sm {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: var(--brand-primary);
-    color: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    font-weight: 700;
-    flex-shrink: 0;
-}
-
-.zmail-meta-sender {
-    font-size: 14px;
-    color: var(--text-primary);
-    margin-bottom: 2px;
-}
-
-.zmail-meta-address {
-    color: var(--text-tertiary);
-    font-size: 12.5px;
-}
-
-.zmail-meta-recipients {
-    font-size: 12.5px;
-    color: var(--text-secondary);
-}
-
-.zmail-meta-date {
-    font-size: 12.5px;
-    color: var(--text-tertiary);
-    flex-shrink: 0;
-}
-
-/* ─── Message Body ───────────────────────────────────────────── */
-.zmail-message-body {
-    margin: 20px 0;
-    min-height: 100px;
-}
-
-.zmail-body-text {
-    font-family: var(--font-sans);
-    font-size: 14.5px;
-    line-height: 1.7;
-    color: var(--text-primary);
-    white-space: pre-wrap;
-    word-break: break-word;
-    margin: 0;
-}
-
-/* ─── Attachments ────────────────────────────────────────────── */
-.zmail-attachments-section {
-    border-top: 1px solid var(--border-default);
-    padding-top: 16px;
-    margin-top: 16px;
-}
-
-.zmail-attachments-label {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text-secondary);
-    margin-bottom: 10px;
-}
-
-.zmail-attachments-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-.zmail-attachment-card {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: var(--bg-elevated);
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-md);
-    padding: 8px 12px;
-    transition: border-color var(--transition-fast);
-}
-
-.zmail-attachment-card:hover {
-    border-color: var(--border-strong);
-}
-
-.zmail-att-icon { color: var(--text-tertiary); }
-
-.zmail-att-info {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.zmail-att-name {
-    font-size: 13px;
-    color: var(--text-primary);
-    font-weight: 500;
-    max-width: 200px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.zmail-att-size {
-    font-size: 11px;
-    color: var(--text-tertiary);
-}
-
-/* ─── Reply Actions ──────────────────────────────────────────── */
-.zmail-reply-actions {
-    display: flex;
-    gap: 8px;
-    border-top: 1px solid var(--border-default);
-    padding-top: 16px;
-    margin-top: 16px;
-    flex-wrap: wrap;
-}
-
-.zmail-inline-compose {
-    margin-top: 16px;
-    border-top: 1px solid var(--border-default);
-    padding-top: 16px;
-}
-
-/* ─── Message Actions state ──────────────────────────────────── */
-.zmail-starred { color: #f59e0b !important; }
-.zmail-important { color: var(--warning) !important; }
-
-/* ─── Compose Window ─────────────────────────────────────────── */
-.zmail-compose-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(4px);
-    z-index: var(--z-modal, 100);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
-}
-
-.zmail-compose-window {
-    width: 600px;
-    max-width: 100%;
-    max-height: calc(100vh - 48px);
-    background: var(--bg-elevated);
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-modal, 0 10px 40px rgba(0, 0, 0, 0.2));
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    animation: zmail-compose-appear 0.2s ease;
-}
-
-@keyframes zmail-compose-appear {
-    from { opacity: 0; transform: translateY(20px) scale(0.98); }
-    to   { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-.zmail-compose-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 16px;
-    background: var(--bg-overlay);
-    border-bottom: 1px solid var(--border-subtle);
-}
-
-.zmail-compose-title {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.zmail-compose-header-actions {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-
-.zmail-saving-text {
-    font-size: 11.5px;
-    color: var(--text-tertiary);
-    animation: pulse 1.5s infinite;
-}
-
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
-}
-
-.zmail-compose-action-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--text-secondary);
-    padding: 4px;
-    border-radius: var(--radius-sm);
-    display: flex;
-    align-items: center;
-    transition: color var(--transition-fast), background var(--transition-fast);
-}
-
-.zmail-compose-action-btn:hover {
-    background: var(--bg-hover);
-    color: var(--text-primary);
-}
-
-.zmail-compose-fields {
-    padding: 0 16px;
-    border-bottom: 1px solid var(--border-subtle);
-}
-
-.zmail-compose-cc-toggle {
-    display: flex;
-    gap: 12px;
-    padding: 6px 0;
-}
-
-.zmail-toggle-link {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--text-tertiary);
-    font-size: 12.5px;
-    font-family: var(--font-sans);
-    padding: 0;
-    transition: color var(--transition-fast);
-}
-
-.zmail-toggle-link:hover {
-    color: var(--brand-primary);
-}
-
-.zmail-compose-subject-row {
-    padding: 8px 0;
-    border-top: 1px solid var(--border-subtle);
-}
-
-.zmail-compose-subject {
-    width: 100%;
-    background: transparent;
-    border: none;
-    outline: none;
-    color: var(--text-primary);
-    font-size: 14px;
-    font-weight: 600;
-    font-family: var(--font-sans);
-    padding: 4px 0;
-}
-
-.zmail-compose-subject::placeholder {
-    color: var(--text-tertiary);
-    font-weight: 400;
-}
-
-.zmail-compose-body {
-    flex: 1;
-    min-height: 220px;
-    background: transparent;
-    border: none;
-    outline: none;
-    resize: none;
-    color: var(--text-primary);
-    font-size: 14px;
-    font-family: var(--font-sans);
-    line-height: 1.6;
-    padding: 14px 16px;
-}
-
-.zmail-compose-body::placeholder {
-    color: var(--text-tertiary);
-}
-
-.zmail-compose-attachments {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    padding: 8px 16px;
-    border-top: 1px solid var(--border-subtle);
-}
-
-.zmail-compose-attachment-chip {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    background: var(--bg-overlay);
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-pill);
-    padding: 4px 10px;
-    font-size: 12px;
-    color: var(--text-secondary);
-}
-
-.zmail-compose-attachment-chip button {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--text-tertiary);
-    display: flex;
-    align-items: center;
-    padding: 0;
-    transition: color var(--transition-fast);
-}
-
-.zmail-compose-attachment-chip button:hover { color: var(--danger); }
-
-.zmail-compose-footer {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 16px;
-    border-top: 1px solid var(--border-subtle);
-    background: var(--bg-overlay);
-}
-
-.zmail-send-btn {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-/* ─── Compose Minimized ──────────────────────────────────────── */
-.zmail-compose-minimized {
-    position: fixed;
-    bottom: 0;
-    right: 24px;
-    background: var(--bg-overlay);
-    border: 1px solid var(--border-default);
-    border-bottom: none;
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-    padding: 8px 16px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    cursor: pointer;
-    font-size: 13.5px;
-    font-weight: 600;
-    color: var(--text-primary);
-    z-index: var(--z-drawer);
-    box-shadow: var(--shadow-md);
-    transition: background var(--transition-fast);
-}
-
-.zmail-compose-minimized:hover {
-    background: var(--bg-hover);
-}
-
-.zmail-saving-dot {
-    color: var(--warning);
-    animation: pulse 1s infinite;
-}
-
-/* ─── Recipient Input ────────────────────────────────────────── */
-.zmail-recipient-field {
-    display: flex;
-    align-items: flex-start;
-    border-bottom: 1px solid var(--border-subtle);
-    padding: 6px 0;
-    gap: 8px;
-    min-height: 38px;
-}
-
-.zmail-recipient-label {
-    font-size: 12.5px;
-    color: var(--text-tertiary);
-    font-weight: 600;
-    min-width: 28px;
-    padding-top: 6px;
-    flex-shrink: 0;
-}
-
-.zmail-recipient-tags {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 4px;
-    flex: 1;
-    cursor: text;
-    min-height: 32px;
-}
-
-.zmail-tag {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    background: var(--brand-primary-subtle);
-    border: 1px solid var(--brand-primary-border);
-    color: var(--brand-primary);
-    border-radius: var(--radius-pill);
-    padding: 2px 10px;
-    font-size: 12.5px;
-    font-weight: 500;
-}
-
-.zmail-tag-remove {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: inherit;
-    padding: 0;
-    display: flex;
-    align-items: center;
-    opacity: 0.7;
-    transition: opacity var(--transition-fast);
-}
-
-.zmail-tag-remove:hover { opacity: 1; }
-
-.zmail-recipient-input-wrap {
-    position: relative;
-    flex: 1;
-    min-width: 120px;
-}
-
-.zmail-recipient-input {
-    background: transparent;
-    border: none;
-    outline: none;
-    color: var(--text-primary);
-    font-size: 13.5px;
-    font-family: var(--font-sans);
-    width: 100%;
-    padding: 4px 0;
-}
-
-.zmail-autocomplete {
-    position: absolute;
-    top: calc(100% + 4px);
-    left: 0;
-    width: 320px;
-    background: var(--bg-elevated);
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-lg);
-    z-index: var(--z-command);
-    overflow: hidden;
-}
-
-.zmail-autocomplete-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 14px;
-    background: none;
-    border: none;
-    cursor: pointer;
-    width: 100%;
-    text-align: left;
-    transition: background var(--transition-fast);
-}
-
-.zmail-autocomplete-item:hover { background: var(--bg-hover); }
-
-.zmail-autocomplete-name {
-    font-size: 13.5px;
-    font-weight: 600;
-    color: var(--text-primary);
-    flex: 1;
-}
-
-.zmail-autocomplete-address {
-    font-size: 12px;
-    color: var(--text-tertiary);
-}
-
-.zmail-autocomplete-role {
-    font-size: 11px;
-    padding: 2px 6px;
-    border-radius: var(--radius-xs);
-    background: var(--bg-overlay);
-    color: var(--text-tertiary);
-}
-
-/* ─── Nav Badge (for layout integration) ─────────────────────── */
-.zmail-unread-badge-wrap {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-}
-
-.zmail-nav-badge {
-    position: absolute;
-    top: -6px;
-    right: -8px;
-    background: var(--danger);
-    color: #fff;
-    font-size: 10px;
-    font-weight: 700;
-    padding: 2px 5px;
-    border-radius: var(--radius-pill);
-    min-width: 16px;
-    text-align: center;
-    line-height: 1.2;
-    animation: zmail-badge-pop 0.3s ease;
-}
-
-@keyframes zmail-badge-pop {
-    0% { transform: scale(0); }
-    70% { transform: scale(1.2); }
-    100% { transform: scale(1); }
-}
-
-/* ─── Empty & Loading States ─────────────────────────────────── */
-.zmail-loading {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    padding: 60px 20px;
-    color: var(--text-tertiary);
-    font-size: 14px;
-}
-
-.zmail-empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 60px 24px;
-    gap: 10px;
-    text-align: center;
-}
-
-.zmail-empty-icon {
-    font-size: 48px;
-    margin-bottom: 4px;
-    animation: float 3s ease-in-out infinite;
-}
-
-@keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-8px); }
-}
-
-.zmail-empty-title {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.zmail-empty-sub {
-    font-size: 13.5px;
-    color: var(--text-tertiary);
-    max-width: 280px;
-}
-
-/* ─── Account Bar ────────────────────────────────────────────── */
-.zmail-account-bar {
-    margin-top: auto;
-    padding: 12px 8px;
-    background: transparent;
-    border-top: 1px solid var(--border-default);
-    font-size: 11.5px;
-    color: var(--text-tertiary);
-    text-align: center;
-    width: 100%;
-}
-
-.zmail-account-address {
-    font-family: var(--font-mono);
-}
-
-/* ─── Responsive ─────────────────────────────────────────────── */
-@media (max-width: 768px) {
-    .zmail-sidebar {
-        width: 60px;
-        min-width: 60px;
-    }
-
-    .zmail-folder-label,
-    .zmail-compose-btn span {
-        display: none;
-    }
-
-    .zmail-compose-btn {
-        justify-content: center;
-        padding: 10px;
-    }
-
-    .zmail-list-panel {
-        max-width: 100%;
-    }
-
-    .zmail-list-panel.has-message {
-        display: none;
-    }
-
-    .zmail-message-panel {
-        position: fixed;
-        inset: var(--topbar-height) 0 0 0;
-        z-index: var(--z-drawer);
-        background: var(--bg-app);
-        overflow-y: auto;
-    }
-
-    .zmail-compose-overlay {
-        padding: 0;
-        align-items: flex-end;
-    }
-
-    .zmail-compose-window {
-        width: 100%;
-        max-height: 90vh;
-        border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-    }
-}
-
-/* ─── Animations ─────────────────────────────────────────────── */
-.spin {
-    animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
+  .zm-rail { display: none; }
+  .zm-conv-list { width: 100%; border-right: none; }
+  .zm-conv-view { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 50; }
+  .zm-compose-workspace { width: 100%; height: 100%; bottom: 0; right: 0; border-radius: 0; max-height: 100vh; }
 }

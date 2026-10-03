@@ -63,6 +63,11 @@ async function authenticateZMailSocket(socket, next) {
         const auditor = await Auditor.findById(decoded.id).select("_id email").lean();
         if (auditor) { socket.zmailUser = { id: auditor._id, role: "Auditor" }; return next(); }
 
+        if (decoded.role === "SupportAgent" && decoded.email === "support@zeroleak.com") {
+            socket.zmailUser = { id: decoded.id, role: "Support" };
+            return next();
+        }
+
         return next(new Error("ZMail auth: user not found"));
     } catch (e) {
         return next(new Error("ZMail auth: invalid token"));
