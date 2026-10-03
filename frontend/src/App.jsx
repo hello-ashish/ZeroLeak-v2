@@ -105,6 +105,7 @@ function App() {
             <Route path="/admin/proctoring" element={<AdminProctoringPage />} />
             <Route path="/admin/blockchain" element={<AdminBlockchainCenter />} />
             <Route path="/admin/settings" element={<AdminSettingsPage />} />
+            <Route path="/admin/support" element={<MySupportPage role="admin" />} />
             
             {/* ── Support Team Route ── */}
             <Route path="/support/login" element={<SupportLogin />} />
@@ -119,7 +120,7 @@ function App() {
               <Route path="/professor/batches/create" element={<ProfessorCreateBatchPage />} />
               <Route path="/professor/batches/:id/edit" element={<ProfessorCreateBatchPage />} />
               <Route path="/professor/profile" element={<ProfessorProfile />} />
-              <Route path="/professor/support" element={<MySupportPage />} />
+              <Route path="/professor/support" element={<MySupportPage role="professor" />} />
             </Route>
 
             {/* ── Student Routes ── */}
@@ -132,7 +133,7 @@ function App() {
               <Route path="/student/performance" element={<StudentPerformancePage />} />
               <Route path="/student/profile" element={<StudentProfile />} />
               <Route path="/student/settings" element={<StudentSettingsPage />} />
-              <Route path="/student/support" element={<MySupportPage />} />
+              <Route path="/student/support" element={<MySupportPage role="student" />} />
             </Route>
 
             {/* ── Auditor Routes ── */}

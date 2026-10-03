@@ -4,21 +4,30 @@
 
 const API = "/api/support";
 
-function getAuthHeader() {
-    const token =
-        localStorage.getItem("supportToken") ||
-        localStorage.getItem("adminToken") ||
-        localStorage.getItem("profToken") ||
-        localStorage.getItem("studentToken") ||
-        localStorage.getItem("auditorToken");
+/**
+ * Resolve the correct token for the caller's role.
+ * The `role` parameter matches what is stored in localStorage.
+ * Passing no role falls back to the first available token (legacy behaviour for support team panel).
+ */
+function getAuthHeader(role) {
+    let token;
+    if (role === "admin")    token = localStorage.getItem("adminToken");
+    else if (role === "professor") token = localStorage.getItem("profToken");
+    else if (role === "student")   token = localStorage.getItem("studentToken");
+    else if (role === "auditor")   token = localStorage.getItem("auditorToken");
+    else if (role === "support")   token = localStorage.getItem("supportToken");
+    else {
+        // Support-panel default: use supportToken, never fall through to adminToken
+        token = localStorage.getItem("supportToken");
+    }
     return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-async function apiFetch(path, options = {}) {
+async function apiFetch(path, options = {}, role) {
     const res = await fetch(`${API}${path}`, {
         headers: {
             "Content-Type": "application/json",
-            ...getAuthHeader(),
+            ...getAuthHeader(role),
             ...(options.headers || {}),
         },
         ...options,
@@ -30,30 +39,30 @@ async function apiFetch(path, options = {}) {
 
 // ── User endpoints ──────────────────────────────────────────────────────────────
 
-export async function fetchSupportConstants() {
-    return apiFetch("/constants");
+export async function fetchSupportConstants(role) {
+    return apiFetch("/constants", {}, role);
 }
 
-export async function createSupportTicket(payload) {
+export async function createSupportTicket(payload, role) {
     return apiFetch("/tickets", {
         method: "POST",
         body: JSON.stringify(payload),
-    });
+    }, role);
 }
 
-export async function fetchMyTickets(page = 1) {
-    return apiFetch(`/my-tickets?page=${page}`);
+export async function fetchMyTickets(page = 1, role) {
+    return apiFetch(`/my-tickets?page=${page}`, {}, role);
 }
 
-export async function fetchMyTicket(ticketId) {
-    return apiFetch(`/my-tickets/${ticketId}`);
+export async function fetchMyTicket(ticketId, role) {
+    return apiFetch(`/my-tickets/${ticketId}`, {}, role);
 }
 
-export async function replyToMyTicket(ticketId, body) {
+export async function replyToMyTicket(ticketId, body, role) {
     return apiFetch(`/my-tickets/${ticketId}/reply`, {
         method: "POST",
         body: JSON.stringify({ body }),
-    });
+    }, role);
 }
 
 // ── Support team endpoints ──────────────────────────────────────────────────────
@@ -117,5 +126,6 @@ export async function fetchSupportStats() {
 }
 
 export async function fetchGlobalSupportHistory(page = 1) {
-    return apiFetch(`/global-history?page=${page}`);
+    // Support team always uses supportToken for this privileged endpoint
+    return apiFetch(`/global-history?page=${page}`, {}, "support");
 }

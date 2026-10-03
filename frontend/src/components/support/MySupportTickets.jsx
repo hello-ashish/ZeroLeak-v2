@@ -37,7 +37,7 @@ function formatDateTime(d) {
     return new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-function ConversationView({ ticketId, onBack }) {
+function ConversationView({ ticketId, onBack, role }) {
     const toast = useToast();
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -46,14 +46,14 @@ function ConversationView({ ticketId, onBack }) {
 
     const load = useCallback(async () => {
         try {
-            const res = await fetchMyTicket(ticketId);
+            const res = await fetchMyTicket(ticketId, role);
             setData(res);
         } catch (e) {
             toast.error(e.message);
         } finally {
             setLoading(false);
         }
-    }, [ticketId]);
+    }, [ticketId, role]);
 
     useEffect(() => { load(); }, [load]);
 
@@ -62,7 +62,7 @@ function ConversationView({ ticketId, onBack }) {
         if (!reply.trim()) return;
         setSending(true);
         try {
-            await replyToMyTicket(ticketId, reply.trim());
+            await replyToMyTicket(ticketId, reply.trim(), role);
             setReply('');
             await load();
             toast.success('Reply sent!');
@@ -141,7 +141,7 @@ function ConversationView({ ticketId, onBack }) {
     );
 }
 
-export function MySupportTickets() {
+export function MySupportTickets({ role }) {
     const toast = useToast();
     const [tickets, setTickets] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -151,7 +151,7 @@ export function MySupportTickets() {
     const load = useCallback(async (page = 1) => {
         setLoading(true);
         try {
-            const res = await fetchMyTickets(page);
+            const res = await fetchMyTickets(page, role);
             setTickets(res.tickets || []);
             setPagination({ page: res.page, pages: res.pages, total: res.total });
         } catch (e) {
@@ -159,20 +159,18 @@ export function MySupportTickets() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [role]);
 
     useEffect(() => { load(1); }, [load]);
 
     useEffect(() => {
-        const handleTicketCreated = () => {
-            load(1);
-        };
+        const handleTicketCreated = () => { load(1); };
         window.addEventListener('support-ticket-created', handleTicketCreated);
         return () => window.removeEventListener('support-ticket-created', handleTicketCreated);
     }, [load]);
 
     if (selectedId) {
-        return <ConversationView ticketId={selectedId} onBack={() => setSelectedId(null)} />;
+        return <ConversationView ticketId={selectedId} onBack={() => setSelectedId(null)} role={role} />;
     }
 
     return (

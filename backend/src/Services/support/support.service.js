@@ -24,6 +24,19 @@ import { ZMailAccount } from "../../models/zmail/zmailAccount.models.js";
 import { ZMailThread } from "../../models/zmail/zmailThread.models.js";
 import { ZMailMessage } from "../../models/zmail/zmailMessage.models.js";
 import { ZMailMailboxEntry } from "../../models/zmail/zmailMailboxEntry.models.js";
+
+/**
+ * Safely upsert a mailbox entry. Uses findOneAndUpdate with upsert=true so
+ * that a duplicate (userId, messageId) pair never throws E11000.
+ */
+async function upsertMailboxEntry(data) {
+    const { userId, messageId, threadId, folder, isRead } = data;
+    return ZMailMailboxEntry.findOneAndUpdate(
+        { userId, messageId },
+        { $setOnInsert: { userId, messageId, threadId, folder, isRead } },
+        { upsert: true, new: true }
+    );
+}
 import {
     SUPPORT_SYSTEM_ID,
     SUPPORT_EMAIL,
@@ -67,11 +80,7 @@ function buildInitialMessageBody(ticket) {
         ticket.description,
         ``,
         `--- Context ---`,
-        `Page: ${ticket.sourceRoute || "(not captured)"}`,
         `Role: ${ticket.reporterRole}`,
-        Object.keys(ticket.metadata || {}).length > 0
-            ? `Metadata: ${JSON.stringify(ticket.metadata, null, 2)}`
-            : null,
         `Submitted: ${new Date().toISOString()}`,
     ].filter(Boolean).join("\n");
 }
@@ -186,7 +195,7 @@ export async function createTicket(params) {
 
     // Create mailbox entries
     // Reporter gets a "sent" entry
-    await ZMailMailboxEntry.create({
+    await upsertMailboxEntry({
         userId: reporterId,
         messageId: message._id,
         threadId: thread._id,
@@ -195,7 +204,7 @@ export async function createTicket(params) {
     });
 
     // Support mailbox gets an "inbox" entry (keyed on SUPPORT_SYSTEM_ID)
-    await ZMailMailboxEntry.create({
+    await upsertMailboxEntry({
         userId: SUPPORT_SYSTEM_ID,
         messageId: message._id,
         threadId: thread._id,
@@ -286,7 +295,7 @@ export async function userReply({ ticketId, senderId, senderRole, senderName, bo
     });
 
     // Reporter sent entry
-    await ZMailMailboxEntry.create({
+    await upsertMailboxEntry({
         userId: senderId,
         messageId: message._id,
         threadId: thread._id,
@@ -295,7 +304,7 @@ export async function userReply({ ticketId, senderId, senderRole, senderName, bo
     });
 
     // Support inbox entry
-    await ZMailMailboxEntry.create({
+    await upsertMailboxEntry({
         userId: SUPPORT_SYSTEM_ID,
         messageId: message._id,
         threadId: thread._id,
@@ -364,7 +373,7 @@ export async function supportReply({ ticketId, agentId, agentName, agentRole, bo
     });
 
     // Reporter gets inbox entry (they receive the reply)
-    await ZMailMailboxEntry.create({
+    await upsertMailboxEntry({
         userId: ticket.reporterUserId,
         messageId: message._id,
         threadId: thread._id,
@@ -373,7 +382,7 @@ export async function supportReply({ ticketId, agentId, agentName, agentRole, bo
     });
 
     // Support sent entry
-    await ZMailMailboxEntry.create({
+    await upsertMailboxEntry({
         userId: SUPPORT_SYSTEM_ID,
         messageId: message._id,
         threadId: thread._id,
@@ -426,12 +435,12 @@ export async function changeStatus({ ticketId, newStatus, agentId, agentRole, ag
     if (newStatus === "RESOLVED" && oldStatus !== "RESOLVED") {
         try {
             const body = `Hello ${ticket.reporterName},\n\nYour support ticket #${ticket.ticketNumber} ("${ticket.title}") has been marked as RESOLVED by ${agentName}.\n\nIf you have any further questions or if the issue persists, please reply to this thread to reopen the ticket.`;
-            await supportReply({ 
-                ticketId: ticket._id, 
-                agentId, 
-                agentName: "ZeroLeak Support", 
-                agentRole: "system", 
-                body 
+            await supportReply({
+                ticketId: ticket._id,
+                agentId,
+                agentName: "ZeroLeak Support",
+                agentRole: "system",
+                body
             });
         } catch (err) {
             console.error("[SUPPORT] Failed to send resolution notification:", err.message);

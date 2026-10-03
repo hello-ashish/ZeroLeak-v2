@@ -33,6 +33,13 @@ export function ReportProblemModal({ onClose, examId, sessionId, context }) {
     const toast = useToast();
     const location = useLocation();
 
+    // Auto-detect which role's token is in localStorage for this session
+    const callerRole = localStorage.getItem('adminToken') ? 'admin'
+        : localStorage.getItem('profToken') ? 'professor'
+        : localStorage.getItem('studentToken') ? 'student'
+        : localStorage.getItem('auditorToken') ? 'auditor'
+        : undefined;
+
     const [categories, setCategories] = useState(Object.keys(CATEGORY_LABELS));
     const [form, setForm] = useState({
         title: '',
@@ -46,10 +53,10 @@ export function ReportProblemModal({ onClose, examId, sessionId, context }) {
     const [errors, setErrors] = useState({});
 
     useEffect(() => {
-        fetchSupportConstants()
+        fetchSupportConstants(callerRole)
             .then(data => setCategories(data.categories || Object.keys(CATEGORY_LABELS)))
             .catch(() => {});
-    }, []);
+    }, [callerRole]);
 
     const validate = () => {
         const errs = {};
@@ -80,7 +87,7 @@ export function ReportProblemModal({ onClose, examId, sessionId, context }) {
                 relatedExamId: examId || null,
                 relatedSessionId: sessionId || null,
                 idempotencyKey,
-            });
+            }, callerRole);
             setTicketNumber(result.ticket?.ticketNumber || '');
             setSubmitted(true);
             window.dispatchEvent(new CustomEvent('support-ticket-created'));

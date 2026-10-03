@@ -56,6 +56,12 @@ const NAV = [
         items: [
             { label: 'ZMail', icon: <Mail size={18} />, path: '/zmail?role=admin', zmailBadge: true },
         ]
+    },
+    {
+        section: 'Support',
+        items: [
+            { label: 'My Tickets', icon: <Headset size={18} />, path: '/admin/support' },
+        ]
     }
 ]
 
