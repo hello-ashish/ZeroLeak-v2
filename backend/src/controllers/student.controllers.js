@@ -14,6 +14,7 @@ import { canonicalize, sha256 } from "../blockchain/commitment.service.js"
 import { createCommitment } from "../blockchain/commitment.service.js"
 import crypto from "crypto";
 import { selectQuestionsByDifficultyRatio } from "../Services/question.service.js";
+import { ensureZMailAccount } from "../Services/zmail/zmailIdentity.service.js";
 
 // 1. Register Student
 export const registerStudent = async (req, res) => {
@@ -29,6 +30,11 @@ export const registerStudent = async (req, res) => {
         const student = await Student.create(studentData);
         const createdStudent = student.toObject();
         delete createdStudent.password;
+
+        // Provision ZMail account for the new student (non-blocking)
+        ensureZMailAccount({ userId: student._id, userType: "Student", displayName: name, loginEmail: email })
+            .catch(err => console.warn("[ZMAIL] Failed to provision account for student", student._id, err.message));
+
         return res.status(201).json({ message: "Student registered", student: createdStudent });
     } catch (error) {
         return res.status(500).json({ message: "Error registering student", error: error.message });

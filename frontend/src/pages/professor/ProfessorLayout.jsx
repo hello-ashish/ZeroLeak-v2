@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation, Link, Outlet } from 'react-router-dom'
-import { LayoutDashboard, PackageOpen, Settings, Search, LogOut, ChevronDown, Bell, Plus, FileText, RefreshCw } from 'lucide-react'
+import { LayoutDashboard, PackageOpen, Settings, Search, LogOut, ChevronDown, Bell, Plus, FileText, RefreshCw, Mail } from 'lucide-react'
 import { CommandPalette } from '../../components/CommandPalette.jsx'
 import { HeaderThemeToggle } from '../../components/HeaderThemeToggle.jsx'
 import { NotificationDropdown } from '../../components/NotificationDropdown.jsx'
 import { SkeletonCard, Skeleton, SkeletonTable } from '../../components/SkeletonLoader.jsx'
 import { useNotifications } from '../../hooks/useNotifications.jsx'
+import { ZMailUnreadBadge } from '../../components/zmail/ZMailUnreadBadge.jsx'
 import { ReportIssueButton } from '../../components/ReportIssueButton.jsx'
 
 const NAV = [
@@ -27,10 +28,16 @@ const NAV = [
         items: [
             { label: 'Profile', icon: <Settings size={18} />, path: '/professor/profile' },
         ]
+    },
+    {
+        section: 'Messaging',
+        items: [
+            { label: 'ZMail', icon: <Mail size={18} />, path: '/zmail', zmailBadge: true },
+        ]
     }
 ]
 
-export const ProfessorLayout = () => {
+export const ProfessorLayout = ({ children, noPadding = false }) => {
     const [collapsed, setCollapsed] = useState(false)
     const [mobileOpen, setMobileOpen] = useState(false)
     const [showCommand, setShowCommand] = useState(false)
@@ -120,7 +127,9 @@ export const ProfessorLayout = () => {
                                     title={collapsed ? item.label : undefined}
                                     aria-current={isActive(item.path) ? 'page' : undefined}
                                 >
-                                    <span className="nav-icon" aria-hidden="true">{item.icon}</span>
+                                    <span className="nav-icon" aria-hidden="true">
+                                        {item.zmailBadge ? <ZMailUnreadBadge /> : item.icon}
+                                    </span>
                                     <span className="nav-label">{item.label}</span>
                                 </Link>
                             ))}
@@ -235,7 +244,7 @@ export const ProfessorLayout = () => {
                 </header>
 
                 {/* Content */}
-                <main className="page-content" id="main-content">
+                <main className={`page-content ${noPadding ? 'no-padding' : ''}`} id="main-content">
                     {isRefreshing ? (
                         <div style={{ padding: '24px', display: 'grid', gap: '24px' }}>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
@@ -255,7 +264,7 @@ export const ProfessorLayout = () => {
                             </div>
                         </div>
                     ) : (
-                        <Outlet key={refreshKey} />
+                        children || <Outlet key={refreshKey} />
                     )}
                 </main>
             </div>

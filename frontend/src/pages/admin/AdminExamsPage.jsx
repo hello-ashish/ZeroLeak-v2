@@ -79,8 +79,12 @@ export default function AdminExamsPage() {
             await axios.patch(`${API}/admin/examinations/${examId}/status`, { status: newStatus }, {
                 headers: { Authorization: `Bearer ${getToken()}` }
             })
+            setExaminations(prev => prev.map(e => e._id === examId ? { 
+                ...e, 
+                status: newStatus,
+                subjects: e.subjects ? e.subjects.map(subj => ({ ...subj, status: newStatus })) : []
+            } : e))
             toast.success(`Examination marked as ${newStatus}`)
-            fetchData()
         } catch {
             toast.error('Failed to update examination status')
         }
@@ -91,8 +95,8 @@ export default function AdminExamsPage() {
             await axios.patch(`${API}/admin/examinations/${examId}/release-results`, { isResultReleased: isReleased }, {
                 headers: { Authorization: `Bearer ${getToken()}` }
             })
+            setExaminations(prev => prev.map(e => e._id === examId ? { ...e, isResultReleased: isReleased } : e))
             toast.success(isReleased ? 'Results Released' : 'Results Hidden')
-            fetchData()
         } catch {
             toast.error('Failed to toggle results')
         }
@@ -103,8 +107,11 @@ export default function AdminExamsPage() {
             await axios.patch(`${API}/admin/exams/${examId}/status`, { status: newStatus }, {
                 headers: { Authorization: `Bearer ${getToken()}` }
             })
+            setExaminations(prev => prev.map(e => ({
+                ...e,
+                subjects: e.subjects ? e.subjects.map(subj => subj._id === examId ? { ...subj, status: newStatus } : subj) : []
+            })))
             toast.success(`Subject status updated`)
-            fetchData()
         } catch {
             toast.error('Failed to update subject status')
         }

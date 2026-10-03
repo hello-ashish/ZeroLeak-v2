@@ -51,8 +51,17 @@ export default function AdminGradebookPage() {
     const [selectedRows, setSelectedRows] = useState(new Set())
     const [isDeleting, setIsDeleting] = useState(false)
     const [selectionMode, setSelectionMode] = useState(false)
+    const [expandedStudents, setExpandedStudents] = useState(new Set())
+    const [selectedProfile, setSelectedProfile] = useState(null)
     const navigate = useNavigate()
     const toast = useToast()
+
+    const toggleStudentExpand = (studentId) => {
+        const newSet = new Set(expandedStudents);
+        if (newSet.has(studentId)) newSet.delete(studentId);
+        else newSet.add(studentId);
+        setExpandedStudents(newSet);
+    };
 
     const handleDownload = (content, filename) => {
         const blob = new Blob([content], { type: 'text/csv' });
@@ -114,7 +123,7 @@ export default function AdminGradebookPage() {
         try {
             setLoading(true)
             const [resRes, examRes] = await Promise.all([
-                axios.get(`${API}/exams/results`, { headers: { Authorization: `Bearer ${token}` } }),
+                axios.get(`${API}/exams/results`, { headers: { Authorization: `Bearer ${token}` }, params: { limit: 10000 } }),
                 axios.get(`${API}/exams`, { headers: { Authorization: `Bearer ${token}` } }),
             ])
             setResults(resRes.data.results || [])
@@ -202,6 +211,30 @@ export default function AdminGradebookPage() {
             return sortDir === 'desc' ? pb - pa : pa - pb
         })
     }, [results, selectedExam, search, sortDir])
+
+    const groupedStudents = useMemo(() => {
+        const groups = {};
+        filtered.forEach(r => {
+            const sid = r.student?._id || 'unknown';
+            if (!groups[sid]) {
+                groups[sid] = {
+                    student: r.student,
+                    results: [],
+                    totalScore: 0,
+                    totalQuestions: 0
+                }
+            }
+            groups[sid].results.push(r);
+            groups[sid].totalScore += r.score;
+            groups[sid].totalQuestions += r.totalQuestions;
+        });
+
+        return Object.values(groups).sort((a, b) => {
+            const pa = a.totalQuestions > 0 ? (a.totalScore / a.totalQuestions) : 0;
+            const pb = b.totalQuestions > 0 ? (b.totalScore / b.totalQuestions) : 0;
+            return sortDir === 'desc' ? pb - pa : pa - pb;
+        });
+    }, [filtered, sortDir])
 
     const hasOrphaned = useMemo(() => results.some(r => !r.exam), [results])
 
@@ -410,85 +443,103 @@ export default function AdminGradebookPage() {
                                     />
                                 </th>
                             )}
-                            <th>Rank</th>
+                            <th style={{ width: 40 }}></th>
                             <th>Student</th>
-                            <th>Exam</th>
-                            <th>Score</th>
-                            <th>Percentage</th>
-                            <th>Grade</th>
-                            <th>Date</th>
-                            <th style={{ textAlign: 'right' }}>Action</th>
+                            <th>Exams Taken</th>
+                            <th>Average Score</th>
+                            <th>Average Percentage</th>
+                            <th>Average Grade</th>
+                            <th style={{ textAlign: 'right' }}>Profile</th>
                         </tr>
                     </thead>
                     {loading ? (
                         <tbody>
                             {[...Array(7)].map((_, i) => (
-                                <tr key={i}><td colSpan={selectionMode ? 9 : 8} style={{ padding: 12 }}><div className="skeleton" style={{ height: 14 }} /></td></tr>
+                                <tr key={i}><td colSpan={selectionMode ? 8 : 7} style={{ padding: 12 }}><div className="skeleton" style={{ height: 14 }} /></td></tr>
                             ))}
                         </tbody>
                     ) : (
                         <tbody>
-                            {filtered.length === 0 ? (
-                                <tr><td colSpan={selectionMode ? 9 : 8}>
+                            {groupedStudents.length === 0 ? (
+                                <tr><td colSpan={selectionMode ? 8 : 7}>
                                     <EmptyState
                                         icon={<BarChart3 size={32} color="var(--text-tertiary)" />}
                                         title="No results found"
                                         description={search || selectedExam !== 'all' ? 'Try a different search or filter.' : 'No exam submissions yet. Results will appear here as students complete exams.'}
                                     />
                                 </td></tr>
-                            ) : filtered.map((r, i) => {
-                                const pct = Math.round((r.score / r.totalQuestions) * 100)
-                                const grade = getGrade(pct)
+                            ) : groupedStudents.map((group, i) => {
+                                const avgPct = Math.round((group.totalScore / Math.max(1, group.totalQuestions)) * 100)
+                                const avgGrade = getGrade(avgPct)
+                                const isExpanded = expandedStudents.has(group.student?._id || 'unknown')
+
                                 return (
-                                    <tr key={r._id} style={selectedRows.has(r._id) ? { background: 'var(--bg-hover)' } : {}}>
-                                        {selectionMode && (
-                                            <td style={{ paddingLeft: 16 }}>
-                                                <input 
-                                                    type="checkbox"
-                                                    className="form-checkbox"
-                                                    checked={selectedRows.has(r._id)}
-                                                    onChange={() => handleSelectRow(r._id)}
-                                                />
+                                    <React.Fragment key={group.student?._id || `unknown-${i}`}>
+                                        <tr style={{ background: isExpanded ? 'var(--bg-active)' : 'transparent', cursor: 'pointer' }} onClick={() => toggleStudentExpand(group.student?._id || 'unknown')}>
+                                            {selectionMode && <td onClick={e => e.stopPropagation()}></td>}
+                                            <td style={{ color: 'var(--text-tertiary)' }}>
+                                                <ChevronRight size={16} style={{ transform: isExpanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }} />
                                             </td>
-                                        )}
-                                        <td>
-                                            <span style={{
-                                                fontSize: 13, fontWeight: 700, color: i === 0 ? '#f59e0b' : i === 1 ? '#94a3b8' : i === 2 ? '#cd7c2f' : 'var(--text-tertiary)'
-                                            }}>#{i + 1}</span>
-                                        </td>
-                                        <td>
-                                            <div className="flex items-center gap-3">
-                                                <div className="avatar avatar-sm" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}>
-                                                    <GraduationCap size={16} />
+                                            <td>
+                                                <div className="flex items-center gap-3">
+                                                    <div className="avatar avatar-sm" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}>
+                                                        <GraduationCap size={16} />
+                                                    </div>
+                                                    <div>
+                                                        <p style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)' }}>{group.student?.name || 'Unknown'}</p>
+                                                        <p style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{group.student?.studentId || 'N/A'}</p>
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <p style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)' }}>{r.student?.name || 'Unknown'}</p>
-                                                    <p style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{r.student?.studentId}</p>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td style={{ fontSize: 12, color: 'var(--text-secondary)', maxWidth: 200 }}>
-                                            <span className="truncate" style={{ display: 'block' }}>{r.exam?.title || 'Deleted Exam'}</span>
-                                        </td>
-                                        <td style={{ fontFamily: 'var(--font-mono)', fontSize: 13 }}>
-                                            {r.score} / {r.totalQuestions}
-                                        </td>
-                                        <td><ScorePill score={r.score} total={r.totalQuestions} /></td>
-                                        <td>
-                                            <span style={{
-                                                fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700,
-                                                color: pct >= 70 ? 'var(--success)' : pct >= 50 ? 'var(--warning)' : 'var(--danger)'
-                                            }}>{grade}</span>
-                                        </td>
-                                        <td style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-                                            {new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                                        </td>
-                                        <td style={{ textAlign: 'right' }}>
-                                            <button className="btn btn-sm btn-ghost" onClick={() => navigate(`/admin/students`)}>
-                                                Profile <ChevronRight size={14} />
-                                            </button>
-                                        </td>
-                                    </tr>
+                                            </td>
+                                            <td style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                                                {group.results.length} exam(s)
+                                            </td>
+                                            <td style={{ fontFamily: 'var(--font-mono)', fontSize: 13 }}>
+                                                {group.totalScore} / {group.totalQuestions}
+                                            </td>
+                                            <td><ScorePill score={group.totalScore} total={group.totalQuestions} /></td>
+                                            <td>
+                                                <span style={{
+                                                    fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700,
+                                                    color: avgPct >= 70 ? 'var(--success)' : avgPct >= 50 ? 'var(--warning)' : 'var(--danger)'
+                                                }}>{avgGrade}</span>
+                                            </td>
+                                            <td style={{ textAlign: 'right' }} onClick={e => e.stopPropagation()}>
+                                                <button className="btn btn-sm btn-ghost" onClick={() => setSelectedProfile(group)}>
+                                                    Profile <ChevronRight size={14} />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        {isExpanded && group.results.map(r => {
+                                            const pct = Math.round((r.score / r.totalQuestions) * 100)
+                                            return (
+                                                <tr key={r._id} style={{ background: 'var(--bg-elevated)' }}>
+                                                    {selectionMode && (
+                                                        <td style={{ paddingLeft: 16 }}>
+                                                            <input type="checkbox" className="form-checkbox" checked={selectedRows.has(r._id)} onChange={() => handleSelectRow(r._id)} />
+                                                        </td>
+                                                    )}
+                                                    <td></td>
+                                                    <td style={{ paddingLeft: 32, fontSize: 12, color: 'var(--text-secondary)' }}>
+                                                        ↳ {r.exam?.title || 'Deleted Exam'}
+                                                    </td>
+                                                    <td style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+                                                        {new Date(r.createdAt).toLocaleDateString()}
+                                                    </td>
+                                                    <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>
+                                                        {r.score} / {r.totalQuestions}
+                                                    </td>
+                                                    <td><ScorePill score={r.score} total={r.totalQuestions} /></td>
+                                                    <td>
+                                                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 700, color: pct >= 70 ? 'var(--success)' : pct >= 50 ? 'var(--warning)' : 'var(--danger)' }}>
+                                                            {getGrade(pct)}
+                                                        </span>
+                                                    </td>
+                                                    <td></td>
+                                                </tr>
+                                            )
+                                        })}
+                                    </React.Fragment>
                                 )
                             })}
                         </tbody>
@@ -534,6 +585,59 @@ export default function AdminGradebookPage() {
                         </button>
                     </div>
                 </div>
+            </Modal>
+
+            <Modal open={!!selectedProfile} onClose={() => setSelectedProfile(null)} title="Student Profile" size="md">
+                {selectedProfile && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, padding: '8px 0' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                            <div className="avatar avatar-lg" style={{ background: 'var(--brand-primary-subtle)', color: 'var(--brand-primary)', width: 64, height: 64, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <GraduationCap size={32} />
+                            </div>
+                            <div>
+                                <h3 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>{selectedProfile.student?.name || 'Unknown'}</h3>
+                                <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginTop: 4 }}>ID: {selectedProfile.student?.studentId || 'N/A'}</p>
+                            </div>
+                        </div>
+                        
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                            <div style={{ background: 'var(--bg-surface)', padding: 16, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
+                                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Total Exams</p>
+                                <p style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>{selectedProfile.results.length}</p>
+                            </div>
+                            <div style={{ background: 'var(--bg-surface)', padding: 16, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
+                                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Avg Score</p>
+                                <p style={{ fontSize: 24, fontWeight: 700, color: 'var(--brand-primary)', margin: 0 }}>
+                                    {Math.round((selectedProfile.totalScore / Math.max(1, selectedProfile.totalQuestions)) * 100)}%
+                                </p>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h4 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 12 }}>Exam History</h4>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 300, overflowY: 'auto', paddingRight: 8 }}>
+                                {selectedProfile.results.map(r => {
+                                    const pct = Math.round((r.score / r.totalQuestions) * 100);
+                                    return (
+                                        <div key={r._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)' }}>
+                                            <div>
+                                                <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', margin: '0 0 4px 0' }}>{r.exam?.title || 'Deleted Exam'}</p>
+                                                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: 0 }}>{new Date(r.createdAt).toLocaleDateString()}</p>
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-secondary)' }}>{r.score} / {r.totalQuestions}</span>
+                                                <span style={{
+                                                    fontFamily: 'var(--font-mono)', fontSize: 14, fontWeight: 700,
+                                                    color: pct >= 70 ? 'var(--success)' : pct >= 50 ? 'var(--warning)' : 'var(--danger)'
+                                                }}>{getGrade(pct)}</span>
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                )}
             </Modal>
         </AdminLayout>
     )

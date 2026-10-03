@@ -27,6 +27,7 @@ import blockchainRouter from "./routes/blockchain.routes.js"
 import searchRouter from "./routes/search.routes.js"
 import proctoringRouter from "./routes/proctoring.routes.js"
 import aiRouter from "./routes/ai.routes.js"
+import zmailRouter from "./routes/zmail.routes.js"
 import feedbackRouter from "./routes/feedback.routes.js"
 
 // this says: any request starting with /api/admin goes to the adminRouter
@@ -65,6 +66,8 @@ app.use("/api/blockchain", blockchainRouter);
 // Global search route
 app.use("/api/search", searchRouter);
 
+// ZMail internal messaging system
+app.use("/api/zmail", zmailRouter);
 // Feedback route
 app.use("/api/feedback", feedbackRouter);
 

@@ -1,39 +1,44 @@
 import { Router } from "express";
 import {
+    getLiveStudents,
+    getSuspiciousAlerts,
     getActiveSessions,
     getSessionDetail,
-    getExamSessions,
+    getSessionIncidents,
+    getSessionAIEvents,
     getStudentIncidents,
     getAllIncidents,
     endSession,
-    getActiveExams
+    getActiveExams,
+    getExamSessions
 } from "../controllers/proctoring.controllers.js";
 import { verifyAdminJWT } from "../middlewares/auth.middleware.js";
 
 const router = Router();
-
-// All routes are strictly Admin-only
 router.use(verifyAdminJWT);
 
-// GET /api/admin/proctoring/sessions - List active sessions
-router.route("/sessions").get(getActiveSessions);
+// ── Live dashboard ──────────────────────────────────────────────────────────
+// Lightweight metadata only — no MediaStream data
+router.get("/live",       getLiveStudents);
 
-// GET /api/admin/proctoring/sessions/:sessionId - Get specific session details
-router.route("/sessions/:sessionId").get(getSessionDetail);
+// AI alert / suspicious students
+router.get("/alerts",     getSuspiciousAlerts);
 
-// GET /api/admin/proctoring/exams/:examId/sessions - Get sessions by exam
-router.route("/exams/:examId/sessions").get(getExamSessions);
+// Active exams with session counts
+router.get("/active-exams", getActiveExams);
 
-// GET /api/admin/proctoring/students/:studentId/incidents - Get student incidents
-router.route("/students/:studentId/incidents").get(getStudentIncidents);
+// ── Session endpoints ───────────────────────────────────────────────────────
+router.get("/sessions",                            getActiveSessions);
+router.get("/sessions/:sessionId",                 getSessionDetail);
+router.get("/sessions/:sessionId/incidents",       getSessionIncidents);
+router.get("/sessions/:sessionId/ai-events",       getSessionAIEvents);
+router.post("/sessions/:sessionId/end",            endSession);
 
-// GET /api/admin/proctoring/incidents - List all incidents
-router.route("/incidents").get(getAllIncidents);
+// ── Exam-scoped ─────────────────────────────────────────────────────────────
+router.get("/exams/:examId/sessions", getExamSessions);
 
-// POST /api/admin/proctoring/sessions/:sessionId/end - Manually end a session
-router.route("/sessions/:sessionId/end").post(endSession);
-
-// GET /api/admin/proctoring/active-exams - List exams with active sessions
-router.route("/active-exams").get(getActiveExams);
+// ── Student-scoped (legacy + support) ──────────────────────────────────────
+router.get("/students/:studentId/incidents", getStudentIncidents);
+router.get("/incidents",                     getAllIncidents);
 
 export default router;
