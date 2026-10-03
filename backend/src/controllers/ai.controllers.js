@@ -1,5 +1,5 @@
-import { generateBatchDetails, generateQuestionDetails, repairImportedQuestion, batchRepairImportedQuestions } from "../Services/ai/ai.service.js"
-import { getConfidenceLabel } from "../Services/ai/ai.policy.js"
+import { generateBatchDetails, generateQuestionDetails, repairImportedQuestion, batchRepairImportedQuestions } from "../services/ai/ai.service.js"
+import { getConfidenceLabel } from "../services/ai/ai.policy.js"
 
 export const generateBatch = async (req, res) => {
     try {
@@ -199,7 +199,7 @@ export const reviewBatchAdmin = async (req, res) => {
             return res.status(400).json({ message: "batchData is required" })
         }
 
-        const { adminReviewBatch } = await import('../Services/ai/ai.service.js')
+        const { adminReviewBatch } = await import('../services/ai/ai.service.js')
         const result = await adminReviewBatch(batchData, req.admin._id)
 
         if (!result.success) {
@@ -221,7 +221,7 @@ export const auditSummaryAdmin = async (req, res) => {
             return res.status(400).json({ message: "logs array is required" })
         }
 
-        const { adminAuditSummary } = await import('../Services/ai/ai.service.js')
+        const { adminAuditSummary } = await import('../services/ai/ai.service.js')
         const result = await adminAuditSummary(logs, req.admin._id)
 
         if (!result.success) {
@@ -245,7 +245,7 @@ export const cohortReportAdmin = async (req, res) => {
             return res.status(400).json({ message: "gradebookData is required" })
         }
 
-        const { adminCohortReport } = await import('../Services/ai/ai.service.js')
+        const { adminCohortReport } = await import('../services/ai/ai.service.js')
         const result = await adminCohortReport(gradebookData, req.admin._id)
 
         if (!result.success) {
@@ -269,7 +269,7 @@ export const examCopilotAdmin = async (req, res) => {
             return res.status(400).json({ message: "prompt is required" })
         }
 
-        const { adminExamCopilot } = await import('../Services/ai/ai.service.js')
+        const { adminExamCopilot } = await import('../services/ai/ai.service.js')
         const result = await adminExamCopilot(prompt, req.admin._id)
 
         if (!result.success) {
@@ -291,7 +291,7 @@ export const policyRewriteAdmin = async (req, res) => {
             return res.status(400).json({ message: "draft text is required" })
         }
 
-        const { adminPolicyRewrite } = await import('../Services/ai/ai.service.js')
+        const { adminPolicyRewrite } = await import('../services/ai/ai.service.js')
         const result = await adminPolicyRewrite(draft, req.admin._id)
 
         if (!result.success) {
@@ -303,5 +303,142 @@ export const policyRewriteAdmin = async (req, res) => {
         return res.status(200).json(result.data)
     } catch (error) {
         return res.status(500).json({ message: "Internal server error", error: error.message })
+    }
+}
+
+export const getStudentPerformanceAnalysis = async (req, res) => {
+    try {
+        const { studentId } = req.params;
+        if (!studentId) {
+            return res.status(400).json({ message: "Student ID is required" });
+        }
+
+        const { Student } = await import('../models/student.models.js');
+        const { Result } = await import('../models/result.models.js');
+
+        const student = await Student.findById(studentId);
+        if (!student) {
+            return res.status(404).json({ message: "Student not found" });
+        }
+
+        const results = await Result.find({ student: studentId })
+            .populate("exam", "title subject passingPercentage")
+            .sort({ createdAt: 1 });
+
+        if (!results || results.length === 0) {
+            return res.status(400).json({ message: "Student must complete at least one exam for AI analysis." });
+        }
+
+        const studentData = {
+            name: student.name,
+            studentId: student.studentId,
+            department: student.department,
+            program: student.program,
+            batch: student.batch
+        };
+
+        const examHistory = results.map(r => {
+            const score = r.score || 0;
+            const total = r.totalQuestions || 1;
+            const percentage = Math.round((score / total) * 100);
+            const passingPercentage = r.exam?.passingPercentage || 50;
+            
+            return {
+                title: r.exam?.title || "Deleted Exam",
+                subject: r.exam?.subject || "Unknown",
+                date: r.createdAt,
+                score,
+                totalQuestions: total,
+                passingPercentage,
+                percentage,
+                isPass: percentage >= passingPercentage
+            };
+        });
+
+        const { generateStudentPerformanceAnalysis } = await import('../services/ai/ai.service.js');
+        const result = await generateStudentPerformanceAnalysis(studentData, examHistory, req.admin._id);
+
+        if (!result.success) {
+            return res.status(400).json({
+                message: result.error || "Unable to generate student performance analysis."
+            });
+        }
+
+        return res.status(200).json(result.data);
+    } catch (error) {
+        console.error("AI Student Performance Analysis Exception:", error);
+        return res.status(500).json({ message: "Internal server error", error: error.message });
+    }
+}
+
+export const getStudentSelfPerformanceAnalysis = async (req, res) => {
+    try {
+        const studentId = req.student._id;
+        
+        const { Result } = await import('../models/result.models.js');
+        const { Exam } = await import('../models/exam.models.js');
+
+        // Fetch student's completed results
+        const results = await Result.find({ student: studentId, status: "Completed" })
+            .populate({
+                path: "exam",
+                select: "title subject isResultReleased examinationId",
+                populate: {
+                    path: "examinationId",
+                    select: "isResultReleased"
+                }
+            })
+            .sort({ createdAt: 1 }) // Chronological order
+            .lean();
+
+        // Filter for released results and prepare data
+        const examHistory = [];
+        for (const r of results) {
+            if (!r.exam) continue;
+
+            const isReleased = r.exam.examinationId 
+                ? r.exam.examinationId.isResultReleased === true 
+                : r.exam.isResultReleased === true;
+
+            if (isReleased) {
+                const score = r.score || 0;
+                const total = r.totalQuestions || 1;
+                const percentage = Math.round((score / total) * 100);
+
+                examHistory.push({
+                    date: r.createdAt,
+                    title: r.exam.title,
+                    subject: r.exam.subject || "Unknown",
+                    score,
+                    totalQuestions: total,
+                    percentage
+                });
+            }
+        }
+
+        if (examHistory.length === 0) {
+            return res.status(400).json({
+                message: "Not enough released exam data to perform AI analysis."
+            });
+        }
+
+        const studentData = {
+            name: req.student.name,
+            totalExamsCompleted: examHistory.length
+        };
+
+        const { generateStudentSelfPerformanceAnalysis } = await import('../services/ai/ai.service.js');
+        const result = await generateStudentSelfPerformanceAnalysis(studentData, examHistory, studentId);
+
+        if (!result.success) {
+            return res.status(400).json({
+                message: result.error || "Unable to generate student performance analysis."
+            });
+        }
+
+        return res.status(200).json(result.data);
+    } catch (error) {
+        console.error("AI Student Self Performance Analysis Exception:", error);
+        return res.status(500).json({ message: "Internal server error", error: error.message });
     }
 }

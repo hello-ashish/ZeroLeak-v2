@@ -23,10 +23,10 @@ export const registerStudent = async (req, res) => {
         if (!studentId || !name || !email || !password) return res.status(400).json({ message: "All fields required" });
         const existingStudent = await Student.findOne({ $or: [{ studentId }, { email }] });
         if (existingStudent) return res.status(400).json({ message: "Student already exists" });
-        
+
         const studentData = { studentId, name, email, password, department, batch, contact, address, gender, program };
         if (dateOfBirth) studentData.dateOfBirth = dateOfBirth;
-        
+
         const student = await Student.create(studentData);
         const createdStudent = student.toObject();
         delete createdStudent.password;
@@ -49,9 +49,13 @@ export const loginStudent = async (req, res) => {
         const student = await Student.findOne({ email });
         if (!student) return res.status(404).json({ message: "Student not found" });
         if (student.isBlocked) return res.status(403).json({ message: "Your account has been restricted by an administrator." });
-        
+
         const isPasswordValid = await student.isPasswordCorrect(password);
         if (!isPasswordValid) return res.status(401).json({ message: "Invalid credentials" });
+
+        student.sessionVersion = (student.sessionVersion || 0) + 1;
+        await student.save({ validateBeforeSave: false });
+
         const token = student.generateAccessToken();
         const loggedInStudent = student.toObject();
         delete loggedInStudent.password;;
@@ -64,16 +68,17 @@ export const loginStudent = async (req, res) => {
 // 2b. Ping Session (Live tracking)
 export const pingSession = async (req, res) => {
     try {
-        const { currentExamId, warningCount } = req.body;
+        const { currentExamId, warningCount, answers } = req.body;
+        // The verifyStudentJWT middleware will automatically reject this if the student is blocked.
         const student = req.student;
-        
+
         const MAX_VIOLATIONS = 3;
 
         // Happy Path Optimization: Atomic update, skip heavy logic and document saves
         if (warningCount < MAX_VIOLATIONS) {
             const updateFields = { lastActiveAt: new Date() };
             if (currentExamId) updateFields.currentExamId = currentExamId;
-            
+
             await Student.findByIdAndUpdate(student._id, { $set: updateFields });
             return res.status(200).json({ message: "Ping successful" });
         }
@@ -82,6 +87,13 @@ export const pingSession = async (req, res) => {
         student.lastActiveAt = new Date();
         if (currentExamId) {
             student.currentExamId = currentExamId;
+
+            if (answers && Array.isArray(answers)) {
+                await Result.updateOne(
+                    { student: student._id, exam: currentExamId, status: "InProgress", resetByAdmin: { $ne: true } },
+                    { $set: { latestAnswers: answers } }
+                );
+            }
         }
 
         // Network Interception Bypass Protection
@@ -89,7 +101,7 @@ export const pingSession = async (req, res) => {
         // We enforce termination here as a fallback.
         if (warningCount >= MAX_VIOLATIONS && currentExamId) {
             const exam = await Exam.findById(currentExamId);
-            
+
             if (exam) {
                 // Terminate attempt if not already terminated
                 let result = await Result.findOne({ student: student._id, exam: currentExamId, resetByAdmin: { $ne: true } });
@@ -110,7 +122,7 @@ export const pingSession = async (req, res) => {
                             terminationReason: "Auto-terminated via telemetry ping: exceeded maximum security violations."
                         });
                     }
-                    
+
                     // Create an incident record for audit
                     const incident = await CheatingIncident.create({
                         studentId: student._id,
@@ -146,13 +158,13 @@ export const pingSession = async (req, res) => {
                         }
                     });
                 }
-                
+
                 // Block the student
                 if (!student.isBlocked) {
                     student.isBlocked = true;
                     student.blockedAt = new Date();
                     student.blockedReason = `Exam "${exam.title}" — blocked via telemetry after ${MAX_VIOLATIONS} security violations.`;
-                    
+
                     try {
                         await AuditLog.create({
                             actor: student.email,
@@ -164,13 +176,13 @@ export const pingSession = async (req, res) => {
                             details: `Student ${student.email} auto-blocked via telemetry on exam "${exam.title}".`,
                             status: "success"
                         });
-                    } catch (auditErr) {}
+                    } catch (auditErr) { }
                 }
             }
         }
 
         await student.save();
-        
+
         if (student.isBlocked) {
             return res.status(403).json({ message: "BLOCKED" });
         }
@@ -376,7 +388,10 @@ export const getExamById = async (req, res) => {
         delete safeExam.questionMerkleRoot
 
         return res.status(200).json({
-            exam: safeExam
+            exam: safeExam,
+            serverNow: new Date(),
+            examStartedAt: exam.scheduledAt,
+            examEndsAt: exam.endsAt
         })
 
     } catch (error) {
@@ -457,11 +472,9 @@ export const submitExamResult = async (req, res) => {
 
         // --- ENFORCE EXAM TIMING ---
         const now = new Date();
-        const examStartTime = existingResult.createdAt;
-        const durationMs = (exam.durationMinutes || 60) * 60 * 1000;
         const gracePeriodMs = 5 * 60 * 1000; // 5 minutes grace period
 
-        if (now.getTime() - examStartTime.getTime() > durationMs + gracePeriodMs) {
+        if (exam.endsAt && now.getTime() > exam.endsAt.getTime() + gracePeriodMs) {
             // Auto-terminate the exam for exceeding time
             existingResult.status = "Terminated";
             existingResult.isTerminated = true;
@@ -478,7 +491,7 @@ export const submitExamResult = async (req, res) => {
         if (exam.mode === "Zeroleak") {
             examQuestions = existingResult.assignedQuestions;
         }
-        
+
         if (examQuestions.length === 0) {
             return res.status(400).json({ message: "Exam contains no questions." });
         }
@@ -544,7 +557,7 @@ export const submitExamResult = async (req, res) => {
                 console.error(
                     "Exam Merkle root verification failed during submission."
                 )
-    
+
                 return res.status(403).json({
                     message:
                         "Exam integrity verification failed."
@@ -619,8 +632,8 @@ export const submitExamResult = async (req, res) => {
         await result.save();
 
         // --- ENFORCE RESULT-RELEASE POLICY ON RETURN ---
-        const isReleased = exam.examinationId 
-            ? exam.examinationId.isResultReleased === true 
+        const isReleased = exam.examinationId
+            ? exam.examinationId.isResultReleased === true
             : exam.isResultReleased === true;
 
         const returnedResult = result.toObject();
@@ -662,14 +675,14 @@ export const getStudentResults = async (req, res) => {
             })
             .sort({ createdAt: -1 })
             .lean()
-            
+
         // Scrub scores for unreleased exams
         const scrubbedResults = results.map(result => {
             if (result.exam) {
-                const isReleased = result.exam.examinationId 
-                    ? result.exam.examinationId.isResultReleased === true 
+                const isReleased = result.exam.examinationId
+                    ? result.exam.examinationId.isResultReleased === true
                     : result.exam.isResultReleased === true;
-                
+
                 if (!isReleased && result.status !== "InProgress") {
                     result.score = null;
                 }

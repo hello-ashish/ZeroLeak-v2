@@ -36,11 +36,12 @@ export const loginProfessor = async (req, res) => {
             return res.status(401).json({ message: "Invalid Password" })
         }
 
-        // generate JWT token for the professor
-        const token = professor.generateAccessToken()
-
+        professor.sessionVersion = (professor.sessionVersion || 0) + 1;
         professor.lastActiveAt = new Date();
         await professor.save({ validateBeforeSave: false });
+
+        // generate JWT token for the professor
+        const token = professor.generateAccessToken()
 
         // if login is successful, remove the password from the data
         const loggedInProfessor = professor.toObject();

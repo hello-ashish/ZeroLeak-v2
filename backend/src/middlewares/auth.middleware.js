@@ -20,6 +20,9 @@ export const verifyAdminJWT = async (req, res, next) => {
         if (!admin) {
             return res.status(401).json({ message: "Unauthorized request: Admin not found" })
         }
+        if (admin.sessionVersion !== decodedToken.sessionVersion) {
+            return res.status(401).json({ message: "This session has been replaced by a new login.", code: "SESSION_REPLACED" })
+        }
 
         req.admin = admin
         next()
@@ -43,6 +46,9 @@ export const verifyProfessorJWT = async (req, res, next) => {
         if (!professor) {
             return res.status(401).json({ message: "Unauthorized request: Professor not found" })
         }
+        if (professor.sessionVersion !== decodedToken.sessionVersion) {
+            return res.status(401).json({ message: "This session has been replaced by a new login.", code: "SESSION_REPLACED" })
+        }
 
         req.professor = professor
         next()
@@ -65,6 +71,9 @@ export const verifyStudentJWT = async (req, res, next) => {
 
         if (!student) {
             return res.status(401).json({ message: "Student not found" })
+        }
+        if (student.sessionVersion !== decodedToken.sessionVersion) {
+            return res.status(401).json({ message: "This session has been replaced by a new login.", code: "SESSION_REPLACED" })
         }
 
         if (student.isBlocked) {
@@ -93,6 +102,9 @@ export const verifyAuditorJWT = async (req, res, next) => {
         if (!auditor) {
             return res.status(401).json({ message: "Auditor not found" })
         }
+        if (auditor.sessionVersion !== decodedToken.sessionVersion) {
+            return res.status(401).json({ message: "This session has been replaced by a new login.", code: "SESSION_REPLACED" })
+        }
 
         req.auditor = auditor
         next()
@@ -114,6 +126,9 @@ export const verifyAdminOrAuditorJWT = async (req, res, next) => {
 
         const admin = await Admin.findById(decodedToken.id).select("-password")
         if (admin) {
+            if (admin.sessionVersion !== decodedToken.sessionVersion) {
+                return res.status(401).json({ message: "This session has been replaced by a new login.", code: "SESSION_REPLACED" })
+            }
             req.admin = admin
             req.userRole = "Admin"
             return next()
@@ -121,6 +136,9 @@ export const verifyAdminOrAuditorJWT = async (req, res, next) => {
 
         const auditor = await Auditor.findById(decodedToken.id).select("-password")
         if (auditor) {
+            if (auditor.sessionVersion !== decodedToken.sessionVersion) {
+                return res.status(401).json({ message: "This session has been replaced by a new login.", code: "SESSION_REPLACED" })
+            }
             req.auditor = auditor
             req.userRole = "Auditor"
             return next()
@@ -147,27 +165,27 @@ export const verifyAnyJWT = async (req, res, next) => {
         // Ideal fix: encode role in JWT to avoid any extra lookup
         const admin = await Admin.findById(decodedToken.id).select("-password")
         if (admin) {
+            if (admin.sessionVersion !== decodedToken.sessionVersion) {
+                return res.status(401).json({ message: "This session has been replaced by a new login.", code: "SESSION_REPLACED" })
+            }
             req.user = admin
             req.userRole = "Admin"
-            return next()
-        }
-
-        const professor = await Professor.findById(decodedToken.id).select("-password")
-        if (professor) {
+        } else if (professor) {
+            if (professor.sessionVersion !== decodedToken.sessionVersion) {
+                return res.status(401).json({ message: "This session has been replaced by a new login.", code: "SESSION_REPLACED" })
+            }
             req.user = professor
             req.userRole = "Professor"
-            return next()
-        }
-
-        const student = await Student.findById(decodedToken.id).select("-password")
-        if (student) {
+        } else if (student) {
+            if (student.sessionVersion !== decodedToken.sessionVersion) {
+                return res.status(401).json({ message: "This session has been replaced by a new login.", code: "SESSION_REPLACED" })
+            }
             req.user = student
             req.userRole = "Student"
-            return next()
-        }
-
-        const auditor = await Auditor.findById(decodedToken.id).select("-password")
-        if (auditor) {
+        } else if (auditor) {
+            if (auditor.sessionVersion !== decodedToken.sessionVersion) {
+                return res.status(401).json({ message: "This session has been replaced by a new login.", code: "SESSION_REPLACED" })
+            }
             req.user = auditor
             req.userRole = "Auditor"
             return next()

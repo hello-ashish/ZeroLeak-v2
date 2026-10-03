@@ -8,6 +8,7 @@ import { NotificationDropdown } from '../../components/NotificationDropdown.jsx'
 import { SkeletonCard, Skeleton, SkeletonTable } from '../../components/SkeletonLoader.jsx'
 import { useNotifications } from '../../hooks/useNotifications.jsx'
 import { ZMailUnreadBadge } from '../../components/zmail/ZMailUnreadBadge.jsx'
+import { ReportIssueButton } from '../../components/ReportIssueButton.jsx'
 
 import axios from 'axios';
 
@@ -285,6 +286,8 @@ export const StudentLayout = ({ children, noPadding = false }) => {
             </div>
 
             <CommandPalette open={showCommand} onClose={() => setShowCommand(false)} />
+            
+            <ReportIssueButton />
 
             <Modal 
                 open={showRestrictedModal} 

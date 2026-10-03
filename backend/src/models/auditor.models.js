@@ -24,6 +24,10 @@ const auditorSchema = new Schema(
             type: String,
             required: true,
             default: "Platform Auditor"
+        },
+        sessionVersion: {
+            type: Number,
+            default: 0
         }
     }, { timestamps: true }
 )
@@ -42,6 +46,7 @@ auditorSchema.methods.generateAccessToken = function () {
         {
             id: this._id,
             email: this.email,
+            sessionVersion: this.sessionVersion,
         },
         process.env.ACCESS_TOKEN_SECRET,
         {

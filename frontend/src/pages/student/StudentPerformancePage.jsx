@@ -2,12 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, BarChart, Bar, Cell } from 'recharts';
-import { TrendingUp, TrendingDown, Target, BookOpen, Activity, ChevronRight, Award, AlertCircle } from 'lucide-react';
+import { TrendingUp, TrendingDown, Target, BookOpen, Activity, ChevronRight, Award, AlertCircle, Sparkles, AlertTriangle } from 'lucide-react';
 
 const StudentPerformancePage = () => {
     const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(true);
     const [hoveredPoint, setHoveredPoint] = useState(null);
+    const [aiReport, setAiReport] = useState(null);
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [aiError, setAiError] = useState(null);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -68,6 +71,25 @@ const StudentPerformancePage = () => {
     const releasedResults = results.filter(r => r.exam?.examinationId ? r.exam.examinationId.isResultReleased === true : r.exam?.isResultReleased === true);
     const sortedResults = [...releasedResults].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)); // Oldest to newest
     const reverseResults = [...sortedResults].reverse(); // Newest to oldest
+
+    const handleGenerateAiAnalysis = async () => {
+        setIsAnalyzing(true);
+        setAiError(null);
+        setAiReport(null);
+        
+        try {
+            const token = localStorage.getItem('studentToken');
+            const response = await axios.get('/api/ai/student/performance-analysis', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setAiReport(response.data);
+        } catch (error) {
+            console.error("AI Analysis failed:", error);
+            setAiError(error.response?.data?.message || "Failed to generate AI analysis.");
+        } finally {
+            setIsAnalyzing(false);
+        }
+    };
 
     // --- Helper: Grade Mapping ---
     const getGrade = (pct) => {
@@ -194,10 +216,85 @@ const StudentPerformancePage = () => {
         <div style={{ maxWidth: 1100, margin: '0 auto', paddingBottom: 64, fontFamily: 'Inter, system-ui, sans-serif' }}>
 
             {/* Header */}
-            <div style={{ marginBottom: 40 }}>
-                <h1 style={{ fontSize: 32, fontWeight: 300, color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: 8 }}>Academic Performance</h1>
-                <p style={{ fontSize: 15, color: 'var(--text-secondary)' }}>Understand your progress, strengths, and areas for improvement.</p>
+            <div style={{ marginBottom: 40, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                    <h1 style={{ fontSize: 32, fontWeight: 300, color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: 8 }}>Academic Performance</h1>
+                    <p style={{ fontSize: 15, color: 'var(--text-secondary)' }}>Understand your progress, strengths, and areas for improvement.</p>
+                </div>
+                <button 
+                    className="btn btn-primary"
+                    style={{ padding: '10px 20px', borderRadius: 8, fontSize: 14, display: 'flex', alignItems: 'center', gap: 8, opacity: isAnalyzing ? 0.7 : 1, cursor: isAnalyzing ? 'not-allowed' : 'pointer' }}
+                    onClick={handleGenerateAiAnalysis}
+                    disabled={isAnalyzing}
+                >
+                    <Sparkles size={16} />
+                    {isAnalyzing ? "Analyzing Performance..." : "AI Performance Analysis"}
+                </button>
             </div>
+
+            {/* AI Insight Card */}
+            {aiError && (
+                <div style={{ background: 'var(--danger-subtle)', border: '1px solid var(--danger)', color: 'var(--danger)', padding: 16, borderRadius: 12, marginBottom: 32, display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <AlertTriangle size={20} />
+                    <span>{aiError}</span>
+                </div>
+            )}
+            
+            {aiReport && (
+                <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', borderRadius: 16, padding: '32px', marginBottom: 40, boxShadow: 'var(--shadow-sm)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+                        <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--brand-primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Sparkles size={20} />
+                        </div>
+                        <div>
+                            <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)' }}>AI Performance Insight</h2>
+                            <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Analyzed from your authorized academic history</p>
+                        </div>
+                    </div>
+                    
+                    <p style={{ fontSize: 16, color: 'var(--text-primary)', lineHeight: 1.6, marginBottom: 24 }}>
+                        {aiReport.summary}
+                    </p>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 24, marginBottom: 24 }}>
+                        <div style={{ padding: 20, background: 'var(--bg-body)', borderRadius: 12 }}>
+                            <h4 style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Strengths</h4>
+                            <ul style={{ margin: 0, paddingLeft: 20, color: 'var(--success)' }}>
+                                {aiReport.strengths.map((str, i) => (
+                                    <li key={i} style={{ fontSize: 14, marginBottom: 4, fontWeight: 500 }}>{str}</li>
+                                ))}
+                            </ul>
+                        </div>
+                        <div style={{ padding: 20, background: 'var(--bg-body)', borderRadius: 12 }}>
+                            <h4 style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Weak Areas</h4>
+                            <ul style={{ margin: 0, paddingLeft: 20, color: 'var(--danger)' }}>
+                                {aiReport.weakAreas.map((weak, i) => (
+                                    <li key={i} style={{ fontSize: 14, marginBottom: 4, fontWeight: 500 }}>{weak}</li>
+                                ))}
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 24 }}>
+                        <div style={{ padding: 20, background: 'var(--bg-body)', borderRadius: 12 }}>
+                            <h4 style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Key Observations</h4>
+                            <ul style={{ margin: 0, paddingLeft: 20, color: 'var(--text-primary)' }}>
+                                {aiReport.observations.map((obs, i) => (
+                                    <li key={i} style={{ fontSize: 14, marginBottom: 4, lineHeight: 1.5 }}>{obs}</li>
+                                ))}
+                            </ul>
+                        </div>
+                        <div style={{ padding: 20, background: 'var(--bg-body)', borderRadius: 12 }}>
+                            <h4 style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Improvement Focus</h4>
+                            <ul style={{ margin: 0, paddingLeft: 20, color: 'var(--brand-primary)' }}>
+                                {aiReport.improvementFocus.map((focus, i) => (
+                                    <li key={i} style={{ fontSize: 14, marginBottom: 4, lineHeight: 1.5, fontWeight: 500 }}>{focus}</li>
+                                ))}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* TOP TIER: Summary Metrics */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 24, marginBottom: 40 }}>

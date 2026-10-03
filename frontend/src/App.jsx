@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom"
 import { ToastProvider } from './components/Toast.jsx'
 import GlobalThemeSlider from './components/GlobalThemeSlider.jsx'
+import { SessionReplacedModal } from './components/SessionReplacedModal.jsx'
 import { Loader2 } from 'lucide-react'
 import { ZMailProvider } from './hooks/useZMail.jsx'
 import './index.css'
@@ -41,6 +42,7 @@ const AdminGradebookPage = lazy(() => import('./pages/admin/AdminGradebookPage.j
 const AdminActivityPage = lazy(() => import('./pages/admin/AdminActivityPage.jsx'))
 const AdminBlockchainCenter = lazy(() => import('./pages/admin/AdminBlockchainCenter.jsx'))
 const AdminSettingsPage = lazy(() => import('./pages/admin/AdminSettingsPage.jsx'))
+const AdminFeedbackPage = lazy(() => import('./pages/admin/AdminFeedbackPage.jsx'))
 const AdminCheatingDetection = lazy(() => import('./pages/admin/AdminCheatingDetection.jsx'))
 const AdminProctoringPage = lazy(() => import('./pages/admin/AdminProctoringPage.jsx').then(m => ({ default: m.AdminProctoringPage })))
 
@@ -72,6 +74,7 @@ function App() {
     <ToastProvider>
       <ZMailProvider>
       <BrowserRouter>
+        <SessionReplacedModal />
         <Suspense fallback={<PageLoader />}>
           <Routes>
             <Route path="/" element={<Home />} />
@@ -94,6 +97,7 @@ function App() {
             <Route path="/admin/proctoring" element={<AdminProctoringPage />} />
             <Route path="/admin/blockchain" element={<AdminBlockchainCenter />} />
             <Route path="/admin/settings" element={<AdminSettingsPage />} />
+            <Route path="/admin/feedback" element={<AdminFeedbackPage />} />
 
             {/* ── Professor Routes ── */}
             <Route path="/professor/login" element={<ProfessorLogin />} />
