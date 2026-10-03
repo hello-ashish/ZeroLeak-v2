@@ -7,7 +7,7 @@ const integrityOutboxSchema = new mongoose.Schema({
     objectVersion: { type: Number, default: 1 },
     commitmentType: {
         type: String,
-        enum: ["EXAM_VERSION", "QUESTION_BATCH", "SUBMISSION", "RESULT", "GRADE_REVISION", "CRITICAL_INTEGRITY_INCIDENT", "AUDIT_BATCH"],
+        enum: ["EXAM_VERSION", "QUESTION_BATCH", "SUBMISSION", "RESULT", "RESULT_AUTO_SUBMIT", "GRADE_REVISION", "CRITICAL_INTEGRITY_INCIDENT", "AUDIT_BATCH"],
         required: true,
     },
     canonicalHash: { type: String, required: true }, // The hash that will be committed
