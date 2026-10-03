@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Search, PlayCircle, CheckCircle2, Clock, Calendar, FileText, ShieldAlert, Lock, ChevronDown, ChevronRight } from 'lucide-react';
+import { Search, PlayCircle, CheckCircle2, Clock, Calendar, FileText, ShieldAlert, Lock, ChevronDown, ChevronRight, Timer } from 'lucide-react';
 
 const StudentExamsPage = () => {
     const [exams, setExams] = useState([]);
@@ -11,6 +11,14 @@ const StudentExamsPage = () => {
     const [activeTab, setActiveTab] = useState('Available');
     const [expandedExams, setExpandedExams] = useState({});
     const navigate = useNavigate();
+    
+    // Live timer
+    const [now, setNow] = useState(new Date());
+
+    useEffect(() => {
+        const interval = setInterval(() => setNow(new Date()), 1000);
+        return () => clearInterval(interval);
+    }, []);
 
     useEffect(() => {
         const token = localStorage.getItem('studentToken');
@@ -38,7 +46,6 @@ const StudentExamsPage = () => {
         setExpandedExams(prev => ({ ...prev, [id]: !prev[id] }));
     };
 
-    // ─── Classify results by status ────────────────────────────────────────────
     const completedExamIds = new Set(
         results.filter(r => !r.isTerminated).map(r => String(r.exam?._id || r.exam))
     );
@@ -46,17 +53,35 @@ const StudentExamsPage = () => {
         results.filter(r => r.isTerminated && !r.resetByAdmin).map(r => String(r.exam?._id || r.exam))
     );
 
-    const getExamStatus = (examId) => {
-        const id = String(examId);
+    const getExamStatus = (exam) => {
+        const id = String(exam._id);
         if (terminatedExamIds.has(id)) return 'blocked';
         if (completedExamIds.has(id)) return 'completed';
+
+        if (exam.status === "Scheduled") {
+            const startTime = new Date(exam.scheduledAt);
+            const endTime = new Date(exam.endsAt);
+            const timeDiff = startTime.getTime() - now.getTime();
+            
+            if (now.getTime() > endTime.getTime()) {
+                return 'closed'; // Past the end time
+            } else if (now.getTime() >= startTime.getTime()) {
+                return 'available'; // Currently running
+            } else if (timeDiff <= 30 * 60 * 1000) {
+                return 'upcoming'; // Within 30 mins
+            } else {
+                return 'hidden'; // Too far in future
+            }
+        }
+        if (exam.status === 'Completed') return 'closed';
         return 'available';
     };
 
     const getFilteredExams = () => {
         let filtered = exams.filter(e => {
-            const status = getExamStatus(e._id);
-            if (activeTab === 'Available') return status === 'available';
+            const status = getExamStatus(e);
+            if (status === 'hidden') return false;
+            if (activeTab === 'Available') return status === 'available' || status === 'upcoming';
             if (activeTab === 'Completed') return status === 'completed';
             if (activeTab === 'Blocked') return status === 'blocked';
             return true;
@@ -76,9 +101,9 @@ const StudentExamsPage = () => {
     const filteredExams = getFilteredExams();
 
     const tabCounts = {
-        Available: exams.filter(e => getExamStatus(e._id) === 'available').length,
-        Completed: exams.filter(e => getExamStatus(e._id) === 'completed').length,
-        Blocked: exams.filter(e => getExamStatus(e._id) === 'blocked').length,
+        Available: exams.filter(e => { const s = getExamStatus(e); return s === 'available' || s === 'upcoming'; }).length,
+        Completed: exams.filter(e => getExamStatus(e) === 'completed').length,
+        Blocked: exams.filter(e => getExamStatus(e) === 'blocked').length,
     };
 
     if (loading) {
@@ -92,7 +117,6 @@ const StudentExamsPage = () => {
         );
     }
 
-    // Grouping
     const groupedExams = {};
     const standaloneExams = [];
 
@@ -113,11 +137,26 @@ const StudentExamsPage = () => {
 
     const groups = Object.values(groupedExams).sort((a, b) => new Date(b.examination.createdAt || 0) - new Date(a.examination.createdAt || 0));
 
+    const formatTimeLeft = (ms) => {
+        if (ms <= 0) return "0s";
+        const m = Math.floor(ms / 60000);
+        const s = Math.floor((ms % 60000) / 1000);
+        return `${m}m ${s}s`;
+    };
+
     const renderExamCard = (exam, isChild = false) => {
-        const status = getExamStatus(exam._id);
+        const status = getExamStatus(exam);
         const isBlocked = status === 'blocked';
         const isCompleted = status === 'completed';
-        const isClosed = !isCompleted && !isBlocked && exam.status === 'Completed';
+        const isClosed = status === 'closed';
+        const isUpcoming = status === 'upcoming';
+        const isAvailable = status === 'available';
+
+        let borderColor = 'var(--brand-primary)';
+        if (isBlocked) borderColor = 'var(--danger)';
+        if (isCompleted) borderColor = 'var(--success)';
+        if (isClosed) borderColor = 'var(--text-tertiary)';
+        if (isUpcoming) borderColor = 'var(--warning)';
 
         return (
             <div
@@ -132,11 +171,7 @@ const StudentExamsPage = () => {
                     border: isChild ? 'none' : '1px solid var(--border-default)',
                     borderBottom: isChild ? '1px solid var(--border-subtle)' : undefined,
                     transition: 'transform 0.2s ease, border-color 0.2s ease',
-                    borderLeft: isBlocked
-                        ? '4px solid var(--danger)'
-                        : isCompleted
-                            ? '4px solid var(--success)'
-                            : '4px solid var(--brand-primary)',
+                    borderLeft: `4px solid ${borderColor}`,
                     opacity: isBlocked ? 0.85 : 1,
                     marginBottom: isChild ? 0 : 16
                 }}
@@ -159,6 +194,8 @@ const StudentExamsPage = () => {
                             <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', background: 'var(--bg-body)', padding: '2px 8px', borderRadius: 12, display: 'inline-flex', alignItems: 'center', gap: 4, border: '1px solid var(--border-default)' }}>
                                 <Lock size={11} /> Closed
                             </span>
+                        ) : isUpcoming ? (
+                            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--warning)', background: 'var(--warning-subtle)', padding: '2px 8px', borderRadius: 12, border: '1px solid var(--warning-border)' }}>Upcoming</span>
                         ) : (
                             <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--brand-primary)', background: 'var(--bg-body)', padding: '2px 8px', borderRadius: 12, border: '1px solid var(--border-default)' }}>Available</span>
                         )}
@@ -173,10 +210,33 @@ const StudentExamsPage = () => {
                         </div>
                     )}
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 24, fontSize: 13, color: 'var(--text-tertiary)' }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Clock size={14} /> {exam.durationMinutes} mins</span>
+                    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 24, fontSize: 13, color: 'var(--text-tertiary)' }}>
                         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><FileText size={14} /> {exam.questions?.length || 0} Questions</span>
-                        {!isChild && <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Calendar size={14} /> Created: {new Date(exam.createdAt).toLocaleDateString()}</span>}
+                        
+                        {exam.status === "Scheduled" && exam.scheduledAt && exam.endsAt ? (
+                            <>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-primary)', fontWeight: 500 }}>
+                                    <Calendar size={14} /> {new Date(exam.scheduledAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - {new Date(exam.endsAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                </span>
+                                {isUpcoming && (
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--warning)', fontWeight: 600 }}>
+                                        <Timer size={14} /> Starts in {formatTimeLeft(new Date(exam.scheduledAt).getTime() - now.getTime())}
+                                    </span>
+                                )}
+                                {isAvailable && (
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--danger)', fontWeight: 600 }}>
+                                        <Timer size={14} /> Ends in {formatTimeLeft(new Date(exam.endsAt).getTime() - now.getTime())}
+                                    </span>
+                                )}
+                                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <Clock size={14} /> {exam.durationMinutes} mins total
+                                </span>
+                            </>
+                        ) : (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <Clock size={14} /> {exam.durationMinutes} mins
+                            </span>
+                        )}
                     </div>
                 </div>
 
@@ -225,6 +285,24 @@ const StudentExamsPage = () => {
                             style={{ padding: '8px 16px', fontSize: 14 }}
                         >
                             View Result
+                        </button>
+                    ) : isUpcoming ? (
+                        <button
+                            disabled
+                            style={{
+                                padding: '8px 16px',
+                                fontSize: 14,
+                                background: 'var(--warning-subtle)',
+                                color: 'var(--warning)',
+                                border: '1px solid var(--warning-border)',
+                                borderRadius: 8,
+                                cursor: 'not-allowed',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8
+                            }}
+                        >
+                            <Lock size={14} /> Starts Soon
                         </button>
                     ) : (
                         <button

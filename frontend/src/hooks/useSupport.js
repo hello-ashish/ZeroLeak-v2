@@ -115,3 +115,7 @@ export async function fetchSupportTicketHistory(ticketId) {
 export async function fetchSupportStats() {
     return apiFetch("/stats");
 }
+
+export async function fetchGlobalSupportHistory(page = 1) {
+    return apiFetch(`/global-history?page=${page}`);
+}

@@ -520,7 +520,10 @@ export async function listTickets({
     search, page = 1, limit = PAGE_SIZE, sort = "lastMessageAt",
 }) {
     const filter = {};
-    if (status) filter.status = status;
+    if (status) {
+        if (status.includes(",")) filter.status = { $in: status.split(",") };
+        else filter.status = status;
+    }
     if (priority) filter.supportPriority = priority;
     if (category) filter.category = category;
     if (assignedTo === "unassigned") filter.assignedTo = null;
@@ -629,4 +632,17 @@ export async function getTicketConversation(ticketId, requesterId, requesterIsSu
 
 export async function getTicketHistory(ticketId) {
     return SupportTicketHistory.find({ ticketId }).sort({ createdAt: 1 }).lean();
+}
+
+export async function getGlobalTicketHistory({ page = 1, limit = 50 }) {
+    const skip = (page - 1) * limit;
+    const [history, total] = await Promise.all([
+        SupportTicketHistory.find({})
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .lean(),
+        SupportTicketHistory.countDocuments({}),
+    ]);
+    return { history, total, page, pages: Math.ceil(total / limit) };
 }

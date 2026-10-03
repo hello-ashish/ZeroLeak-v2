@@ -5,6 +5,7 @@ import { CommandPalette } from '../../components/CommandPalette.jsx';
 import { HeaderThemeToggle } from '../../components/HeaderThemeToggle.jsx';
 import { SkeletonCard, Skeleton, SkeletonTable } from '../../components/SkeletonLoader.jsx';
 import { ZMailUnreadBadge } from '../../components/zmail/ZMailUnreadBadge.jsx';
+import { History } from 'lucide-react';
 import '../../components/support/support.css';
 
 const NAV = [
@@ -12,6 +13,7 @@ const NAV = [
         section: 'Overview',
         items: [
             { label: 'Dashboard', icon: <LayoutDashboard size={18} />, path: '/support' },
+            { label: 'Audit Log', icon: <History size={18} />, path: '/support/history' },
         ]
     },
     {

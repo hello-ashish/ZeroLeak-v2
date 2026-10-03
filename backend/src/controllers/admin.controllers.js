@@ -620,10 +620,27 @@ export const updateExamStatus = async (req, res) => {
             
             if (!endsAt) {
                 endsAt = new Date(scheduledAt.getTime() + (examObj.durationMinutes || 60) * 60 * 1000);
+            } else {
+                endsAt = new Date(endsAt);
+            }
+        } else if (scheduledAt || endsAt) {
+            if (scheduledAt) scheduledAt = new Date(scheduledAt);
+            if (endsAt) endsAt = new Date(endsAt);
+        }
+
+        const updateData = { status };
+        if (scheduledAt) updateData.scheduledAt = scheduledAt;
+        if (endsAt) updateData.endsAt = endsAt;
+
+        // Automatically update durationMinutes if both scheduledAt and endsAt are provided
+        if (updateData.scheduledAt && updateData.endsAt) {
+            const diffMinutes = Math.round((updateData.endsAt.getTime() - updateData.scheduledAt.getTime()) / 60000);
+            if (diffMinutes > 0) {
+                updateData.durationMinutes = diffMinutes;
             }
         }
         
-        const exam = await Exam.findByIdAndUpdate(id, { status, scheduledAt, endsAt }, { new: true });
+        const exam = await Exam.findByIdAndUpdate(id, updateData, { new: true });
         await logAction({ actor: req.admin?.email, action: `EXAM_${status.toUpperCase()}`, targetType: "Exam", targetId: exam._id, targetLabel: exam.title });
         return res.status(200).json({ message: "Exam status updated", exam });
     } catch (error) {

@@ -12,7 +12,7 @@ export const AdminExamBuilderPage = () => {
     const [step, setStep] = useState(1)
     const [form, setForm] = useState({ title: '', description: '', mode: 'Normal' })
     const [subjects, setSubjects] = useState([])
-    const [allQuestions, setAllQuestions] = useState([])
+    const [availableSubjects, setAvailableSubjects] = useState([])
     const [currentSubj, setCurrentSubj] = useState({ subject: '', numQuestions: 10, durationMinutes: 60, passingPercentage: 50, easy: 30, medium: 50, hard: 20 })
     const [creating, setCreating] = useState(false)
     const [aiCopilotPrompt, setAiCopilotPrompt] = useState('')
@@ -60,7 +60,7 @@ export const AdminExamBuilderPage = () => {
 
     React.useEffect(() => {
         axios.get(`${API}/questions`, { headers: { Authorization: `Bearer ${getToken()}` } })
-            .then(res => setAllQuestions(res.data.questions || []))
+            .then(res => setAvailableSubjects(res.data.subjects || []))
             .catch(console.error)
     }, [])
 
@@ -225,7 +225,7 @@ export const AdminExamBuilderPage = () => {
                                             onChange={e => setCurrentSubj({ ...currentSubj, subject: e.target.value })}
                                         >
                                             <option value="">-- Select Subject --</option>
-                                            {[...new Set(allQuestions.map(q => q.subject))].filter(Boolean).map(subj => (
+                                            {availableSubjects.map(subj => (
                                                 <option key={subj} value={subj}>{subj}</option>
                                             ))}
                                         </select>

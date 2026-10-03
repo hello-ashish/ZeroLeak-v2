@@ -66,6 +66,7 @@ const ZMailPage = lazy(() => import('./pages/ZMailPage.jsx'))
 
 // Support
 const SupportPage = lazy(() => import('./pages/support/SupportPage.jsx'))
+const SupportGlobalHistory = lazy(() => import('./pages/support/SupportGlobalHistory.jsx'))
 const MySupportPage = lazy(() => import('./pages/support/MySupportPage.jsx'))
 const SupportLogin = lazy(() => import('./pages/support/SupportLogin.jsx'))
 
@@ -108,6 +109,7 @@ function App() {
             {/* ── Support Team Route ── */}
             <Route path="/support/login" element={<SupportLogin />} />
             <Route path="/support" element={<SupportPage />} />
+            <Route path="/support/history" element={<SupportGlobalHistory />} />
 
             {/* ── Professor Routes ── */}
             <Route path="/professor/login" element={<ProfessorLogin />} />

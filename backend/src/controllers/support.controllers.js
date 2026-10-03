@@ -356,6 +356,20 @@ export const getTicketHistory = async (req, res) => {
 };
 
 /**
+ * GET /api/support/global-history
+ */
+export const getGlobalHistory = async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 50;
+        const result = await supportService.getGlobalTicketHistory({ page, limit });
+        return ok(res, result);
+    } catch (e) {
+        return err(res, e.message);
+    }
+};
+
+/**
  * GET /api/support/stats
  */
 export const getStats = async (req, res) => {

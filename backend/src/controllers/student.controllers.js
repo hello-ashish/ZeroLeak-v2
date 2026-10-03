@@ -216,8 +216,8 @@ export const pingSession = async (req, res) => {
 // 3. Get all available Exams for Students to see!
 export const getAvailableExams = async (req, res) => {
     try {
-        // We fetch ALL exams that are Live or Completed, and use .populate to inject the Admin's email into the "createdBy" field
-        const exams = await Exam.find({ status: { $in: ["Live", "Completed"] } })
+        // We fetch ALL exams that are Live, Scheduled, or Completed, and use .populate to inject the Admin's email into the "createdBy" field
+        const exams = await Exam.find({ status: { $in: ["Live", "Scheduled", "Completed"] } })
             .populate("createdBy", "email")
             .populate("examinationId", "title description isResultReleased")
             .sort({ createdAt: -1 });
