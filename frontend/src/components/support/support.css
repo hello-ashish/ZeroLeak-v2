@@ -342,9 +342,8 @@
 /* ─── My Tickets (User view) ─────────────────────────────────── */
 
 .support-my-tickets {
-    padding: 24px;
-    max-width: 800px;
-    margin: 0 auto;
+    padding: 24px 48px;
+    max-width: 100%;
 }
 
 .support-my-tickets-header {
@@ -782,9 +781,8 @@
 
 .support-conversation-view,
 .support-detail-view {
-    padding: 24px;
-    max-width: 800px;
-    margin: 0 auto;
+    padding: 24px 48px;
+    max-width: 100%;
 }
 
 .support-conversation-panel {

@@ -2,11 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { fetchMessage, patchMessageWithBody, patchMessage } from '../../hooks/useZMail.jsx';
 import { MessageBubble } from './MessageBubble.jsx';
 import { ContactContextPanel } from './ContactContextPanel.jsx';
-import { ArrowLeft, Star, Archive, Trash2 } from 'lucide-react';
+import { ArrowLeft, Star, Archive, Trash2, PanelRight } from 'lucide-react';
 import { useToast } from '../Toast.jsx';
 
 export function ConversationView({ entry, onBack, onRefresh }) {
     const [message, setMessage] = useState(null);
+    const [showPanel, setShowPanel] = useState(false);
     const toast = useToast();
 
     useEffect(() => {
@@ -50,6 +51,9 @@ export function ConversationView({ entry, onBack, onRefresh }) {
                         <button className="zm-action-btn" onClick={() => doAction('star', { starred: !entry.isStarred })}><Star size={16} /></button>
                         <button className="zm-action-btn" onClick={() => doAction('archive')}><Archive size={16} /></button>
                         <button className="zm-action-btn" onClick={() => doAction('trash')}><Trash2 size={16} /></button>
+                        <button className={`zm-action-btn ${showPanel ? 'active' : ''}`} onClick={() => setShowPanel(!showPanel)} title="Toggle Contact Info">
+                            <PanelRight size={16} />
+                        </button>
                     </div>
                 </div>
                 
@@ -59,7 +63,7 @@ export function ConversationView({ entry, onBack, onRefresh }) {
                 </div>
             </div>
             
-            <ContactContextPanel message={message} />
+            {showPanel && <ContactContextPanel message={message} />}
         </div>
     );
 }

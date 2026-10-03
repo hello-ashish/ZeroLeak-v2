@@ -1,5 +1,5 @@
-import { generateBatchDetails, generateQuestionDetails, repairImportedQuestion, batchRepairImportedQuestions } from "../services/ai/ai.service.js"
-import { getConfidenceLabel } from "../services/ai/ai.policy.js"
+import { generateBatchDetails, generateQuestionDetails, repairImportedQuestion, batchRepairImportedQuestions } from "../Services/ai/ai.service.js"
+import { getConfidenceLabel } from "../Services/ai/ai.policy.js"
 
 export const generateBatch = async (req, res) => {
     try {
@@ -199,7 +199,7 @@ export const reviewBatchAdmin = async (req, res) => {
             return res.status(400).json({ message: "batchData is required" })
         }
 
-        const { adminReviewBatch } = await import('../services/ai/ai.service.js')
+        const { adminReviewBatch } = await import('../Services/ai/ai.service.js')
         const result = await adminReviewBatch(batchData, req.admin._id)
 
         if (!result.success) {
@@ -221,7 +221,7 @@ export const auditSummaryAdmin = async (req, res) => {
             return res.status(400).json({ message: "logs array is required" })
         }
 
-        const { adminAuditSummary } = await import('../services/ai/ai.service.js')
+        const { adminAuditSummary } = await import('../Services/ai/ai.service.js')
         const result = await adminAuditSummary(logs, req.admin._id)
 
         if (!result.success) {
@@ -245,7 +245,7 @@ export const cohortReportAdmin = async (req, res) => {
             return res.status(400).json({ message: "gradebookData is required" })
         }
 
-        const { adminCohortReport } = await import('../services/ai/ai.service.js')
+        const { adminCohortReport } = await import('../Services/ai/ai.service.js')
         const result = await adminCohortReport(gradebookData, req.admin._id)
 
         if (!result.success) {
@@ -269,7 +269,7 @@ export const examCopilotAdmin = async (req, res) => {
             return res.status(400).json({ message: "prompt is required" })
         }
 
-        const { adminExamCopilot } = await import('../services/ai/ai.service.js')
+        const { adminExamCopilot } = await import('../Services/ai/ai.service.js')
         const result = await adminExamCopilot(prompt, req.admin._id)
 
         if (!result.success) {
@@ -291,7 +291,7 @@ export const policyRewriteAdmin = async (req, res) => {
             return res.status(400).json({ message: "draft text is required" })
         }
 
-        const { adminPolicyRewrite } = await import('../services/ai/ai.service.js')
+        const { adminPolicyRewrite } = await import('../Services/ai/ai.service.js')
         const result = await adminPolicyRewrite(draft, req.admin._id)
 
         if (!result.success) {
@@ -355,7 +355,7 @@ export const getStudentPerformanceAnalysis = async (req, res) => {
             };
         });
 
-        const { generateStudentPerformanceAnalysis } = await import('../services/ai/ai.service.js');
+        const { generateStudentPerformanceAnalysis } = await import('../Services/ai/ai.service.js');
         const result = await generateStudentPerformanceAnalysis(studentData, examHistory, req.admin._id);
 
         if (!result.success) {
@@ -427,7 +427,7 @@ export const getStudentSelfPerformanceAnalysis = async (req, res) => {
             totalExamsCompleted: examHistory.length
         };
 
-        const { generateStudentSelfPerformanceAnalysis } = await import('../services/ai/ai.service.js');
+        const { generateStudentSelfPerformanceAnalysis } = await import('../Services/ai/ai.service.js');
         const result = await generateStudentSelfPerformanceAnalysis(studentData, examHistory, studentId);
 
         if (!result.success) {

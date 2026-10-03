@@ -42,6 +42,10 @@ const supportTicketSchema = new Schema({
     sourceRoute: { type: String, trim: true, maxlength: 500, default: "" },
     metadata: { type: Schema.Types.Mixed, default: {} },
 
+    aiSuggestedReply: { type: String, default: null },
+    aiConfidence: { type: Number, default: null },
+    aiRouted: { type: Boolean, default: false },
+
     lastMessageAt: { type: Date, default: null, index: true },
     lastCustomerMessageAt: { type: Date, default: null },
     lastSupportMessageAt: { type: Date, default: null },

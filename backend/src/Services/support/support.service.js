@@ -31,11 +31,15 @@ import { ZMailMailboxEntry } from "../../models/zmail/zmailMailboxEntry.models.j
  */
 async function upsertMailboxEntry(data) {
     const { userId, messageId, threadId, folder, isRead } = data;
-    return ZMailMailboxEntry.findOneAndUpdate(
+    const entry = await ZMailMailboxEntry.findOneAndUpdate(
         { userId, messageId },
         { $setOnInsert: { userId, messageId, threadId, folder, isRead } },
         { upsert: true, new: true }
     );
+    if (!isRead) {
+        await invalidateUserUnread(userId);
+    }
+    return entry;
 }
 import {
     SUPPORT_SYSTEM_ID,
@@ -45,6 +49,7 @@ import {
 } from "./supportIdentity.service.js";
 import { ensureZMailAccount } from "../zmail/zmailIdentity.service.js";
 import redisClient from "../../redis/index.js";
+import { analyzeSupportTicket } from "../ai/ai.service.js";
 
 const PAGE_SIZE = 20;
 
@@ -243,6 +248,104 @@ export async function createTicket(params) {
         reporterId, reporterRole, reporterName,
         { category, reportedPriority }
     );
+
+    // ── Automated Acknowledgment ZMail ──
+    const autoReplyBody = `Hello ${reporterName},
+
+Thank you for reaching out to ZeroLeak Support. 
+
+We have successfully received your request regarding "${title}" and have assigned it ticket number: ${ticketNumber}. 
+
+Our AI Support Agent is currently categorizing and prioritizing your issue. A human support agent will review it and get back to you as soon as possible.
+
+You can reply directly to this email to provide any additional details, screenshots, or context.
+
+Best regards,
+ZeroLeak Support Team
+`;
+
+    const autoReplyMessage = await ZMailMessage.create({
+        threadId: thread._id,
+        senderUserId: SUPPORT_SYSTEM_ID,
+        senderAddress: SUPPORT_EMAIL,
+        senderName: SUPPORT_DISPLAY_NAME,
+        to: [{ userId: reporterId, address: reporterAccount.zmailAddress, name: reporterName }],
+        cc: [],
+        bcc: [],
+        subject: `Re: ${subject}`,
+        body: autoReplyBody,
+        attachments: [],
+        isDraft: false,
+        sentAt: new Date(),
+    });
+
+    // Update thread to point to auto-reply as latest message
+    await ZMailThread.updateOne({ _id: thread._id }, {
+        latestMessageId: autoReplyMessage._id,
+        latestMessageAt: autoReplyMessage.sentAt,
+    });
+
+    // Add auto-reply to Reporter's inbox (so they get a notification)
+    await upsertMailboxEntry({
+        userId: reporterId,
+        messageId: autoReplyMessage._id,
+        threadId: thread._id,
+        folder: "inbox",
+        isRead: false,
+    });
+
+    // Add auto-reply to Support's sent box
+    await upsertMailboxEntry({
+        userId: SUPPORT_SYSTEM_ID,
+        messageId: autoReplyMessage._id,
+        threadId: thread._id,
+        folder: "sent",
+        isRead: true,
+    });
+
+    // Update ticket to reflect Support sent a message
+    await SupportTicket.updateOne(
+        { _id: ticket._id },
+        {
+            lastSupportMessageAt: new Date(),
+            lastMessageAt: new Date(),
+        }
+    );
+
+
+    // Fire AI Analysis in the background
+    analyzeSupportTicket(title, description, reporterRole).then(async (aiResult) => {
+        if (aiResult.success && aiResult.data) {
+            const { category: aiCategory, supportPriority: aiPriority, suggestedReply, confidence } = aiResult.data;
+            await SupportTicket.updateOne(
+                { _id: ticket._id },
+                {
+                    $set: {
+                        category: aiCategory || ticket.category,
+                        supportPriority: aiPriority || ticket.supportPriority,
+                        aiSuggestedReply: suggestedReply || null,
+                        aiConfidence: confidence || null,
+                        aiRouted: true
+                    }
+                }
+            );
+
+            // Log AI route history
+            await recordHistory(
+                ticket._id, ticketNumber, "ai_routed",
+                "SYSTEM", "SYSTEM", "AI Support Agent",
+                { aiCategory, aiPriority, confidence }
+            );
+
+            // Optional: Invalidate cache for support dashboard so the new priority/category appears instantly
+            if (redisClient?.isOpen) {
+                const keys = await redisClient.keys(`${SUPPORT_CACHE_PREFIX}*`);
+                if (keys.length > 0) await redisClient.del(keys);
+            }
+        }
+    }).catch(err => {
+        console.error("[Support AI] Failed to analyze ticket:", err.message);
+    });
 
     return { ticket, thread, message };
 }

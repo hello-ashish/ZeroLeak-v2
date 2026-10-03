@@ -17,8 +17,9 @@ export function ZMailShell({ isFullScreen }) {
     const [searchQuery, setSearchQuery] = useState('');
     const [searchMode, setSearchMode] = useState(false);
     const [loading, setLoading] = useState(false);
+    const searchTimeout = useRef(null);
     
-    const { unreadCount, connected, account } = useZMail();
+    const { unreadCount, connected, account, refreshCounts } = useZMail();
     const toast = useToast();
 
     useEffect(() => {
@@ -29,28 +30,40 @@ export function ZMailShell({ isFullScreen }) {
     }, [folder]);
 
     useEffect(() => {
-        if (folder === 'inbox') loadFolder('inbox');
+        if (folder === 'inbox') loadFolder('inbox', true);
     }, [unreadCount]);
 
-    const loadFolder = async (f) => {
-        setLoading(true);
+    const loadFolder = async (f, silent = false) => {
+        if (!silent) setLoading(true);
         try {
             const data = await fetchFolder(f, 1);
             setEntries(data.entries || []);
         } catch {
             toast.error('Failed to load messages.');
         }
-        setLoading(false);
+        if (!silent) setLoading(false);
     };
 
-    const handleSearch = async (q) => {
+    const handleSearch = (q) => {
         setSearchQuery(q);
-        if (!q.trim()) { setSearchMode(false); return; }
+        if (!q.trim()) { 
+            setSearchMode(false); 
+            if (searchTimeout.current) clearTimeout(searchTimeout.current);
+            loadFolder(folder, true);
+            return; 
+        }
         setSearchMode(true);
-        try {
-            const data = await searchMail(q);
-            setEntries(data.results || []);
-        } catch { toast.error('Search failed'); }
+        
+        if (searchTimeout.current) clearTimeout(searchTimeout.current);
+        searchTimeout.current = setTimeout(async () => {
+            try {
+                const data = await searchMail(q);
+                setEntries(data.results || []);
+            } catch (err) { 
+                console.error("Search error:", err);
+                toast.error('Search failed'); 
+            }
+        }, 400);
     };
 
     return (
@@ -73,7 +86,10 @@ export function ZMailShell({ isFullScreen }) {
                         <ConversationView 
                             entry={selectedEntry} 
                             onBack={() => setSelectedEntry(null)} 
-                            onRefresh={() => loadFolder(folder)}
+                            onRefresh={() => {
+                                loadFolder(folder, true);
+                                refreshCounts();
+                            }}
                         />
                     ) : (
                         <ZMailOverview account={account} unreadCount={unreadCount} entries={entries} onCompose={() => setShowCompose(true)} />

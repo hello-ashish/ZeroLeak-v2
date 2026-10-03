@@ -89,6 +89,30 @@ export const AuditorLayout = ({ children, openAnomaliesCount = 0 }) => {
         navigate('/')
     }
 
+    const handleSidebarDrag = (e) => {
+        e.preventDefault();
+        const startX = e.pageX;
+        const currentWidth = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sidebar-width')) || 220;
+
+        const onMouseMove = (moveEvent) => {
+            const newWidth = currentWidth + (moveEvent.pageX - startX);
+            const clamped = Math.min(Math.max(newWidth, 200), 450); // min 200px, max 450px
+            document.documentElement.style.setProperty('--sidebar-width', `${clamped}px`);
+        };
+
+        const onMouseUp = () => {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+            document.body.style.cursor = '';
+            document.documentElement.classList.remove('sidebar-is-dragging');
+        };
+
+        document.body.style.cursor = 'col-resize';
+        document.documentElement.classList.add('sidebar-is-dragging');
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+    };
+
     const initials = (auditorData.email || 'A')
         .split('@')[0]
         .slice(0, 2)
@@ -103,6 +127,7 @@ export const AuditorLayout = ({ children, openAnomaliesCount = 0 }) => {
                 className={`sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''}`}
                 aria-label="Main navigation"
             >
+                {!collapsed && <div className="sidebar-resizer" onMouseDown={handleSidebarDrag} />}
                 <div className="sidebar-brand">
                     <img src="/logo.png" alt="ZeroLeak Logo" style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'cover', flexShrink: 0, boxShadow: '0 4px 12px rgba(88, 101, 242, 0.3)' }} />
                     <div className="sidebar-brand-text">

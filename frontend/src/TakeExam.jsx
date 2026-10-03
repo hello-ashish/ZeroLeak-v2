@@ -383,9 +383,15 @@ const TakeExam = () => {
                 }
                 // --------------------------------------------
 
+                const currentAnswers = Object.entries(answers).map(([questionId, selectedOptionIndex]) => ({
+                    questionId,
+                    selectedOptionIndex
+                }));
+
                 await axios.post('/api/students/ping', {
                     currentExamId: id,
-                    warningCount: warningCountRef.current
+                    warningCount: warningCountRef.current,
+                    answers: currentAnswers
                 }, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
@@ -538,6 +544,23 @@ const TakeExam = () => {
             setShowPreSubmit(false);
         } catch (error) {
             console.error("Failed to submit exam result", error);
+
+            if (error.response?.data?.message === "Exam session not found or already completed.") {
+                try {
+                    const token = localStorage.getItem('studentToken');
+                    const resultsRes = await axios.get('/api/students/results', { headers: { Authorization: `Bearer ${token}` } });
+                    const existingResult = resultsRes.data.results?.find(r => (r.exam?._id === id || r.exam === id));
+                    if (existingResult && existingResult.status === "Completed") {
+                        setScore(existingResult.score !== null ? existingResult.score : 'Hidden');
+                        localStorage.removeItem(sessionKey);
+                        setShowPreSubmit(false);
+                        return; // Auto-submitted by backend successfully!
+                    }
+                } catch (fetchErr) {
+                    console.error("Failed to fetch completed score", fetchErr);
+                }
+            }
+
             try {
                 if (!error.response || error.code === 'ERR_NETWORK') {
                     localStorage.setItem(`zl_pending_submit_${id}`, JSON.stringify(payload));

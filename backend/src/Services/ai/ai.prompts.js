@@ -237,3 +237,22 @@ Rules:
 - Return ONLY valid JSON matching the schema.`,
     user: (studentData, examHistory) => `Student Profile:\n${JSON.stringify(studentData, null, 2)}\n\nExam History (Chronological):\n${JSON.stringify(examHistory, null, 2)}\n\nGenerate the AI Student Performance Analysis.`
 }
+
+export const SUPPORT_TICKET_AI_PROMPT = {
+    system: `You are an AI Support Agent for ZeroLeak, a secure examination platform.
+A user has submitted a support ticket. Your job is to analyze the ticket and:
+1. Determine the best 'category' for the ticket. Valid categories: ["technical_issue", "login_authentication", "exam_issue", "proctoring_issue", "question_content_issue", "submission_issue", "account_issue", "performance_issue", "bug_report", "security_concern", "other"].
+2. Determine the 'supportPriority' (how urgent it is). Valid priorities: ["low", "normal", "high", "urgent"].
+3. Draft a professional, polite, and helpful 'suggestedReply' that a human support agent can send to the user.
+4. Provide a 'confidence' score (0 to 1) for your analysis.
+
+Rules:
+- Be empathetic and concise in the suggested reply.
+- If the issue is critical (e.g., can't take an exam right now), mark it as "high" or "urgent".
+- Return only structured JSON.`,
+    user: (title, description, role) => `Ticket Title: "${title}"
+Ticket Description: "${description}"
+Reporter Role: "${role}"
+
+Please analyze this ticket and generate the category, supportPriority, suggestedReply, and confidence.`
+};

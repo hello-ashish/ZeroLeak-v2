@@ -6,9 +6,33 @@ export function ZMailRail({ folder, setFolder, onCompose }) {
     const { unreadCount, account } = useZMail();
     const isSupport = account?.userType === 'Support' || account?.isSupportMailbox;
 
+    const handleSidebarDrag = (e) => {
+        e.preventDefault();
+        const startX = e.pageX;
+        const currentWidth = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--zmail-sidebar-width')) || 240;
+
+        const onMouseMove = (moveEvent) => {
+            const newWidth = currentWidth + (moveEvent.pageX - startX);
+            const clamped = Math.min(Math.max(newWidth, 200), 500); // min 200px, max 500px
+            document.documentElement.style.setProperty('--zmail-sidebar-width', `${clamped}px`);
+        };
+
+        const onMouseUp = () => {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+            document.body.style.cursor = '';
+            document.documentElement.classList.remove('zmail-sidebar-is-dragging');
+        };
+
+        document.body.style.cursor = 'col-resize';
+        document.documentElement.classList.add('zmail-sidebar-is-dragging');
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+    };
+
     const navs = [
         { id: 'inbox', label: 'Inbox', icon: Inbox, count: unreadCount },
-        { id: 'sent', label: 'Messages', icon: Send },
+        { id: 'sent', label: 'Sent', icon: Send },
         { id: 'starred', label: 'Starred', icon: Star },
         { id: 'drafts', label: 'Drafts', icon: File },
         { id: 'archive', label: 'Archive', icon: Archive },
@@ -17,6 +41,7 @@ export function ZMailRail({ folder, setFolder, onCompose }) {
 
     return (
         <div className="zm-rail">
+            <div className="zm-rail-resizer" onMouseDown={handleSidebarDrag} />
             <div className="zm-rail-header">
                 <div className="zm-rail-brand">
                     <div className="icon">Z</div>

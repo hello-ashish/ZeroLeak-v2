@@ -6,7 +6,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
     Ticket, RefreshCw, Loader2, ChevronLeft, Send, MessageSquare,
     StickyNote, History, User, Clock, AlertCircle, CheckCircle,
-    XCircle, Search, Filter, BarChart2, UserCheck, Tag, ArrowRight,
+    XCircle, Search, Filter, BarChart2, UserCheck, Tag, ArrowRight, Sparkles, Brain
 } from 'lucide-react';
 import {
     fetchSupportTickets, fetchSupportTicket, changeSupportTicketStatus,
@@ -405,9 +405,33 @@ function TicketDetail({ ticketId, onBack }) {
 
                     {ticket.status !== 'CLOSED' && (
                         <form className="support-reply-form" onSubmit={handleReply}>
-                            <div className="support-reply-label">
-                                <Send size={13} /> Reply as <strong>ZeroLeak Support</strong>
+                            <div className="support-reply-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span><Send size={13} /> Reply as <strong>ZeroLeak Support</strong></span>
+                                {ticket.aiRouted && ticket.aiSuggestedReply && (
+                                    <span style={{ fontSize: 12, color: 'var(--brand-primary)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        <Brain size={13} /> AI auto-routed this ticket
+                                    </span>
+                                )}
                             </div>
+                            
+                            {ticket.aiSuggestedReply && !replyBody && (
+                                <div style={{ marginBottom: 12, padding: 12, background: 'var(--brand-primary-subtle)', borderRadius: 8, border: '1px solid var(--brand-primary)', position: 'relative' }}>
+                                    <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--brand-primary)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <Sparkles size={14} /> AI Suggested Draft (Confidence: {Math.round(ticket.aiConfidence * 100)}%)
+                                    </div>
+                                    <div style={{ fontSize: 13, color: 'var(--text-primary)', whiteSpace: 'pre-wrap', marginBottom: 12 }}>
+                                        {ticket.aiSuggestedReply}
+                                    </div>
+                                    <button 
+                                        type="button" 
+                                        onClick={() => setReplyBody(ticket.aiSuggestedReply)}
+                                        style={{ background: 'var(--brand-primary)', color: 'white', border: 'none', borderRadius: 4, padding: '4px 12px', fontSize: 12, cursor: 'pointer', fontWeight: 500 }}
+                                    >
+                                        Use Draft
+                                    </button>
+                                </div>
+                            )}
+
                             <textarea
                                 className="support-reply-textarea"
                                 placeholder="Type your reply to the user…"

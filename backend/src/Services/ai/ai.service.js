@@ -373,8 +373,26 @@ export async function adminReviewBatch(batchData, adminId) {
                 }
             }
         );
+        await logAiAction({
+            actorId: adminId,
+            actorRole: "Admin",
+            action: "AI_ADMIN_REVIEW_BATCH",
+            promptVersion: "1.0",
+            requestData: { batchData },
+            responseData: raw,
+            status: "SUCCESS"
+        });
         return { success: true, data: raw };
     } catch (error) {
+        await logAiAction({
+            actorId: adminId,
+            actorRole: "Admin",
+            action: "AI_ADMIN_REVIEW_BATCH",
+            promptVersion: "1.0",
+            requestData: { batchData },
+            responseData: { error: error.message },
+            status: "FAILURE"
+        });
         return { success: false, error: error.message };
     }
 }
@@ -399,8 +417,26 @@ export async function adminAuditSummary(logs, adminId) {
                 }
             }
         );
+        await logAiAction({
+            actorId: adminId,
+            actorRole: "Admin",
+            action: "AI_ADMIN_AUDIT_SUMMARY",
+            promptVersion: "1.0",
+            requestData: { logs },
+            responseData: raw,
+            status: "SUCCESS"
+        });
         return { success: true, data: raw };
     } catch (error) {
+        await logAiAction({
+            actorId: adminId,
+            actorRole: "Admin",
+            action: "AI_ADMIN_AUDIT_SUMMARY",
+            promptVersion: "1.0",
+            requestData: { logs },
+            responseData: { error: error.message },
+            status: "FAILURE"
+        });
         return { success: false, error: error.message };
     }
 }
@@ -426,8 +462,26 @@ export async function adminCohortReport(gradebookData, adminId) {
                 }
             }
         );
+        await logAiAction({
+            actorId: adminId,
+            actorRole: "Admin",
+            action: "AI_ADMIN_COHORT_REPORT",
+            promptVersion: "1.0",
+            requestData: { gradebookData },
+            responseData: raw,
+            status: "SUCCESS"
+        });
         return { success: true, data: raw };
     } catch (error) {
+        await logAiAction({
+            actorId: adminId,
+            actorRole: "Admin",
+            action: "AI_ADMIN_COHORT_REPORT",
+            promptVersion: "1.0",
+            requestData: { gradebookData },
+            responseData: { error: error.message },
+            status: "FAILURE"
+        });
         return { success: false, error: error.message };
     }
 }
@@ -467,8 +521,26 @@ export async function adminExamCopilot(prompt, adminId) {
                 }
             }
         );
+        await logAiAction({
+            actorId: adminId,
+            actorRole: "Admin",
+            action: "AI_ADMIN_EXAM_COPILOT",
+            promptVersion: "1.0",
+            requestData: { prompt },
+            responseData: raw,
+            status: "SUCCESS"
+        });
         return { success: true, data: raw };
     } catch (error) {
+        await logAiAction({
+            actorId: adminId,
+            actorRole: "Admin",
+            action: "AI_ADMIN_EXAM_COPILOT",
+            promptVersion: "1.0",
+            requestData: { prompt },
+            responseData: { error: error.message },
+            status: "FAILURE"
+        });
         return { success: false, error: error.message };
     }
 }
@@ -492,8 +564,26 @@ export async function adminPolicyRewrite(draft, adminId) {
                 }
             }
         );
+        await logAiAction({
+            actorId: adminId,
+            actorRole: "Admin",
+            action: "AI_ADMIN_POLICY_REWRITE",
+            promptVersion: "1.0",
+            requestData: { draft },
+            responseData: raw,
+            status: "SUCCESS"
+        });
         return { success: true, data: raw };
     } catch (error) {
+        await logAiAction({
+            actorId: adminId,
+            actorRole: "Admin",
+            action: "AI_ADMIN_POLICY_REWRITE",
+            promptVersion: "1.0",
+            requestData: { draft },
+            responseData: { error: error.message },
+            status: "FAILURE"
+        });
         return { success: false, error: error.message };
     }
 }
@@ -531,7 +621,8 @@ export async function generateStudentPerformanceAnalysis(studentData, examHistor
         }
         
         await logAiAction({
-            professorId: adminId,
+            actorId: adminId,
+            actorRole: "Admin",
             action: "AI_STUDENT_PERFORMANCE",
             promptVersion: "1.0",
             requestData: { studentId: studentData.studentId },
@@ -542,7 +633,8 @@ export async function generateStudentPerformanceAnalysis(studentData, examHistor
         return { success: true, data: validated.data };
     } catch (error) {
         await logAiAction({
-            professorId: adminId,
+            actorId: adminId,
+            actorRole: "Admin",
             action: "AI_STUDENT_PERFORMANCE",
             promptVersion: "1.0",
             requestData: { studentId: studentData.studentId },
@@ -608,6 +700,36 @@ export async function generateStudentSelfPerformanceAnalysis(studentData, examHi
             responseData: { error: error.message },
             status: "FAILURE",
         });
+        return { success: false, error: error.message };
+    }
+}
+
+export async function analyzeSupportTicket(title, description, role) {
+    try {
+        const { SUPPORT_TICKET_AI_PROMPT } = await import('./ai.prompts.js');
+        
+        const raw = await callLLM(
+            SUPPORT_TICKET_AI_PROMPT.system,
+            SUPPORT_TICKET_AI_PROMPT.user(title, description, role),
+            {
+                name: "support_ticket_analysis",
+                strict: true,
+                schema: {
+                    type: "object",
+                    properties: {
+                        category: { type: "string", enum: ["technical_issue", "login_authentication", "exam_issue", "proctoring_issue", "question_content_issue", "submission_issue", "account_issue", "performance_issue", "bug_report", "security_concern", "other"] },
+                        supportPriority: { type: "string", enum: ["low", "normal", "high", "urgent"] },
+                        suggestedReply: { type: "string" },
+                        confidence: { type: "number" }
+                    },
+                    required: ["category", "supportPriority", "suggestedReply", "confidence"],
+                    additionalProperties: false
+                }
+            }
+        );
+        
+        return { success: true, data: raw };
+    } catch (error) {
         return { success: false, error: error.message };
     }
 }

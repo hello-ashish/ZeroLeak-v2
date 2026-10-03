@@ -1,7 +1,7 @@
 import { Router } from "express"
 import { verifyProfessorJWT, verifyAdminJWT, verifyStudentJWT } from "../middlewares/auth.middleware.js"
 import { rateLimit } from "../middlewares/rateLimit.middleware.js"
-import { RATE_LIMITS } from "../services/ai/ai.policy.js"
+import { RATE_LIMITS } from "../Services/ai/ai.policy.js"
 import { generateBatch, generateQuestion, fixQuestionImport, reviewBatchAdmin, auditSummaryAdmin, cohortReportAdmin, examCopilotAdmin, policyRewriteAdmin } from "../controllers/ai.controllers.js"
 
 const router = Router()

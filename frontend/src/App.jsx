@@ -11,6 +11,7 @@ import './index.css'
 // Layouts are kept static to ensure the app shell loads instantly
 import { ProfessorLayout } from './pages/professor/ProfessorLayout.jsx'
 import { StudentLayout } from './pages/student/StudentLayout.jsx'
+import { AdminLayout } from './pages/admin/AdminLayout.jsx'
 
 // Auth & Public pages
 const Home = lazy(() => import('./Home'))
@@ -105,7 +106,7 @@ function App() {
             <Route path="/admin/proctoring" element={<AdminProctoringPage />} />
             <Route path="/admin/blockchain" element={<AdminBlockchainCenter />} />
             <Route path="/admin/settings" element={<AdminSettingsPage />} />
-            <Route path="/admin/support" element={<MySupportPage role="admin" />} />
+            <Route path="/admin/support" element={<AdminLayout><MySupportPage role="admin" /></AdminLayout>} />
             
             {/* ── Support Team Route ── */}
             <Route path="/support/login" element={<SupportLogin />} />

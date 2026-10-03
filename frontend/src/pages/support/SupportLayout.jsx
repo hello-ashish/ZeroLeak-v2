@@ -103,6 +103,7 @@ export const SupportLayout = ({ children, noPadding = false }) => {
                 className={`sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''}`}
                 aria-label="Main navigation"
             >
+                {!collapsed && <div className="sidebar-resizer" onMouseDown={handleSidebarResize} />}
                 <div className="sidebar-brand">
                     <img src="/logo.png" alt="ZeroLeak Logo" style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'cover', flexShrink: 0, boxShadow: '0 4px 12px rgba(88, 101, 242, 0.3)' }} />
                     <div className="sidebar-brand-text">

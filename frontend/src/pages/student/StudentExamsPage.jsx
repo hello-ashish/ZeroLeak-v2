@@ -11,7 +11,7 @@ const StudentExamsPage = () => {
     const [activeTab, setActiveTab] = useState('Available');
     const [expandedExams, setExpandedExams] = useState({});
     const navigate = useNavigate();
-    
+
     // Live timer
     const [now, setNow] = useState(new Date());
 
@@ -58,11 +58,13 @@ const StudentExamsPage = () => {
         if (terminatedExamIds.has(id)) return 'blocked';
         if (completedExamIds.has(id)) return 'completed';
 
-        if (exam.status === "Scheduled") {
+        if (exam.status === 'Completed') return 'closed';
+
+        if ((exam.status === "Scheduled" || exam.status === "Live") && exam.scheduledAt && exam.endsAt) {
             const startTime = new Date(exam.scheduledAt);
             const endTime = new Date(exam.endsAt);
             const timeDiff = startTime.getTime() - now.getTime();
-            
+
             if (now.getTime() > endTime.getTime()) {
                 return 'closed'; // Past the end time
             } else if (now.getTime() >= startTime.getTime()) {
@@ -84,6 +86,7 @@ const StudentExamsPage = () => {
             if (activeTab === 'Available') return status === 'available' || status === 'upcoming';
             if (activeTab === 'Completed') return status === 'completed';
             if (activeTab === 'Blocked') return status === 'blocked';
+            if (activeTab === 'Missed') return status === 'closed';
             return true;
         });
 
@@ -104,6 +107,7 @@ const StudentExamsPage = () => {
         Available: exams.filter(e => { const s = getExamStatus(e); return s === 'available' || s === 'upcoming'; }).length,
         Completed: exams.filter(e => getExamStatus(e) === 'completed').length,
         Blocked: exams.filter(e => getExamStatus(e) === 'blocked').length,
+        Missed: exams.filter(e => getExamStatus(e) === 'closed').length,
     };
 
     if (loading) {
@@ -200,7 +204,7 @@ const StudentExamsPage = () => {
                             <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--brand-primary)', background: 'var(--bg-body)', padding: '2px 8px', borderRadius: 12, border: '1px solid var(--border-default)' }}>Available</span>
                         )}
                     </div>
-                    
+
                     {!isChild && <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: isBlocked ? 12 : 16, lineHeight: 1.5 }}>{exam.description}</p>}
 
                     {isBlocked && (
@@ -212,11 +216,11 @@ const StudentExamsPage = () => {
 
                     <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 24, fontSize: 13, color: 'var(--text-tertiary)' }}>
                         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><FileText size={14} /> {exam.questions?.length || 0} Questions</span>
-                        
-                        {exam.status === "Scheduled" && exam.scheduledAt && exam.endsAt ? (
+
+                        {(exam.status === "Scheduled" || exam.status === "Live") && exam.scheduledAt && exam.endsAt ? (
                             <>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-primary)', fontWeight: 500 }}>
-                                    <Calendar size={14} /> {new Date(exam.scheduledAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - {new Date(exam.endsAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                    <Calendar size={14} /> {new Date(exam.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(exam.endsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </span>
                                 {isUpcoming && (
                                     <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--warning)', fontWeight: 600 }}>
@@ -229,12 +233,12 @@ const StudentExamsPage = () => {
                                     </span>
                                 )}
                                 <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    <Clock size={14} /> {exam.durationMinutes} mins total
+                                    <Clock size={14} /> {exam.durationMinutes} mins
                                 </span>
                             </>
                         ) : (
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <Clock size={14} /> {exam.durationMinutes} mins
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary)' }}>
+                                <Timer size={14} /> {exam.durationMinutes} mins
                             </span>
                         )}
                     </div>
@@ -343,7 +347,7 @@ const StudentExamsPage = () => {
 
             {/* Tabs */}
             <div style={{ display: 'flex', gap: 24, borderBottom: '1px solid var(--border-default)', marginBottom: 32 }}>
-                {['Available', 'Completed', 'Blocked', 'All'].map(tab => (
+                {['Available', 'Completed', 'Missed', 'Blocked', 'All'].map(tab => (
                     <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
@@ -425,7 +429,7 @@ const StudentExamsPage = () => {
                             const isExpanded = expandedExams[group.examination._id];
                             return (
                                 <div key={group.examination._id} className="card" style={{ overflow: 'hidden', marginBottom: 16 }}>
-                                    <div 
+                                    <div
                                         onClick={() => toggleExpand(group.examination._id)}
                                         style={{
                                             padding: 24,
