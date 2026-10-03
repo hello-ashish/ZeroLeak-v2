@@ -64,7 +64,7 @@ export const loginStudent = async (req, res) => {
 
         const token = student.generateAccessToken();
         const loggedInStudent = student.toObject();
-        delete loggedInStudent.password;;
+        delete loggedInStudent.password;
         return res.status(200).json({ message: "Login successful", token, student: loggedInStudent });
     } catch (error) {
         return res.status(500).json({ message: "Error logging in", error: error.message });

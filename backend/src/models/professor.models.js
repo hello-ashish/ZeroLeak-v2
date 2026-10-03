@@ -67,6 +67,7 @@ professorSchema.methods.generateAccessToken = function () {
         {
             id: this._id,
             email: this.email,
+            role: "Professor",
             sessionVersion: this.sessionVersion,
         },
         process.env.ACCESS_TOKEN_SECRET,

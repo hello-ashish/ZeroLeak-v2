@@ -4,6 +4,17 @@ import questionRouter from "./routes/question.routes.js"
 import examRouter from "./routes/exam.routes.js"
 import examinationRouter from "./routes/examination.routes.js"
 import studentRouter from "./routes/student.routes.js"
+import adminRouter from "./routes/admin.routes.js"
+import professorRouter from "./routes/professor.routes.js"
+import auditorRouter from "./routes/auditor.routes.js"
+import cheatingRouter from "./routes/cheating.routes.js"
+import blockchainRouter from "./routes/blockchain.routes.js"
+import searchRouter from "./routes/search.routes.js"
+import proctoringRouter from "./routes/proctoring.routes.js"
+import aiRouter from "./routes/ai.routes.js"
+import zmailRouter from "./routes/zmail.routes.js"
+import feedbackRouter from "./routes/feedback.routes.js"
+import supportRouter from "./routes/support.routes.js"
 import { setupSwagger } from "./swagger.js"
 
 const app = express()
@@ -18,18 +29,6 @@ app.use(cors({
 app.use(express.json({ limit: "50mb" }))
 app.use(express.urlencoded({ extended: true, limit: "50mb" }))
 app.use(express.static("public"))
-
-import adminRouter from "./routes/admin.routes.js"
-import professorRouter from "./routes/professor.routes.js"
-import auditorRouter from "./routes/auditor.routes.js"
-import cheatingRouter from "./routes/cheating.routes.js"
-import blockchainRouter from "./routes/blockchain.routes.js"
-import searchRouter from "./routes/search.routes.js"
-import proctoringRouter from "./routes/proctoring.routes.js"
-import aiRouter from "./routes/ai.routes.js"
-import zmailRouter from "./routes/zmail.routes.js"
-import feedbackRouter from "./routes/feedback.routes.js"
-import supportRouter from "./routes/support.routes.js"
 
 // this says: any request starting with /api/admin goes to the adminRouter
 app.use("/api/admin", adminRouter)
@@ -77,4 +76,4 @@ app.use("/api/support", supportRouter);
 
 setupSwagger(app);
 
-export { app }
+export { app }

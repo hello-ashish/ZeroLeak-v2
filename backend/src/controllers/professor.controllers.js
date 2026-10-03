@@ -106,6 +106,9 @@ export const addQuestionToBatch = async (req, res) => {
         const questionData = req.body
 
         const batch = await Batch.findById(batchId)
+        if (!batch) {
+            return res.status(404).json({ message: "Batch not found." })
+        }
         if(batch.status !== 'Draft' && batch.status !== 'MarkForReview') {
             return res.status(400).json({ message: "Can only edit Draft or Review batches." })
         }
@@ -159,6 +162,9 @@ export const editQuestionInBatch = async (req, res) => {
         const questionData = req.body
 
         const batch = await Batch.findById(batchId)
+        if (!batch) {
+            return res.status(404).json({ message: "Batch not found." })
+        }
         if(batch.status !== 'Draft' && batch.status !== 'MarkForReview') {
             return res.status(400).json({ message: "Can only edit Draft or Review batches." })
         }
@@ -184,6 +190,9 @@ export const deleteQuestionFromBatch = async (req, res) => {
         const { batchId, questionId } = req.params
 
         const batch = await Batch.findById(batchId)
+        if (!batch) {
+            return res.status(404).json({ message: "Batch not found." })
+        }
         if(batch.status !== 'Draft' && batch.status !== 'MarkForReview') {
             return res.status(400).json({ message: "Can only edit Draft or Review batches." })
         }

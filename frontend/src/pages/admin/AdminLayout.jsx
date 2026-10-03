@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
-import { LayoutDashboard, ClipboardList, Database, BarChart3, GraduationCap, Users, PackageOpen, ScrollText, Blocks, Settings, Search, LogOut, ChevronDown, Command, Bell, Plus, RefreshCw, ShieldAlert, Map, Beaker, Activity, Megaphone, AlertCircle, Headset, Ticket } from 'lucide-react'
+import { LayoutDashboard, ClipboardList, Database, BarChart3, GraduationCap, Users, PackageOpen, ScrollText, Blocks, Settings, Search, LogOut, ChevronDown, Command, Bell, Plus, RefreshCw, ShieldAlert, Map, Beaker, Activity, Megaphone, AlertCircle, Headset, Ticket, Mail } from 'lucide-react'
 import { CommandPalette } from '../../components/CommandPalette.jsx'
 import { HeaderThemeToggle } from '../../components/HeaderThemeToggle.jsx'
 import { NotificationDropdown } from '../../components/NotificationDropdown.jsx'
@@ -83,7 +83,7 @@ export const AdminLayout = ({ children, pendingBatchCount = 0, noPadding = false
     const createRef = useRef(null)
     const navigate = useNavigate()
     const location = useLocation()
-    const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications('admin');
+    const { notifications, unreadCount, fetchNotifications, markAsRead, markAllAsRead } = useNotifications('admin');
     const pendingFeedbackCount = notifications.filter(n => !n.isRead && n.relatedLink === '/admin/feedback').length;
 
     const handleSidebarResize = (e) => {
