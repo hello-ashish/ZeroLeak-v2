@@ -1,5 +1,5 @@
 import { Router } from "express"
-import { loginProfessor } from "../controllers/professor.controllers.js"
+import { loginProfessor, logoutProfessor } from "../controllers/professor.controllers.js"
 import { createBatch, getMyBatches, addQuestionToBatch, bulkAddQuestionsToBatch, editQuestionInBatch, deleteQuestionFromBatch, submitBatch, updateProfessorProfile, changeProfessorPassword, deleteBatch } from "../controllers/professor.controllers.js"
 import { verifyProfessorJWT } from "../middlewares/auth.middleware.js"
 import notificationRouter from "./notification.routes.js"
@@ -10,6 +10,7 @@ router.use("/notifications", verifyProfessorJWT, notificationRouter)
 
 // route to login professor
 router.route("/login").post(loginProfessor)
+router.route("/logout").post(verifyProfessorJWT, logoutProfessor)
 
 router.route("/profile").put(verifyProfessorJWT, updateProfessorProfile)
 router.route("/change-password").put(verifyProfessorJWT, changeProfessorPassword)

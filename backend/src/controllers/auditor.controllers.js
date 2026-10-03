@@ -43,6 +43,12 @@ export const loginAuditor = async (req, res) => {
         const isPasswordCorrect = await auditor.isPasswordCorrect(password);
         if (!isPasswordCorrect) return res.status(401).json({ message: "Invalid credentials" });
 
+        if (auditor.isLoggedIn && req.body.forceLogout !== true) {
+            return res.status(409).json({ message: "You're logged in at some other place too. Wish to continue?", code: "ALREADY_LOGGED_IN" });
+        }
+
+        auditor.isLoggedIn = true;
+        auditor.lastActiveAt = new Date();
         auditor.sessionVersion = (auditor.sessionVersion || 0) + 1;
         await auditor.save({ validateBeforeSave: false });
 
@@ -62,6 +68,20 @@ export const loginAuditor = async (req, res) => {
         return res.status(200).json({ message: "Login successful", token, auditor: loggedIn });
     } catch (error) {
         return res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+export const logoutAuditor = async (req, res) => {
+    try {
+        const auditor = await Auditor.findById(req.auditor._id);
+        if (auditor) {
+            auditor.isLoggedIn = false;
+            auditor.sessionVersion = (auditor.sessionVersion || 0) + 1;
+            await auditor.save({ validateBeforeSave: false });
+        }
+        return res.status(200).json({ message: "Logout successful" });
+    } catch (error) {
+        return res.status(500).json({ message: "Error logging out", error: error.message });
     }
 };
 

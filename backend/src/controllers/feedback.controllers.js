@@ -1,5 +1,6 @@
 import { Feedback } from "../models/feedback.models.js";
 import { logAction } from "../controllers/admin.controllers.js";
+import { notifyAdmins, createNotification } from "../controllers/notification.controllers.js";
 
 // Create feedback
 export const submitFeedback = async (req, res) => {
@@ -20,6 +21,13 @@ export const submitFeedback = async (req, res) => {
             description,
             priority,
             context
+        });
+
+        await notifyAdmins({
+            title: "New Issue Reported",
+            message: `A new ${priority} priority issue was reported: ${subject}`,
+            type: priority === "Critical" || priority === "High" ? "WARNING" : "INFO",
+            relatedLink: "/admin/feedback"
         });
 
         return res.status(201).json({ message: "Feedback submitted successfully", feedback });
@@ -70,6 +78,16 @@ export const updateFeedback = async (req, res) => {
         // Log action if auditing is set up
         if (req.admin) {
             await logAction({ actor: req.admin.email, action: "FEEDBACK_UPDATED", targetType: "Feedback", targetId: feedback._id });
+        }
+
+        if (status === 'RESOLVED') {
+            await createNotification({
+                userId: feedback.user,
+                userRole: feedback.role,
+                title: "Issue Resolved",
+                message: `Your reported issue "${feedback.subject}" has been resolved. Note: ${adminResponse || 'No additional note.'}`,
+                type: "SUCCESS",
+            });
         }
 
         return res.status(200).json({ message: "Feedback updated successfully", feedback });

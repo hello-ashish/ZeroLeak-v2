@@ -20,6 +20,11 @@ const adminSchema = new Schema(
             type: String,
             required: [true, "Password is required"],
         },
+        lastActiveAt: {
+            type: Date,
+            default: null
+        },
+        isLoggedIn: { type: Boolean, default: false },
         sessionVersion: {
             type: Number,
             default: 0

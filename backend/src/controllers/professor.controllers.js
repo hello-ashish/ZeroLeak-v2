@@ -36,6 +36,11 @@ export const loginProfessor = async (req, res) => {
             return res.status(401).json({ message: "Invalid Password" })
         }
 
+        if (professor.isLoggedIn && req.body.forceLogout !== true) {
+            return res.status(409).json({ message: "You're logged in at some other place too. Wish to continue?", code: "ALREADY_LOGGED_IN" });
+        }
+
+        professor.isLoggedIn = true;
         professor.sessionVersion = (professor.sessionVersion || 0) + 1;
         professor.lastActiveAt = new Date();
         await professor.save({ validateBeforeSave: false });
@@ -59,6 +64,20 @@ export const loginProfessor = async (req, res) => {
         return res.status(500).json({
             message: "Internal server error while logging in professor"
         })
+    }
+}
+
+export const logoutProfessor = async (req, res) => {
+    try {
+        const professor = await Professor.findById(req.professor._id);
+        if (professor) {
+            professor.isLoggedIn = false;
+            professor.sessionVersion = (professor.sessionVersion || 0) + 1;
+            await professor.save({ validateBeforeSave: false });
+        }
+        return res.status(200).json({ message: "Logout successful" });
+    } catch (error) {
+        return res.status(500).json({ message: "Error logging out", error: error.message });
     }
 }
 

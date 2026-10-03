@@ -12,6 +12,8 @@ export default function AdminFeedbackPage() {
     const [selectedFeedback, setSelectedFeedback] = useState(null);
     const [replyText, setReplyText] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
+    const [filterPriority, setFilterPriority] = useState('All');
+    const [filterRole, setFilterRole] = useState('All');
     const [isUpdating, setIsUpdating] = useState(false);
 
     const fetchFeedbacks = async () => {
@@ -63,8 +65,10 @@ export default function AdminFeedbackPage() {
     };
 
     const filteredFeedbacks = feedbacks.filter(f => 
-        f.subject?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        f.description?.toLowerCase().includes(searchTerm.toLowerCase())
+        (f.subject?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        f.description?.toLowerCase().includes(searchTerm.toLowerCase())) &&
+        (filterPriority === 'All' || f.priority === filterPriority) &&
+        (filterRole === 'All' || f.role === filterRole)
     );
 
     return (
@@ -90,6 +94,28 @@ export default function AdminFeedbackPage() {
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
+                    <select 
+                        className="form-select" 
+                        value={filterPriority} 
+                        onChange={e => setFilterPriority(e.target.value)}
+                        style={{ padding: '8px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)', outline: 'none' }}
+                    >
+                        <option value="All">All Priorities</option>
+                        <option value="Low">Low</option>
+                        <option value="Medium">Medium</option>
+                        <option value="High">High</option>
+                        <option value="Critical">Critical</option>
+                    </select>
+                    <select 
+                        className="form-select" 
+                        value={filterRole} 
+                        onChange={e => setFilterRole(e.target.value)}
+                        style={{ padding: '8px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)', outline: 'none' }}
+                    >
+                        <option value="All">All Roles</option>
+                        <option value="Student">Student</option>
+                        <option value="Professor">Professor</option>
+                    </select>
                 </div>
 
                 <div className="data-table-wrapper">
@@ -181,7 +207,11 @@ export default function AdminFeedbackPage() {
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                             <div>
                                 <div className="form-label" style={{ marginBottom: 4 }}>Reported By</div>
-                                <div>{selectedFeedback.user?.name || 'Unknown User'} ({selectedFeedback.role})</div>
+                                <div>
+                                    <span style={{ fontWeight: 500 }}>{selectedFeedback.user?.name || 'Unknown User'}</span>
+                                    {selectedFeedback.user?.email && <span style={{ color: 'var(--text-secondary)', marginLeft: 8 }}>({selectedFeedback.user.email})</span>}
+                                </div>
+                                <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 4 }}>Role: {selectedFeedback.role}</div>
                             </div>
                             <div>
                                 <div className="form-label" style={{ marginBottom: 4 }}>Status & Priority</div>

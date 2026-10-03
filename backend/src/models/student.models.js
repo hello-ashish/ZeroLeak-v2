@@ -20,6 +20,7 @@ const studentSchema = new Schema(
         blockedReason: { type: String, default: null },
         unblockedAt: { type: Date, default: null },
         lastActiveAt: { type: Date, default: null },
+        isLoggedIn: { type: Boolean, default: false },
         currentExamId: { type: Schema.Types.ObjectId, ref: 'Exam', default: null },
         sessionVersion: { type: Number, default: 0 }
     },

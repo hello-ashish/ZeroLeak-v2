@@ -25,6 +25,11 @@ const auditorSchema = new Schema(
             required: true,
             default: "Platform Auditor"
         },
+        lastActiveAt: {
+            type: Date,
+            default: null
+        },
+        isLoggedIn: { type: Boolean, default: false },
         sessionVersion: {
             type: Number,
             default: 0

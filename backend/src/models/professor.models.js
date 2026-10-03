@@ -37,6 +37,7 @@ const professorSchema = new Schema(
             type: Date,
             default: null
         },
+        isLoggedIn: { type: Boolean, default: false },
         isBlocked: { 
             type: Boolean, 
             default: false 

@@ -6,7 +6,7 @@ import { StatusBadge } from '../../components/StatusBadge.jsx'
 import { ConfirmDialog } from '../../components/Modal.jsx'
 import { SkeletonCard, EmptyState } from '../../components/SkeletonLoader.jsx'
 import { useToast } from '../../components/Toast.jsx'
-import { Search, ClipboardList, Play, Square, Trash2, Plus, ChevronDown, ChevronRight, Check } from 'lucide-react'
+import { Search, ClipboardList, Play, Square, Trash2, Plus, ChevronDown, ChevronRight, Check, Calendar } from 'lucide-react'
 
 const API = '/api'
 const getToken = () => localStorage.getItem('adminToken')
@@ -21,6 +21,8 @@ export default function AdminExamsPage() {
     const [expandedExams, setExpandedExams] = useState({})
     const [deleteTarget, setDeleteTarget] = useState(null)
     const [deleting, setDeleting] = useState(false)
+    const [scheduleSubject, setScheduleSubject] = useState(null)
+    const [scheduleData, setScheduleData] = useState({ scheduledAt: '', endsAt: '' })
     const toast = useToast()
     const navigate = useNavigate()
 
@@ -114,6 +116,26 @@ export default function AdminExamsPage() {
             toast.success(`Subject status updated`)
         } catch {
             toast.error('Failed to update subject status')
+        }
+    }
+
+    const handleScheduleSubmit = async () => {
+        if (!scheduleData.scheduledAt) return toast.error('Start time is required');
+        
+        try {
+            await axios.patch(`${API}/admin/exams/${scheduleSubject._id}/status`, {
+                status: 'Scheduled',
+                scheduledAt: new Date(scheduleData.scheduledAt).toISOString(),
+                endsAt: scheduleData.endsAt ? new Date(scheduleData.endsAt).toISOString() : null
+            }, {
+                headers: { Authorization: `Bearer ${getToken()}` }
+            })
+            toast.success('Subject scheduled successfully')
+            setScheduleSubject(null)
+            setScheduleData({ scheduledAt: '', endsAt: '' })
+            fetchData()
+        } catch (err) {
+            toast.error('Failed to schedule subject')
         }
     }
 
@@ -234,9 +256,14 @@ export default function AdminExamsPage() {
                                                                     <StatusBadge status={subj.status || 'Draft'} />
                                                                     <div style={{ display: 'flex', gap: 8 }}>
                                                                         {(subj.status === 'Draft' || !subj.status) && (
-                                                                            <button className="btn btn-sm btn-success" onClick={() => handleSubjectStatus(subj._id, 'Live')} title="Start Exam">
-                                                                                <Play size={14} /> Start
-                                                                            </button>
+                                                                            <>
+                                                                                <button className="btn btn-sm btn-primary" onClick={() => setScheduleSubject(subj)} title="Schedule Exam">
+                                                                                    <Calendar size={14} /> Schedule
+                                                                                </button>
+                                                                                <button className="btn btn-sm btn-success" onClick={() => handleSubjectStatus(subj._id, 'Live')} title="Start Exam">
+                                                                                    <Play size={14} /> Start
+                                                                                </button>
+                                                                            </>
                                                                         )}
                                                                         {subj.status === 'Live' && (
                                                                             <button className="btn btn-sm btn-secondary" onClick={() => handleSubjectStatus(subj._id, 'Completed')} title="Complete">
@@ -268,6 +295,44 @@ export default function AdminExamsPage() {
                 onCancel={() => setDeleteTarget(null)}
                 danger
             />
+
+            {/* Schedule Subject Modal */}
+            {scheduleSubject && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                    <div className="card" style={{ width: 400, padding: 24 }}>
+                        <h3 style={{ fontSize: 18, marginBottom: 16 }}>Schedule Exam: {scheduleSubject.subject}</h3>
+                        
+                        <div className="form-group mb-4">
+                            <label className="form-label">Start Time *</label>
+                            <input 
+                                type="datetime-local" 
+                                className="form-input" 
+                                value={scheduleData.scheduledAt} 
+                                onChange={e => setScheduleData({ ...scheduleData, scheduledAt: e.target.value })} 
+                            />
+                        </div>
+                        <div className="form-group mb-4">
+                            <label className="form-label">End Time (Optional)</label>
+                            <input 
+                                type="datetime-local" 
+                                className="form-input" 
+                                value={scheduleData.endsAt} 
+                                onChange={e => setScheduleData({ ...scheduleData, endsAt: e.target.value })} 
+                            />
+                            <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>
+                                If left blank, ends automatically after duration ({scheduleSubject.durationMinutes} mins).
+                            </p>
+                        </div>
+                        <div style={{ display: 'flex', gap: 12, marginTop: 24, justifyContent: 'flex-end' }}>
+                            <button className="btn btn-ghost" onClick={() => { setScheduleSubject(null); setScheduleData({ scheduledAt: '', endsAt: '' }); }}>Cancel</button>
+                            <button className="btn btn-primary" onClick={handleScheduleSubmit}>Schedule</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </AdminLayout>
     )
 }

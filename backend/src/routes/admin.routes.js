@@ -5,6 +5,7 @@ import {
     deleteProfessor,
     registerAdmin,
     loginAdmin,
+    logoutAdmin,
     updateAdminProfile,
     getBatches,
     openBatchDetails,
@@ -64,6 +65,7 @@ router.use("/notifications", verifyAdminJWT, notificationRouter)
 router.route("/register").post(registerAdmin)
 
 router.route("/login").post(loginAdmin)
+router.route("/logout").post(verifyAdminJWT, logoutAdmin)
 
 // ─── Protected Routes ─────────────────────────────────────────────────────────
 

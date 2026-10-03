@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import axios from 'axios'
 import { useNavigate, Link } from 'react-router-dom'
-import { Mail, Lock, Eye, EyeOff, ShieldCheck, Loader2 } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, ShieldCheck, Loader2, AlertTriangle } from 'lucide-react'
 import AuthShell from '../../components/auth/AuthShell';
 
 const API = '/api'
@@ -13,18 +13,23 @@ export default function AuditorLogin() {
     const [showPassword, setShowPassword] = useState(false)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
+    const [showForceLogin, setShowForceLogin] = useState(false)
 
-    const handleLogin = async (e) => {
-        e.preventDefault()
+    const handleLogin = async (e, forceLogout = false) => {
+        if (e) e.preventDefault()
         setError('')
         setLoading(true)
         try {
-            const response = await axios.post(`${API}/auditor/login`, { email, password })
+            const response = await axios.post(`${API}/auditor/login`, { email, password, forceLogout })
             const { token, auditor } = response.data
             localStorage.setItem('auditorToken', token)
             localStorage.setItem('auditorData', JSON.stringify(auditor))
             navigate('/auditor/dashboard')
         } catch (err) {
+            if (err.response?.status === 409 && err.response?.data?.code === "ALREADY_LOGGED_IN") {
+                setShowForceLogin(true);
+                return;
+            }
             if (err.response) {
                 setError(err.response.data.message)
             } else {
@@ -41,9 +46,53 @@ export default function AuditorLogin() {
           subtitle="Review activity, exam integrity, and platform evidence."
           badge="AUTHORIZED ACCESS"
         >
-          <form className="auth-form" onSubmit={handleLogin}>
+          <form className="auth-form" onSubmit={(e) => handleLogin(e, false)}>
             {error && <div className="auth-error" role="alert">{error}</div>}
             
+            {showForceLogin && (
+                <div style={{
+                    backgroundColor: 'rgba(234, 179, 8, 0.08)', 
+                    border: '1px solid rgba(234, 179, 8, 0.3)', 
+                    padding: '20px', 
+                    borderRadius: '12px', 
+                    marginBottom: '24px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '16px',
+                    animation: 'fadeIn 0.3s ease-out'
+                }}>
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                        <AlertTriangle size={20} style={{ color: 'var(--warning)', marginTop: '2px', flexShrink: 0 }} />
+                        <div>
+                            <h4 style={{ color: 'var(--warning)', fontSize: '15px', fontWeight: '600', marginBottom: '6px' }}>Active Session Detected</h4>
+                            <p style={{ color: 'var(--text-secondary)', fontSize: '14px', lineHeight: '1.5' }}>
+                                You are currently logged in on another device. Logging in here will terminate your other session. Do you want to proceed?
+                            </p>
+                        </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '12px', marginTop: '4px' }}>
+                        <button 
+                            type="button" 
+                            onClick={(e) => handleLogin(e, true)} 
+                            style={{ flex: 1, padding: '10px', background: 'var(--warning)', color: '#000', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', transition: 'opacity 0.2s' }}
+                            onMouseOver={e => e.target.style.opacity = 0.9}
+                            onMouseOut={e => e.target.style.opacity = 1}
+                        >
+                            End Other Session
+                        </button>
+                        <button 
+                            type="button" 
+                            onClick={() => setShowForceLogin(false)} 
+                            style={{ flex: 1, padding: '10px', background: 'var(--bg-elevated)', color: 'var(--text-primary)', border: '1px solid var(--border-default)', borderRadius: '8px', fontWeight: '500', cursor: 'pointer', transition: 'background 0.2s' }}
+                            onMouseOver={e => e.target.style.background = 'var(--bg-hover)'}
+                            onMouseOut={e => e.target.style.background = 'var(--bg-elevated)'}
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            )}
+
             <div className="auth-input-group">
               <label htmlFor="auditor-email">Auditor Email</label>
               <div className="auth-input-wrapper">

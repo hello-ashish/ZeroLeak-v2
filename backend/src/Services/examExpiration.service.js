@@ -9,11 +9,25 @@ export const startExamExpirationWorker = () => {
     setInterval(async () => {
         try {
             const now = new Date();
-            // Find all Live exams where endsAt has passed
             const expiredExams = await Exam.find({
                 status: "Live",
                 endsAt: { $lt: now }
             }).populate("questions").populate("examinationId");
+
+            // 2. Find all Scheduled exams where scheduledAt has passed
+            const scheduledExams = await Exam.find({
+                status: "Scheduled",
+                scheduledAt: { $lte: now }
+            });
+
+            for (const exam of scheduledExams) {
+                exam.status = "Live";
+                if (!exam.endsAt) {
+                    exam.endsAt = new Date(exam.scheduledAt.getTime() + (exam.durationMinutes || 60) * 60 * 1000);
+                }
+                await exam.save();
+                console.log(`[ExamExpiration] Exam ${exam.title} started and marked as Live.`);
+            }
 
             for (const exam of expiredExams) {
                 // Find all InProgress results for this exam

@@ -57,6 +57,12 @@ export const loginAdmin = async (req, res) => {
         const isPasswordCorrect = await admin.isPasswordCorrect(password);
         if (!isPasswordCorrect) return res.status(401).json({ message: "Invalid credentials" });
         
+        if (admin.isLoggedIn && req.body.forceLogout !== true) {
+            return res.status(409).json({ message: "You're logged in at some other place too. Wish to continue?", code: "ALREADY_LOGGED_IN" });
+        }
+
+        admin.isLoggedIn = true;
+        admin.lastActiveAt = new Date();
         admin.sessionVersion = (admin.sessionVersion || 0) + 1;
         await admin.save({ validateBeforeSave: false });
         
@@ -69,6 +75,21 @@ export const loginAdmin = async (req, res) => {
         return res.status(200).json({ message: "Login successful", token, admin: loggedInAdmin });
     } catch (error) {
         console.error("Admin Login Error:", error.message);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+export const logoutAdmin = async (req, res) => {
+    try {
+        const admin = await Admin.findById(req.admin._id);
+        if (admin) {
+            admin.isLoggedIn = false;
+            admin.sessionVersion = (admin.sessionVersion || 0) + 1;
+            await admin.save({ validateBeforeSave: false });
+        }
+        return res.status(200).json({ message: "Logout successful" });
+    } catch (error) {
+        console.error("Admin Logout Error:", error.message);
         return res.status(500).json({ message: "Internal server error" });
     }
 };
@@ -940,16 +961,34 @@ export const bulkImportStudents = async (req, res) => {
 };
 export const broadcastAnnouncement = async (req, res) => {
     try {
-        const { message, title } = req.body;
+        const { message, title, targetRoles = ["Student"] } = req.body;
         if (!message) return res.status(400).json({ message: "Message is required" });
         
-        const { Student } = await import('../models/student.models.js');
         const { Notification } = await import('../models/notification.models.js');
+        const { Auditor } = await import('../models/auditor.models.js');
         
-        const students = await Student.find({}).select("_id");
-        const notifications = students.map(student => ({
-            userId: student._id,
-            userRole: "Student",
+        let targetUserIds = [];
+
+        if (targetRoles.includes("Admin")) {
+            const admins = await Admin.find({}).select("_id");
+            admins.forEach(u => targetUserIds.push({ userId: u._id, userRole: "Admin" }));
+        }
+        if (targetRoles.includes("Student")) {
+            const students = await Student.find({}).select("_id");
+            students.forEach(u => targetUserIds.push({ userId: u._id, userRole: "Student" }));
+        }
+        if (targetRoles.includes("Professor")) {
+            const professors = await Professor.find({}).select("_id");
+            professors.forEach(u => targetUserIds.push({ userId: u._id, userRole: "Professor" }));
+        }
+        if (targetRoles.includes("Auditor")) {
+            const auditors = await Auditor.find({}).select("_id");
+            auditors.forEach(u => targetUserIds.push({ userId: u._id, userRole: "Auditor" }));
+        }
+
+        const notifications = targetUserIds.map(t => ({
+            userId: t.userId,
+            userRole: t.userRole,
             title: title || "Global Announcement",
             message,
             type: "INFO"
@@ -959,7 +998,7 @@ export const broadcastAnnouncement = async (req, res) => {
             await Notification.insertMany(notifications);
         }
         
-        res.status(200).json({ message: "Broadcast successful" });
+        res.status(200).json({ message: "Broadcast successful", count: notifications.length });
     } catch (error) {
         console.error("Error broadcasting:", error);
         res.status(500).json({ message: "Internal server error" });

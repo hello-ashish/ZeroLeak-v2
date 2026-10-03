@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
-import { LayoutDashboard, ClipboardList, Database, BarChart3, GraduationCap, Users, PackageOpen, ScrollText, Blocks, Settings, Search, LogOut, ChevronDown, Command, Bell, Plus, RefreshCw, ShieldAlert, Map, Beaker, Activity, Mail } from 'lucide-react'
+import { LayoutDashboard, ClipboardList, Database, BarChart3, GraduationCap, Users, PackageOpen, ScrollText, Blocks, Settings, Search, LogOut, ChevronDown, Command, Bell, Plus, RefreshCw, ShieldAlert, Map, Beaker, Activity, Megaphone } from 'lucide-react'
 import { CommandPalette } from '../../components/CommandPalette.jsx'
 import { HeaderThemeToggle } from '../../components/HeaderThemeToggle.jsx'
 import { NotificationDropdown } from '../../components/NotificationDropdown.jsx'
 import { SkeletonCard, Skeleton, SkeletonTable } from '../../components/SkeletonLoader.jsx'
 import { useNotifications } from '../../hooks/useNotifications.jsx'
+import axios from 'axios'
+import { Modal } from '../../components/Modal.jsx'
 import { ZMailUnreadBadge } from '../../components/zmail/ZMailUnreadBadge.jsx'
 
 const NAV = [
@@ -45,7 +47,7 @@ const NAV = [
         section: 'System',
         items: [
             { label: 'Settings', icon: <Settings size={18} />, path: '/admin/settings' },
-            { label: 'Reports & Feedback', icon: <ScrollText size={18} />, path: '/admin/feedback' },
+            { label: 'Reports & Feedback', icon: <ScrollText size={18} />, path: '/admin/feedback', badgeKey: 'feedbackBadge' },
         ]
     },
     {
@@ -65,32 +67,41 @@ export const AdminLayout = ({ children, pendingBatchCount = 0, noPadding = false
     const [showNotifications, setShowNotifications] = useState(false)
     const [isRefreshing, setIsRefreshing] = useState(false)
     const [refreshKey, setRefreshKey] = useState(0)
+
+    // Broadcast State
+    const [showBroadcast, setShowBroadcast] = useState(false);
+    const [broadcastTitle, setBroadcastTitle] = useState('');
+    const [broadcastMessage, setBroadcastMessage] = useState('');
+    const [broadcastRoles, setBroadcastRoles] = useState(['Student', 'Professor']);
+    const [isBroadcasting, setIsBroadcasting] = useState(false);
+
     const notifRef = useRef(null)
     const profileRef = useRef(null)
     const createRef = useRef(null)
     const navigate = useNavigate()
     const location = useLocation()
     const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications('admin');
+    const pendingFeedbackCount = notifications.filter(n => !n.isRead && n.relatedLink === '/admin/feedback').length;
 
     const handleSidebarResize = (e) => {
         if (collapsed) return;
         e.preventDefault();
         const startX = e.pageX;
         const currentWidth = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sidebar-width')) || 260;
-        
+
         const onMouseMove = (moveEvent) => {
             const newWidth = currentWidth + (moveEvent.pageX - startX);
             const clamped = Math.min(Math.max(newWidth, 200), 450); // min 200px, max 450px
             document.documentElement.style.setProperty('--sidebar-width', `${clamped}px`);
         };
-        
+
         const onMouseUp = () => {
             document.removeEventListener('mousemove', onMouseMove);
             document.removeEventListener('mouseup', onMouseUp);
             document.body.style.cursor = '';
             document.documentElement.classList.remove('sidebar-is-dragging');
         };
-        
+
         document.body.style.cursor = 'col-resize';
         document.documentElement.classList.add('sidebar-is-dragging');
         document.addEventListener('mousemove', onMouseMove);
@@ -104,6 +115,31 @@ export const AdminLayout = ({ children, pendingBatchCount = 0, noPadding = false
         if (typeof fetchNotifications === 'function') fetchNotifications();
         setRefreshKey(prev => prev + 1);
         setTimeout(() => setIsRefreshing(false), 800);
+    };
+
+    const handleBroadcast = async (e) => {
+        e.preventDefault();
+        if (broadcastRoles.length === 0) return alert("Please select at least one role to broadcast to.");
+        setIsBroadcasting(true);
+        try {
+            const token = localStorage.getItem('adminToken');
+            await axios.post('/api/admin/broadcast', {
+                title: broadcastTitle,
+                message: broadcastMessage,
+                targetRoles: broadcastRoles
+            }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            alert("Broadcast sent successfully!");
+            setShowBroadcast(false);
+            setBroadcastTitle('');
+            setBroadcastMessage('');
+        } catch (error) {
+            console.error("Broadcast error:", error);
+            alert("Failed to send broadcast");
+        } finally {
+            setIsBroadcasting(false);
+        }
     };
 
     // Close dropdowns on click outside
@@ -183,6 +219,11 @@ export const AdminLayout = ({ children, pendingBatchCount = 0, noPadding = false
                                     {item.badgeKey === 'pendingBatches' && pendingBatchCount > 0 && (
                                         <span className="nav-badge" aria-label={`${pendingBatchCount} pending`}>
                                             {pendingBatchCount}
+                                        </span>
+                                    )}
+                                    {item.badgeKey === 'feedbackBadge' && pendingFeedbackCount > 0 && (
+                                        <span className="nav-badge" aria-label={`${pendingFeedbackCount} new issues`}>
+                                            <span style={{ width: 8, height: 8, backgroundColor: 'var(--danger)', borderRadius: '50%', display: 'inline-block' }}></span>
                                         </span>
                                     )}
                                 </Link>
@@ -286,6 +327,8 @@ export const AdminLayout = ({ children, pendingBatchCount = 0, noPadding = false
                                     <button className="dropdown-item" onClick={() => { navigate('/admin/professors'); setShowCreate(false) }}><Users size={14} style={{ marginRight: 4 }} /> Add Professor</button>
                                     <div className="dropdown-divider" />
                                     <button className="dropdown-item" onClick={() => { navigate('/admin/batches'); setShowCreate(false) }}><PackageOpen size={14} style={{ marginRight: 4 }} /> Review Batches</button>
+                                    <div className="dropdown-divider" />
+                                    <button className="dropdown-item" onClick={() => { setShowBroadcast(true); setShowCreate(false) }}><Megaphone size={14} style={{ marginRight: 4 }} /> Broadcast Message</button>
                                 </div>
                             )}
                         </div>
@@ -350,6 +393,64 @@ export const AdminLayout = ({ children, pendingBatchCount = 0, noPadding = false
             </div>
 
             <CommandPalette open={showCommand} onClose={() => setShowCommand(false)} />
+
+            <Modal
+                open={showBroadcast}
+                onClose={() => setShowBroadcast(false)}
+                title="Broadcast Message"
+                size="md"
+            >
+                <form onSubmit={handleBroadcast} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <div>
+                        <label className="form-label">Recipients (Roles)</label>
+                        <div style={{ display: 'flex', gap: 16, marginTop: 8 }}>
+                            {['Student', 'Professor', 'Admin', 'Auditor'].map(role => (
+                                <label key={role} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={broadcastRoles.includes(role)}
+                                        onChange={(e) => {
+                                            if (e.target.checked) setBroadcastRoles([...broadcastRoles, role]);
+                                            else setBroadcastRoles(broadcastRoles.filter(r => r !== role));
+                                        }}
+                                    />
+                                    {role}s
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+                    <div>
+                        <label className="form-label">Subject / Title</label>
+                        <input
+                            type="text"
+                            className="form-input"
+                            placeholder="e.g. System Maintenance Notice"
+                            value={broadcastTitle}
+                            onChange={e => setBroadcastTitle(e.target.value)}
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label className="form-label">Message</label>
+                        <textarea
+                            className="form-textarea"
+                            rows={5}
+                            placeholder="Type your message here..."
+                            value={broadcastMessage}
+                            onChange={e => setBroadcastMessage(e.target.value)}
+                            required
+                        ></textarea>
+                    </div>
+                    <button
+                        type="submit"
+                        className="btn btn-primary"
+                        disabled={isBroadcasting || broadcastRoles.length === 0}
+                        style={{ marginTop: 8 }}
+                    >
+                        {isBroadcasting ? 'Sending...' : 'Send Broadcast'}
+                    </button>
+                </form>
+            </Modal>
         </div>
     )
 }

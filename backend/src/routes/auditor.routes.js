@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
     registerAuditor,
     loginAuditor,
+    logoutAuditor,
     getDashboardMetrics,
     getAuditLogs,
     getAnomalies,
@@ -19,6 +20,7 @@ const router = Router();
 // ─── Public Routes ────────────────────────────────────────────────────────────
 router.route("/register").post(registerAuditor);
 router.route("/login").post(loginAuditor);
+router.route("/logout").post(verifyAuditorJWT, logoutAuditor);
 
 // ─── Protected Routes (Read-Only & Auditor Specific) ──────────────────────────
 router.use(verifyAuditorJWT); // Apply to all below

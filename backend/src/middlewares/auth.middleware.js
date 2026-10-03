@@ -170,19 +170,31 @@ export const verifyAnyJWT = async (req, res, next) => {
             }
             req.user = admin
             req.userRole = "Admin"
-        } else if (professor) {
+            return next()
+        }
+
+        const professor = await Professor.findById(decodedToken.id).select("-password")
+        if (professor) {
             if (professor.sessionVersion !== decodedToken.sessionVersion) {
                 return res.status(401).json({ message: "This session has been replaced by a new login.", code: "SESSION_REPLACED" })
             }
             req.user = professor
             req.userRole = "Professor"
-        } else if (student) {
+            return next()
+        }
+
+        const student = await Student.findById(decodedToken.id).select("-password")
+        if (student) {
             if (student.sessionVersion !== decodedToken.sessionVersion) {
                 return res.status(401).json({ message: "This session has been replaced by a new login.", code: "SESSION_REPLACED" })
             }
             req.user = student
             req.userRole = "Student"
-        } else if (auditor) {
+            return next()
+        }
+
+        const auditor = await Auditor.findById(decodedToken.id).select("-password")
+        if (auditor) {
             if (auditor.sessionVersion !== decodedToken.sessionVersion) {
                 return res.status(401).json({ message: "This session has been replaced by a new login.", code: "SESSION_REPLACED" })
             }

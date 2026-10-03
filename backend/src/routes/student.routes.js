@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { registerStudent, loginStudent, getAvailableExams, getAllStudents, getExamById, submitExamResult, getStudentResults, updateStudentProfile, changeStudentPassword, pingSession } from "../controllers/student.controllers.js";
+import { registerStudent, loginStudent, logoutStudent, getAvailableExams, getAllStudents, getExamById, submitExamResult, getStudentResults, updateStudentProfile, changeStudentPassword, pingSession } from "../controllers/student.controllers.js";
 import { verifyStudentJWT, verifyAdminJWT } from "../middlewares/auth.middleware.js";
 import notificationRouter from "./notification.routes.js";
 
@@ -9,6 +9,7 @@ router.use("/notifications", verifyStudentJWT, notificationRouter);
 
 // Public Routes
 router.route("/login").post(loginStudent);
+router.route("/logout").post(verifyStudentJWT, logoutStudent);
 
 // Admin protected route for registering students
 router.route("/register").post(verifyAdminJWT, registerStudent);

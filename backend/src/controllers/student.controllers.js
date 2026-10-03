@@ -53,6 +53,12 @@ export const loginStudent = async (req, res) => {
         const isPasswordValid = await student.isPasswordCorrect(password);
         if (!isPasswordValid) return res.status(401).json({ message: "Invalid credentials" });
 
+        if (student.isLoggedIn && req.body.forceLogout !== true) {
+            return res.status(409).json({ message: "You're logged in at some other place too. Wish to continue?", code: "ALREADY_LOGGED_IN" });
+        }
+
+        student.isLoggedIn = true;
+        student.lastActiveAt = new Date();
         student.sessionVersion = (student.sessionVersion || 0) + 1;
         await student.save({ validateBeforeSave: false });
 
@@ -62,6 +68,21 @@ export const loginStudent = async (req, res) => {
         return res.status(200).json({ message: "Login successful", token, student: loggedInStudent });
     } catch (error) {
         return res.status(500).json({ message: "Error logging in", error: error.message });
+    }
+}
+
+// 2a. Logout Student
+export const logoutStudent = async (req, res) => {
+    try {
+        const student = await Student.findById(req.student._id);
+        if (student) {
+            student.isLoggedIn = false;
+            student.sessionVersion = (student.sessionVersion || 0) + 1;
+            await student.save({ validateBeforeSave: false });
+        }
+        return res.status(200).json({ message: "Logout successful" });
+    } catch (error) {
+        return res.status(500).json({ message: "Error logging out", error: error.message });
     }
 }
 
