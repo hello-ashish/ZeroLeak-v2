@@ -4,22 +4,24 @@
 
 const API = "/api/support";
 
-/**
- * Resolve the correct token for the caller's role.
- * The `role` parameter matches what is stored in localStorage.
- * Passing no role falls back to the first available token (legacy behaviour for support team panel).
- */
-function getAuthHeader(role) {
-    let token;
-    if (role === "admin")    token = localStorage.getItem("adminToken");
-    else if (role === "professor") token = localStorage.getItem("profToken");
-    else if (role === "student")   token = localStorage.getItem("studentToken");
-    else if (role === "auditor")   token = localStorage.getItem("auditorToken");
-    else if (role === "support")   token = localStorage.getItem("supportToken");
-    else {
-        // Support-panel default: use supportToken, never fall through to adminToken
-        token = localStorage.getItem("supportToken");
+function getAuthHeader() {
+    const path = window.location.pathname;
+    let token = null;
+
+    if (path.startsWith("/admin")) token = localStorage.getItem("adminToken");
+    else if (path.startsWith("/professor")) token = localStorage.getItem("profToken");
+    else if (path.startsWith("/student") || path.startsWith("/take-exam")) token = localStorage.getItem("studentToken");
+    else if (path.startsWith("/auditor")) token = localStorage.getItem("auditorToken");
+    else if (path.startsWith("/support")) token = localStorage.getItem("supportToken");
+
+    if (!token) {
+        token = localStorage.getItem("supportToken") ||
+            localStorage.getItem("adminToken") ||
+            localStorage.getItem("profToken") ||
+            localStorage.getItem("studentToken") ||
+            localStorage.getItem("auditorToken");
     }
+
     return token ? { Authorization: `Bearer ${token}` } : {};
 }
 

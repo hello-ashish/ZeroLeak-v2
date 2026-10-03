@@ -3,7 +3,7 @@
  * Automatically captures page context. Accepts optional contextual props.
  */
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, AlertCircle, Send, Loader2, CheckCircle } from 'lucide-react';
+import { X, AlertCircle, Send, Loader2, CheckCircle, MapPin, GraduationCap } from 'lucide-react';
 import { createSupportTicket, fetchSupportConstants } from '../../hooks/useSupport.js';
 import { useToast } from '../Toast.jsx';
 import { useLocation } from 'react-router-dom';
@@ -191,13 +191,17 @@ export function ReportProblemModal({ onClose, examId, sessionId, context }) {
                         </div>
 
                         <div className="support-form-row support-context-row">
-                            <span className="support-context-label">📍 Page / Feature</span>
+                            <span className="support-context-label">
+                                <MapPin size={15} /> Page / Feature
+                            </span>
                             <span className="support-context-value">{location.pathname}</span>
                         </div>
 
                         {(examId || sessionId) && (
                             <div className="support-form-row support-context-row">
-                                <span className="support-context-label">🎓 Related Exam</span>
+                                <span className="support-context-label">
+                                    <GraduationCap size={15} /> Related Exam
+                                </span>
                                 <span className="support-context-value">{examId || sessionId}</span>
                             </div>
                         )}
