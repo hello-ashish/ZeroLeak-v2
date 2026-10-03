@@ -171,6 +171,25 @@ const Home = () => {
                     </div>
                     <ChevronRight size={18} className="role-card-arrow" />
                   </button>
+
+                  <button 
+                    className={`role-card operations-card ${selectedRole === 'support' ? 'selected' : ''}`}
+                    onClick={() => handleRoleSelect('/support/login', 'support')}
+                    disabled={isLoading}
+                    aria-label="Login as Support Staff"
+                  >
+                    <div className="role-card-icon" style={{ color: 'var(--brand-primary)', background: 'rgba(99,102,241,0.1)' }}>
+                      <AlertCircle size={20} />
+                    </div>
+                    <div className="role-card-content">
+                      <div className="role-card-header">
+                        <h4>Support Staff</h4>
+                        <span className="auth-badge">System Access</span>
+                      </div>
+                      <p>Manage support tickets and user reports</p>
+                    </div>
+                    <ChevronRight size={18} className="role-card-arrow" />
+                  </button>
                 </div>
               </div>
 

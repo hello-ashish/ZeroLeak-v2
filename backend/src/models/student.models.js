@@ -52,7 +52,7 @@ studentSchema.methods.generateAccessToken = function () {
             id: this._id,
             email: this.email,
             studentId: this.studentId,
-            role: "Student"
+            role: "Student",
             sessionVersion: this.sessionVersion
         },
         process.env.ACCESS_TOKEN_SECRET,

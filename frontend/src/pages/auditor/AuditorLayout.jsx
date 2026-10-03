@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
-import { LayoutDashboard, FileText, Database, Users, LogOut, ChevronDown, Search, Activity, ShieldAlert, GraduationCap, ClipboardList, RefreshCw, Map, Bell, Mail } from 'lucide-react'
+import { LayoutDashboard, FileText, Database, Users, LogOut, ChevronDown, Search, Activity, ShieldAlert, GraduationCap, ClipboardList, RefreshCw, Map, Bell, Mail, AlertCircle, Headset, Ticket } from 'lucide-react'
 import { HeaderThemeToggle } from '../../components/HeaderThemeToggle.jsx'
 import { NotificationDropdown } from '../../components/NotificationDropdown.jsx'
 import { SkeletonCard, Skeleton, SkeletonTable } from '../../components/SkeletonLoader.jsx'
 import { useNotifications } from '../../hooks/useNotifications.jsx'
 import { ZMailUnreadBadge } from '../../components/zmail/ZMailUnreadBadge.jsx'
+import { ReportProblemModal } from '../../components/support/ReportProblemModal.jsx'
+import '../../components/support/support.css'
 
 const NAV = [
     {
@@ -33,7 +35,13 @@ const NAV = [
     {
         section: 'Messaging',
         items: [
-            { label: 'ZMail', icon: <Mail size={18} />, path: '/zmail', zmailBadge: true },
+            { label: 'ZMail', icon: <Mail size={18} />, path: '/zmail?role=auditor', zmailBadge: true },
+        ]
+    },
+    {
+        section: 'Support',
+        items: [
+            { label: 'My Tickets', icon: <Ticket size={18} />, path: '/auditor/support' },
         ]
     }
 ]
@@ -45,6 +53,7 @@ export const AuditorLayout = ({ children, openAnomaliesCount = 0 }) => {
     const [showNotifications, setShowNotifications] = useState(false)
     const [isRefreshing, setIsRefreshing] = useState(false)
     const [refreshKey, setRefreshKey] = useState(0)
+    const [showReportModal, setShowReportModal] = useState(false)
     const notifRef = useRef(null)
     const profileRef = useRef(null)
     const navigate = useNavigate()
@@ -130,12 +139,25 @@ export const AuditorLayout = ({ children, openAnomaliesCount = 0 }) => {
                 </div>
 
                 <div className="sidebar-footer">
+                    <button
+                        type="button"
+                        className="support-report-btn"
+                        onClick={() => setShowReportModal(true)}
+                        title="Report a Problem"
+                    >
+                        <AlertCircle size={16} className="support-btn-icon" />
+                        <span>Report a Problem</span>
+                    </button>
                     <div className="nav-item" onClick={handleLogout} role="button" tabIndex={0}>
                         <span className="nav-icon" aria-hidden="true" style={{ color: 'var(--danger)' }}><LogOut size={20} /></span>
                         <span className="nav-label" style={{ color: 'var(--danger)' }}>Logout</span>
                     </div>
                 </div>
             </nav>
+
+            {showReportModal && (
+                <ReportProblemModal onClose={() => setShowReportModal(false)} />
+            )}
 
             {/* Mobile overlay */}
             {mobileOpen && (

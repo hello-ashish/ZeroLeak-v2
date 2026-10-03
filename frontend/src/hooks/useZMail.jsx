@@ -16,11 +16,21 @@ import { io as socketIO } from 'socket.io-client';
 const ZMailContext = createContext(null);
 
 function getAuthToken() {
+    const params = new URLSearchParams(window.location.search);
+    const role = params.get('role');
+
+    if (role === 'support') return localStorage.getItem('supportToken');
+    if (role === 'admin') return localStorage.getItem('adminToken');
+    if (role === 'student') return localStorage.getItem('studentToken');
+    if (role === 'professor') return localStorage.getItem('profToken');
+    if (role === 'auditor') return localStorage.getItem('auditorToken');
+
     return (
         localStorage.getItem('adminToken') ||
         localStorage.getItem('profToken') ||
         localStorage.getItem('studentToken') ||
         localStorage.getItem('auditorToken') ||
+        localStorage.getItem('supportToken') ||
         null
     );
 }

@@ -5,6 +5,7 @@ import http from "http"
 import { Server } from "socket.io"
 import { setupProctoringSockets } from "./sockets/proctoring.socket.js"
 import { initZMailNamespace } from "./sockets/zmail.socket.js"
+import { setupSupportSockets } from "./sockets/support.socket.js"
 import { createAdapter } from "@socket.io/redis-adapter"
 import redisClient, { connectRedis } from "./redis/index.js"
 
@@ -53,6 +54,14 @@ connectDB()
 
         // Setup ZMail Sockets (user-private real-time mail rooms)
         initZMailNamespace(io);
+
+        // Setup Support Sockets (support:team room, agents only)
+        setupSupportSockets(io);
+
+        // Provision system support mailbox if it doesn't exist
+        import("./Services/support/supportIdentity.service.js").then(({ ensureSupportMailbox }) => {
+            ensureSupportMailbox().catch(err => console.warn("[SUPPORT] Failed to provision support mailbox:", err.message));
+        });
         
         server.listen(process.env.PORT || 4000, () => {
             console.log(`Server is running on port : ${process.env.PORT || 4000}`)

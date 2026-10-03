@@ -161,49 +161,85 @@ export const verifyAnyJWT = async (req, res, next) => {
 
         const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET)
 
-        // Sequential lookups with early return (1-2 queries instead of 4 parallel)
-        // Ideal fix: encode role in JWT to avoid any extra lookup
-        const admin = await Admin.findById(decodedToken.id).select("-password")
-        if (admin) {
-            if (admin.sessionVersion !== decodedToken.sessionVersion) {
-                return res.status(401).json({ message: "This session has been replaced by a new login.", code: "SESSION_REPLACED" })
+        // Sequential lookups with early return
+        if (decodedToken.role === "Admin") {
+            const admin = await Admin.findById(decodedToken.id).select("-password")
+            if (admin) {
+                if (admin.sessionVersion !== decodedToken.sessionVersion) {
+                    return res.status(401).json({ message: "This session has been replaced by a new login.", code: "SESSION_REPLACED" })
+                }
+                req.user = admin
+                req.userRole = "Admin"
+                if (admin.isSupport) {
+                    req.userRole = "Support" // Map support admins to Support role for ZMail and other systems
+                }
+                return next()
             }
-            req.user = admin
-            req.userRole = "Admin"
-            return next()
+        } else if (decodedToken.role === "Professor") {
+            const professor = await Professor.findById(decodedToken.id).select("-password")
+            if (professor) {
+                if (professor.sessionVersion !== decodedToken.sessionVersion) {
+                    return res.status(401).json({ message: "This session has been replaced by a new login.", code: "SESSION_REPLACED" })
+                }
+                req.user = professor
+                req.userRole = "Professor"
+                return next()
+            }
+        } else if (decodedToken.role === "Student") {
+            const student = await Student.findById(decodedToken.id).select("-password")
+            if (student) {
+                if (student.sessionVersion !== decodedToken.sessionVersion) {
+                    return res.status(401).json({ message: "This session has been replaced by a new login.", code: "SESSION_REPLACED" })
+                }
+                req.user = student
+                req.userRole = "Student"
+                return next()
+            }
+        } else if (decodedToken.role === "Auditor") {
+            const auditor = await Auditor.findById(decodedToken.id).select("-password")
+            if (auditor) {
+                if (auditor.sessionVersion !== decodedToken.sessionVersion) {
+                    return res.status(401).json({ message: "This session has been replaced by a new login.", code: "SESSION_REPLACED" })
+                }
+                req.user = auditor
+                req.userRole = "Auditor"
+                return next()
+            }
         }
 
-        const professor = await Professor.findById(decodedToken.id).select("-password")
-        if (professor) {
-            if (professor.sessionVersion !== decodedToken.sessionVersion) {
-                return res.status(401).json({ message: "This session has been replaced by a new login.", code: "SESSION_REPLACED" })
-            }
-            req.user = professor
-            req.userRole = "Professor"
-            return next()
-        }
-
-        const student = await Student.findById(decodedToken.id).select("-password")
-        if (student) {
-            if (student.sessionVersion !== decodedToken.sessionVersion) {
-                return res.status(401).json({ message: "This session has been replaced by a new login.", code: "SESSION_REPLACED" })
-            }
-            req.user = student
-            req.userRole = "Student"
-            return next()
-        }
-
-        const auditor = await Auditor.findById(decodedToken.id).select("-password")
-        if (auditor) {
-            if (auditor.sessionVersion !== decodedToken.sessionVersion) {
-                return res.status(401).json({ message: "This session has been replaced by a new login.", code: "SESSION_REPLACED" })
-            }
-            req.user = auditor
-            req.userRole = "Auditor"
+        if (decodedToken.role === "SupportAgent" && decodedToken.email === "support@zeroleak.com") {
+            req.userRole = "Support"
+            req.user = { _id: decodedToken.id, name: "ZeroLeak Support", email: decodedToken.email }
             return next()
         }
 
         return res.status(401).json({ message: "User not found" })
+    } catch (error) {
+        return res.status(401).json({ message: "Invalid or Expired Access Token", code: "TOKEN_EXPIRED" })
+    }
+}
+
+/**
+ * Middleware that allows ONLY the standalone support account.
+ */
+export const verifySupportJWT = async (req, res, next) => {
+    try {
+        const authHeader = req.header("Authorization")
+        const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : authHeader
+
+        if (!token) {
+            return res.status(401).json({ message: "Unauthorized request: No token provided" })
+        }
+
+        const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET)
+
+        if (decodedToken.role !== "SupportAgent" || decodedToken.email !== "support@zeroleak.com") {
+            return res.status(403).json({ message: "Forbidden: Support access only" })
+        }
+
+        req.userRole = "Support"
+        req.user = { _id: decodedToken.id, name: "ZeroLeak Support", email: decodedToken.email }
+        next()
     } catch (error) {
         return res.status(401).json({ message: "Invalid or Expired Access Token", code: "TOKEN_EXPIRED" })
     }

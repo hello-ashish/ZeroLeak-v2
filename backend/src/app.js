@@ -29,6 +29,7 @@ import proctoringRouter from "./routes/proctoring.routes.js"
 import aiRouter from "./routes/ai.routes.js"
 import zmailRouter from "./routes/zmail.routes.js"
 import feedbackRouter from "./routes/feedback.routes.js"
+import supportRouter from "./routes/support.routes.js"
 
 // this says: any request starting with /api/admin goes to the adminRouter
 app.use("/api/admin", adminRouter)
@@ -70,6 +71,9 @@ app.use("/api/search", searchRouter);
 app.use("/api/zmail", zmailRouter);
 // Feedback route
 app.use("/api/feedback", feedbackRouter);
+
+// ZeroLeak Support System
+app.use("/api/support", supportRouter);
 
 setupSwagger(app);
 

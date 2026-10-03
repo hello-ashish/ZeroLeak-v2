@@ -86,6 +86,15 @@ async function findAvailableAddress(base) {
  * @returns {Promise<ZMailAccount>}
  */
 export async function ensureZMailAccount({ userId, userType, displayName, loginEmail }) {
+    // Guard: prevent normal users from taking the protected support address
+    const PROTECTED = ["support@zeroleak.com", "support"];
+    if (loginEmail && PROTECTED.includes(loginEmail.toLowerCase().split("@")[0])) {
+        // Only SYSTEM or Support type may use the support address
+        if (userType !== "SYSTEM" && userType !== "Support") {
+            throw new Error("The address 'support@zeroleak.com' is reserved and cannot be assigned to regular users.");
+        }
+    }
+
     // Idempotency check
     const existing = await ZMailAccount.findOne({ userId }).lean();
     if (existing) return existing;
@@ -103,6 +112,7 @@ export async function ensureZMailAccount({ userId, userType, displayName, loginE
         zmailAddress,
         normalizedAddress,
         displayName: (displayName || loginEmail || "").trim(),
+        isSupportMailbox: (userType === "SYSTEM" || userType === "Support") && normalizedAddress === "support@zeroleak.com",
     });
     return account;
 }

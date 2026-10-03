@@ -1,70 +1,65 @@
-import React, { useState, useEffect, useRef } from 'react'
-import { useNavigate, useLocation, Link, Outlet } from 'react-router-dom'
-import { LayoutDashboard, PackageOpen, Settings, Search, LogOut, ChevronDown, Bell, Plus, FileText, RefreshCw, Mail, AlertCircle, Headset, Ticket } from 'lucide-react'
-import { CommandPalette } from '../../components/CommandPalette.jsx'
-import { HeaderThemeToggle } from '../../components/HeaderThemeToggle.jsx'
-import { NotificationDropdown } from '../../components/NotificationDropdown.jsx'
-import { SkeletonCard, Skeleton, SkeletonTable } from '../../components/SkeletonLoader.jsx'
-import { useNotifications } from '../../hooks/useNotifications.jsx'
-import { ZMailUnreadBadge } from '../../components/zmail/ZMailUnreadBadge.jsx'
-import { ReportProblemModal } from '../../components/support/ReportProblemModal.jsx'
-import '../../components/support/support.css'
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { LayoutDashboard, LogOut, ChevronDown, Search, RefreshCw, Mail, Headset } from 'lucide-react';
+import { CommandPalette } from '../../components/CommandPalette.jsx';
+import { HeaderThemeToggle } from '../../components/HeaderThemeToggle.jsx';
+import { SkeletonCard, Skeleton, SkeletonTable } from '../../components/SkeletonLoader.jsx';
+import { ZMailUnreadBadge } from '../../components/zmail/ZMailUnreadBadge.jsx';
+import '../../components/support/support.css';
 
 const NAV = [
     {
         section: 'Overview',
         items: [
-            { label: 'Dashboard', icon: <LayoutDashboard size={18} />, path: '/professor/dashboard' },
-        ]
-    },
-    {
-        section: 'Exams & Questions',
-        items: [
-            { label: 'Create Batch', icon: <Plus size={18} />, path: '/professor/batches/create' },
-            { label: 'My Batches', icon: <PackageOpen size={18} />, path: '/professor/batches' },
-        ]
-    },
-    {
-        section: 'System',
-        items: [
-            { label: 'Profile', icon: <Settings size={18} />, path: '/professor/profile' },
+            { label: 'Dashboard', icon: <LayoutDashboard size={18} />, path: '/support' },
         ]
     },
     {
         section: 'Messaging',
         items: [
-            { label: 'ZMail', icon: <Mail size={18} />, path: '/zmail?role=professor', zmailBadge: true },
-        ]
-    },
-    {
-        section: 'Support',
-        items: [
-            { label: 'My Tickets', icon: <Ticket size={18} />, path: '/professor/support' },
+            { label: 'ZMail', icon: <Mail size={18} />, path: '/zmail?role=support', zmailBadge: true },
         ]
     }
-]
+];
 
-export const ProfessorLayout = ({ children, noPadding = false }) => {
-    const [collapsed, setCollapsed] = useState(false)
-    const [mobileOpen, setMobileOpen] = useState(false)
-    const [showCommand, setShowCommand] = useState(false)
-    const [showProfile, setShowProfile] = useState(false)
-    const [showCreate, setShowCreate] = useState(false)
-    const [showNotifications, setShowNotifications] = useState(false)
-    const [isRefreshing, setIsRefreshing] = useState(false)
-    const [refreshKey, setRefreshKey] = useState(0)
-    const [showReportModal, setShowReportModal] = useState(false)
-    const notifRef = useRef(null)
-    const profileRef = useRef(null)
-    const navigate = useNavigate()
-    const location = useLocation()
-    const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications('professor');
+export const SupportLayout = ({ children, noPadding = false }) => {
+    const [collapsed, setCollapsed] = useState(false);
+    const [mobileOpen, setMobileOpen] = useState(false);
+    const [showCommand, setShowCommand] = useState(false);
+    const [showProfile, setShowProfile] = useState(false);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [refreshKey, setRefreshKey] = useState(0);
+    const profileRef = useRef(null);
+    const navigate = useNavigate();
+    const location = useLocation();
 
-    const profData = JSON.parse(localStorage.getItem('profData') || '{}')
+    const handleSidebarResize = (e) => {
+        if (collapsed) return;
+        e.preventDefault();
+        const startX = e.pageX;
+        const currentWidth = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sidebar-width')) || 260;
+        
+        const onMouseMove = (moveEvent) => {
+            const newWidth = currentWidth + (moveEvent.pageX - startX);
+            const clamped = Math.min(Math.max(newWidth, 200), 450); // min 200px, max 450px
+            document.documentElement.style.setProperty('--sidebar-width', `${clamped}px`);
+        };
+        
+        const onMouseUp = () => {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+            document.body.style.cursor = '';
+            document.documentElement.classList.remove('sidebar-is-dragging');
+        };
+        
+        document.body.style.cursor = 'col-resize';
+        document.documentElement.classList.add('sidebar-is-dragging');
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+    };
 
     const handleRefresh = () => {
         setIsRefreshing(true);
-        if (typeof fetchNotifications === 'function') fetchNotifications();
         setRefreshKey(prev => prev + 1);
         setTimeout(() => setIsRefreshing(false), 800);
     };
@@ -72,40 +67,32 @@ export const ProfessorLayout = ({ children, noPadding = false }) => {
     // Close dropdowns on click outside
     useEffect(() => {
         const handleClickOutside = (e) => {
-            if (notifRef.current && !notifRef.current.contains(e.target)) {
-                setShowNotifications(false)
-            }
             if (profileRef.current && !profileRef.current.contains(e.target)) {
-                setShowProfile(false)
+                setShowProfile(false);
             }
-        }
-        document.addEventListener('mousedown', handleClickOutside)
-        return () => document.removeEventListener('mousedown', handleClickOutside)
-    }, [])
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     // Cmd+K
     useEffect(() => {
         const handler = (e) => {
             if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-                e.preventDefault()
-                setShowCommand(v => !v)
+                e.preventDefault();
+                setShowCommand(v => !v);
             }
-        }
-        window.addEventListener('keydown', handler)
-        return () => window.removeEventListener('keydown', handler)
-    }, [])
+        };
+        window.addEventListener('keydown', handler);
+        return () => window.removeEventListener('keydown', handler);
+    }, []);
 
     const handleLogout = () => {
-        localStorage.removeItem('profToken')
-        localStorage.removeItem('profData')
-        navigate('/')
-    }
+        localStorage.removeItem('supportToken');
+        navigate('/support/login');
+    };
 
-    const initials = (profData.name || profData.email || 'P')
-        .substring(0, 2)
-        .toUpperCase()
-
-    const isActive = (path) => location.pathname === path
+    const isActive = (path) => location.pathname === path;
 
     return (
         <div className="app-shell">
@@ -118,7 +105,7 @@ export const ProfessorLayout = ({ children, noPadding = false }) => {
                     <img src="/logo.png" alt="ZeroLeak Logo" style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'cover', flexShrink: 0, boxShadow: '0 4px 12px rgba(88, 101, 242, 0.3)' }} />
                     <div className="sidebar-brand-text">
                         <div className="brand-name">ZEROLEAK</div>
-                        <div className="brand-sub">Professor Portal</div>
+                        <div className="brand-sub">Support Portal</div>
                     </div>
                 </div>
 
@@ -145,16 +132,8 @@ export const ProfessorLayout = ({ children, noPadding = false }) => {
                     ))}
                 </div>
 
+                {/* Sidebar footer: Logout */}
                 <div className="sidebar-footer">
-                    <button
-                        type="button"
-                        className="support-report-btn"
-                        onClick={() => setShowReportModal(true)}
-                        title="Report a Problem"
-                    >
-                        <AlertCircle size={16} className="support-btn-icon" />
-                        <span>Report a Problem</span>
-                    </button>
                     <div
                         className="nav-item"
                         onClick={handleLogout}
@@ -167,11 +146,8 @@ export const ProfessorLayout = ({ children, noPadding = false }) => {
                         <span className="nav-label" style={{ color: 'var(--danger)' }}>Logout</span>
                     </div>
                 </div>
+                {!collapsed && <div className="sidebar-resizer" onMouseDown={handleSidebarResize} />}
             </nav>
-
-            {showReportModal && (
-                <ReportProblemModal onClose={() => setShowReportModal(false)} />
-            )}
 
             {/* Mobile overlay */}
             {mobileOpen && (
@@ -203,7 +179,7 @@ export const ProfessorLayout = ({ children, noPadding = false }) => {
                         aria-label="Open command palette"
                     >
                         <Search size={16} style={{ color: 'var(--text-tertiary)' }} />
-                        <span className="topbar-search-text">Search {profData.name ? profData.name.split(' ')[0] + "'s" : "your"} batches, exams...</span>
+                        <span className="topbar-search-text">Search your support workspace...</span>
                         <span className="topbar-search-kbd">⌘K</span>
                     </div>
 
@@ -220,30 +196,19 @@ export const ProfessorLayout = ({ children, noPadding = false }) => {
                             <RefreshCw size={18} />
                         </button>
 
-
-                        {/* Notifications Dropdown */}
-                        <NotificationDropdown
-                            notifications={notifications}
-                            unreadCount={unreadCount}
-                            markAsRead={markAsRead}
-                            markAllAsRead={markAllAsRead}
-                            showNotifications={showNotifications}
-                            setShowNotifications={setShowNotifications}
-                            setShowProfile={setShowProfile}
-                            dropdownRef={notifRef}
-                        />
-
                         {/* Profile */}
                         <div className="dropdown" ref={profileRef}>
                             <button
                                 className="topbar-profile"
-                                onClick={() => { setShowProfile(v => !v); setShowNotifications(false) }}
+                                onClick={() => { setShowProfile(v => !v); }}
                                 aria-expanded={showProfile}
-                                aria-label="Professor profile menu"
+                                aria-label="Support profile menu"
                             >
-                                <span className="avatar avatar-sm" aria-hidden="true">{initials}</span>
+                                <span className="avatar avatar-sm" aria-hidden="true" style={{ background: 'rgba(99,102,241,0.1)', color: 'var(--brand-primary)' }}>
+                                    <Headset size={14} />
+                                </span>
                                 <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                                    {profData.name || profData.email?.split('@')[0] || 'Professor'}
+                                    System
                                 </span>
                                 <ChevronDown size={14} style={{ color: 'var(--text-tertiary)' }} />
                             </button>
@@ -251,11 +216,10 @@ export const ProfessorLayout = ({ children, noPadding = false }) => {
                                 <div className="dropdown-menu">
                                     <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)' }}>
                                         <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>
-                                            {profData.name || profData.email?.split('@')[0] || 'Professor'}
+                                            ZeroLeak Support
                                         </div>
-                                        <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{profData.email}</div>
+                                        <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>support@zeroleak.com</div>
                                     </div>
-                                    <button className="dropdown-item" onClick={() => { navigate('/professor/profile'); setShowProfile(false) }}><Settings size={14} style={{ marginRight: 4 }} /> Profile</button>
                                     <div className="dropdown-divider" />
                                     <button className="dropdown-item danger" onClick={handleLogout}><LogOut size={14} style={{ marginRight: 4 }} /> Logout</button>
                                 </div>
@@ -285,13 +249,14 @@ export const ProfessorLayout = ({ children, noPadding = false }) => {
                             </div>
                         </div>
                     ) : (
-                        children || <Outlet key={refreshKey} />
+                        <React.Fragment key={refreshKey}>
+                            {children}
+                        </React.Fragment>
                     )}
                 </main>
             </div>
 
             <CommandPalette open={showCommand} onClose={() => setShowCommand(false)} />
-            <ReportIssueButton />
         </div>
-    )
-}
+    );
+};
