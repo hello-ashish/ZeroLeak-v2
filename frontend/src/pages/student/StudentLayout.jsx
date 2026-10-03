@@ -197,17 +197,7 @@ export const StudentLayout = ({ children, noPadding = false }) => {
                         <AlertCircle size={16} className="support-btn-icon" />
                         <span>Report a Problem</span>
                     </button>
-                    <div
-                        className="nav-item"
-                        onClick={handleLogout}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={e => e.key === 'Enter' && handleLogout()}
-                        title={collapsed ? 'Logout' : undefined}
-                    >
-                        <span className="nav-icon" aria-hidden="true" style={{ color: 'var(--danger)' }}><LogOut size={20} /></span>
-                        <span className="nav-label" style={{ color: 'var(--danger)' }}>Logout</span>
-                    </div>
+
                 </div>
             </nav>
 

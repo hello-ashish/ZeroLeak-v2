@@ -137,17 +137,7 @@ export const SupportLayout = ({ children, noPadding = false }) => {
 
                 {/* Sidebar footer: Logout */}
                 <div className="sidebar-footer">
-                    <div
-                        className="nav-item"
-                        onClick={handleLogout}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={e => e.key === 'Enter' && handleLogout()}
-                        title={collapsed ? 'Logout' : undefined}
-                    >
-                        <span className="nav-icon" aria-hidden="true" style={{ color: 'var(--danger)' }}><LogOut size={20} /></span>
-                        <span className="nav-label" style={{ color: 'var(--danger)' }}>Logout</span>
-                    </div>
+
                 </div>
                 {!collapsed && <div className="sidebar-resizer" onMouseDown={handleSidebarResize} />}
             </nav>
