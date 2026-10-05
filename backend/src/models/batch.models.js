@@ -1,6 +1,6 @@
 import mongoose, { Schema } from "mongoose"
 
-// Sub-schema for questions in draft state
+
 const draftQuestionSchema = new Schema({
     title: { type: String, required: true },
     options: { type: [String], required: true },
@@ -29,7 +29,7 @@ const batchSchema = new Schema({
     commitmentHash: { type: String, default: null }
 }, { timestamps: true})
 
-// Indexes for high-performance querying
+
 batchSchema.index({ name: 'text', subject: 'text' });
 batchSchema.index({ createdBy: 1, status: 1 });
 batchSchema.index({ status: 1, isDeletedByAdmin: 1 });

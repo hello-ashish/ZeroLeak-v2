@@ -1,16 +1,3 @@
-/**
- * ZMail Backfill Migration Script
- *
- * Creates ZMailAccount documents for all existing ZeroLeak users.
- * Safe to run multiple times (idempotent).
- *
- * Usage:
- *   node backend/src/migrations/zmailBackfill.js
- *
- * Or trigger via API (admin only):
- *   POST /api/zmail/admin/backfill
- */
-
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";

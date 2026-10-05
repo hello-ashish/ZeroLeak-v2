@@ -11,8 +11,7 @@ const adminSchema = new Schema(
         lastActiveAt: { type: Date, default: null },
         isLoggedIn: { type: Boolean, default: false },
         sessionVersion: { type: Number, default: 0 },
-        // When true, this admin is a member of the support team
-        isSupport: { type: Boolean, default: false, index: true },
+        isSupport: { type: Boolean, default: false, index: true }
     }, { timestamps: true }
 )
 
@@ -34,10 +33,7 @@ adminSchema.methods.generateAccessToken = function () {
             sessionVersion: this.sessionVersion,
         },
         process.env.ACCESS_TOKEN_SECRET,
-        {
-            expiresIn: process.env.ACCESS_TOKEN_EXPIRY || "1h",
-        }
+        { expiresIn: process.env.ACCESS_TOKEN_EXPIRY || "1h" }
     )
 }
 export const Admin = mongoose.model("Admin", adminSchema)
-

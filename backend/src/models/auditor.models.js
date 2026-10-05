@@ -31,9 +31,7 @@ auditorSchema.methods.generateAccessToken = function () {
             sessionVersion: this.sessionVersion,
         },
         process.env.ACCESS_TOKEN_SECRET,
-        {
-            expiresIn: process.env.ACCESS_TOKEN_EXPIRY || "1h",
-        }
+        { expiresIn: process.env.ACCESS_TOKEN_EXPIRY || "1h" }
     )
 }
 export const Auditor = mongoose.model("Auditor", auditorSchema)

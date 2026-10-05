@@ -28,8 +28,6 @@ professorSchema.methods.isPasswordCorrect = async function (password) {
     return await bcrypt.compare(password, this.password)
 }
 
-// generate tokens
-
 professorSchema.methods.generateAccessToken = function () {
     return jwt.sign(
         {
@@ -39,9 +37,7 @@ professorSchema.methods.generateAccessToken = function () {
             sessionVersion: this.sessionVersion,
         },
         process.env.ACCESS_TOKEN_SECRET,
-        {
-            expiresIn: process.env.ACCESS_TOKEN_EXPIRY || "1h",
-        }
+        { expiresIn: process.env.ACCESS_TOKEN_EXPIRY || "1h" }
     )
 }
 

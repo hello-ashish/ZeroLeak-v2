@@ -18,26 +18,18 @@ const proctoringSessionSchema = new Schema(
         endedAt: { type: Date, default: null },
         lastSeenAt: { type: Date, default: Date.now },
         socketId: { type: String, default: null },
-        metadata: {
-            type: Schema.Types.Mixed,
-            default: {},
-        },
-    },
-    { timestamps: true }
+        metadata: { type: Schema.Types.Mixed, default: {} }
+    }, { timestamps: true }
 );
 
-// Indexes for efficient querying
 proctoringSessionSchema.index({ examId: 1, studentId: 1 });
 proctoringSessionSchema.index({ status: 1 });
 proctoringSessionSchema.index({ status: 1, examId: 1 });
 proctoringSessionSchema.index({ startedAt: -1 });
-// Prevent duplicate active sessions for the same student/exam
+
 proctoringSessionSchema.index(
     { examId: 1, studentId: 1, status: 1 },
-    {
-        unique: true,
-        partialFilterExpression: { status: { $in: ["INITIALIZING", "ACTIVE", "PAUSED"] } }
-    }
+    { unique: true, partialFilterExpression: { status: { $in: ["INITIALIZING", "ACTIVE", "PAUSED"] } } }
 );
 
 export const ProctoringSession = mongoose.model("ProctoringSession", proctoringSessionSchema);

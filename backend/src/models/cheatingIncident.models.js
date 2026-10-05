@@ -23,7 +23,7 @@ const cheatingIncidentSchema = new Schema(
     { timestamps: true }
 );
 
-// Indexes for high performance querying on Admin Anti-Cheating dashboard & telemetries
+
 cheatingIncidentSchema.index({ studentId: 1, examId: 1 });
 cheatingIncidentSchema.index({ reviewStatus: 1 });
 cheatingIncidentSchema.index({ detectedAt: -1 });

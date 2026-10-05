@@ -34,21 +34,16 @@ const proctoringIncidentSchema = new Schema(
         },
         timestamp: { type: Date, default: Date.now },
         severity: { type: String, enum: ["LOW", "MEDIUM", "HIGH"], default: "MEDIUM" },
-        metadata: {
-            type: Schema.Types.Mixed,
-            default: {},
-        },
+        metadata: { type: Schema.Types.Mixed, default: {} },
         reviewed: { type: Boolean, default: false },
         reviewStatus: { type: String, enum: ["PENDING_REVIEW", "REVIEWED", "DISMISSED", "ACTION_TAKEN"], default: "PENDING_REVIEW" },
         reviewedBy: { type: Schema.Types.ObjectId, ref: "Admin", default: null },
         reviewedAt: { type: Date, default: null },
         action: { type: String, default: null },
         notes: { type: String, default: null },
-    },
-    { timestamps: true }
+    }, { timestamps: true }
 );
 
-// Indexes for efficient querying
 proctoringIncidentSchema.index({ examId: 1, studentId: 1 });
 proctoringIncidentSchema.index({ examId: 1, reviewStatus: 1 });
 proctoringIncidentSchema.index({ proctoringSessionId: 1 });

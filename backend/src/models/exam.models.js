@@ -4,7 +4,7 @@ const examSchema = new mongoose.Schema({
     title: { type: String, required: true, trim: true },
     description: { type: String, required: true },
     durationMinutes: { type: Number, required: true, default: 60 },
-    passingPercentage: { type: Number, default: 50, // % required to pass },
+    passingPercentage: { type: Number, default: 50 },
     totalMarks: { type: Number, default: 0 },
     status: { type: String, enum: ["Draft", "Scheduled", "Live", "Completed", "Archived"], default: "Draft" },
     scheduledAt: { type: Date, default: null },
@@ -23,7 +23,7 @@ const examSchema = new mongoose.Schema({
     isResultReleased: { type: Boolean, default: false },
 }, { timestamps: true })
 
-// Indexes for high-performance querying
+
 examSchema.index({ title: 'text', subject: 'text' });
 examSchema.index({ status: 1 });
 examSchema.index({ examinationId: 1 });

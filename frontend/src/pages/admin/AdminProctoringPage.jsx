@@ -738,7 +738,20 @@ export const AdminProctoringPage = () => {
             for (const b of batch) {
                 const sid = b.sessionId?.toString();
                 const cur = sessionsMapRef.current.get(sid);
-                if (cur) { sessionsMapRef.current.set(sid, { ...cur, ...b }); changed = true; }
+                if (cur) { 
+                    sessionsMapRef.current.set(sid, { ...cur, ...b }); 
+                    changed = true; 
+                } else if (sid) {
+                    // Fetch the missing session!
+                    const t = localStorage.getItem("adminToken");
+                    axios.get(`${API}/admin/proctoring/sessions/${sid}`, { headers: { Authorization: `Bearer ${t}` } })
+                        .then(res => {
+                            if (res.data.session) {
+                                sessionsMapRef.current.set(res.data.session._id, res.data.session);
+                                tick();
+                            }
+                        }).catch(() => {});
+                }
             }
             if (changed) tick();
         });
@@ -747,7 +760,10 @@ export const AdminProctoringPage = () => {
             const sid = data.sessionId?.toString();
             const cur = sessionsMapRef.current.get(sid);
             if (cur) {
-                sessionsMapRef.current.set(sid, { ...cur, incidentCount: (cur.incidentCount || 0) + 1 });
+                const updates = { incidentCount: (cur.incidentCount || 0) + 1 };
+                if (data.incident?.violationType === "TAB_SWITCH") updates.tabSwitchCount = (cur.tabSwitchCount || 0) + 1;
+                if (data.incident?.violationType === "WINDOW_BLUR") updates.windowBlurCount = (cur.windowBlurCount || 0) + 1;
+                sessionsMapRef.current.set(sid, { ...cur, ...updates });
                 tick();
             }
         });

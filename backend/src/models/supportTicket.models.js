@@ -1,10 +1,5 @@
 import mongoose, { Schema } from "mongoose";
 
-/**
- * SupportTicket — workflow/state layer for the ZeroLeak Support System.
- * Communication lives in ZMail; this model tracks metadata and state.
- */
-
 export const TICKET_STATUSES = ["OPEN", "IN_PROGRESS", "WAITING_FOR_USER", "WAITING_FOR_SUPPORT", "RESOLVED", "CLOSED"];
 export const TICKET_PRIORITIES = ["low", "normal", "high", "urgent"];
 export const TICKET_CATEGORIES = [
@@ -65,7 +60,7 @@ supportTicketSchema.index({ reporterUserId: 1, createdAt: -1 });
 supportTicketSchema.index({ category: 1, status: 1 });
 supportTicketSchema.index({ hasUnreadUserMessage: 1, status: 1 });
 
-// ── Ticket counter for safe sequential number generation ──────────────────────
+
 const ticketCounterSchema = new Schema({ _id: String, seq: { type: Number, default: 0 } });
 export const TicketCounter = mongoose.model("TicketCounter", ticketCounterSchema);
 

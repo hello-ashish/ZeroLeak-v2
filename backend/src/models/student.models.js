@@ -27,25 +27,25 @@ const studentSchema = new Schema(
     { timestamps: true }
 );
 
-// Indexes for high-performance querying
+
 studentSchema.index({ name: 'text', email: 'text', studentId: 'text' });
 studentSchema.index({ isBlocked: 1 });
 studentSchema.index({ lastActiveAt: 1, currentExamId: 1 });
 studentSchema.index({ isBlocked: 1, unblockedAt: -1 });
 studentSchema.index({ createdAt: -1 });
 
-// Hash the password before saving
+
 studentSchema.pre("save", async function () {
     if (!this.isModified("password")) return;
     this.password = await bcrypt.hash(this.password, 10);
 });
 
-// Method to check if password is correct
+
 studentSchema.methods.isPasswordCorrect = async function (password) {
     return await bcrypt.compare(password, this.password);
 };
 
-// Method to generate JWT Token
+
 studentSchema.methods.generateAccessToken = function () {
     return jwt.sign(
         {
