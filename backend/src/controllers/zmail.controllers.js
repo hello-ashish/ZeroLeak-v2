@@ -158,6 +158,7 @@ export const sendMessage = async (req, res) => {
             },
         }, 201);
     } catch (e) {
+        console.error("[ZMail] sendMessage error:", e.message);
         return err(res, e.message, 400);
     }
 };

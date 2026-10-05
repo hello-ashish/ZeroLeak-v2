@@ -13,7 +13,7 @@ export function ComposeWorkspace({ onClose }) {
     const handleSend = async () => {
         try {
             await sendMessage({
-                to: [{ address: to }],
+                to: to ? [to.trim()] : [],
                 subject,
                 body,
                 attachments: []
