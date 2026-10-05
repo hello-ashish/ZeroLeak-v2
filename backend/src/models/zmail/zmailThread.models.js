@@ -11,13 +11,7 @@ import mongoose, { Schema } from "mongoose";
  */
 const zmailThreadSchema = new Schema(
     {
-        subject: {
-            type: String,
-            required: true,
-            trim: true,
-            maxlength: 998,
-            default: "(no subject)",
-        },
+        subject: { type: String, required: true, trim: true, maxlength: 998, default: "(no subject)" },
         // All unique participant userIds in this thread (for quick auth checks)
         participantIds: [
             {
@@ -29,33 +23,14 @@ const zmailThreadSchema = new Schema(
         // ZMail addresses of all participants (for display / search)
         participantAddresses: [String],
         // Pointer to the most recent message
-        latestMessageId: {
-            type: Schema.Types.ObjectId,
-            ref: "ZMailMessage",
-            default: null,
-        },
-        latestMessageAt: {
-            type: Date,
-            default: null,
-            index: true,
-        },
+        latestMessageId: { type: Schema.Types.ObjectId, ref: "ZMailMessage", default: null },
+        latestMessageAt: { type: Date, default: null, index: true },
         // Rolling count — avoids COUNT queries
-        messageCount: {
-            type: Number,
-            default: 0,
-            min: 0,
-        },
+        messageCount: { type: Number, default: 0, min: 0 },
         // Short preview of the latest message body
-        snippet: {
-            type: String,
-            default: "",
-            maxlength: 300,
-        },
+        snippet: { type: String, default: "", maxlength: 300 },
         // Whether any message in the thread has an attachment
-        hasAttachment: {
-            type: Boolean,
-            default: false,
-        },
+        hasAttachment: { type: Boolean, default: false },
     },
     { timestamps: true }
 );

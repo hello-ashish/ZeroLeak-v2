@@ -1,19 +1,9 @@
 import mongoose from "mongoose"
 
 const auditLogSchema = new mongoose.Schema({
-    actor: {
-        type: String,
-        required: true // "admin@zeroleak.com"
-    },
-    actorRole: {
-        type: String,
-        enum: ["Admin", "Professor", "System", "Student"],
-        default: "Admin"
-    },
-    action: {
-        type: String,
-        required: true // "BATCH_APPROVED", "PROFESSOR_CREATED"
-    },
+    actor: { type: String, required: true // "admin@zeroleak.com" },
+    actorRole: { type: String, enum: ["Admin", "Professor", "System", "Student"], default: "Admin" },
+    action: { type: String, required: true // "BATCH_APPROVED", "PROFESSOR_CREATED" },
     targetType: {
         type: String, // "Batch", "Professor", "Student", "Exam"
     },
@@ -26,15 +16,8 @@ const auditLogSchema = new mongoose.Schema({
     details: {
         type: String,
     },
-    status: {
-        type: String,
-        enum: ["success", "failure"],
-        default: "success"
-    },
-    isCommitted: {
-        type: Boolean,
-        default: false
-    }
+    status: { type: String, enum: ["success", "failure"], default: "success" },
+    isCommitted: { type: Boolean, default: false }
 }, { timestamps: true })
 
 // Indexes for high-performance querying

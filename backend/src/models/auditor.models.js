@@ -4,36 +4,13 @@ import jwt from "jsonwebtoken"
 
 const auditorSchema = new Schema(
     {
-        auditorId: {
-            type: String,
-            required: true,
-            unique: true,
-        },
-        email: {
-            type: String,
-            required: true,
-            unique: true,
-            lowercase: true,
-            trim: true
-        },
-        password: {
-            type: String,
-            required: [true, "Password is required"],
-        },
-        name: {
-            type: String,
-            required: true,
-            default: "Platform Auditor"
-        },
-        lastActiveAt: {
-            type: Date,
-            default: null
-        },
+        auditorId: { type: String, required: true, unique: true },
+        email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+        password: { type: String, required: [true, "Password is required"] },
+        name: { type: String, required: true, default: "Platform Auditor" },
+        lastActiveAt: { type: Date, default: null },
         isLoggedIn: { type: Boolean, default: false },
-        sessionVersion: {
-            type: Number,
-            default: 0
-        }
+        sessionVersion: { type: Number, default: 0 }
     }, { timestamps: true }
 )
 

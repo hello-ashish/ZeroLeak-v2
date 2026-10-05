@@ -2,21 +2,9 @@ import mongoose, { Schema } from "mongoose";
 
 const proctoringIncidentSchema = new Schema(
     {
-        examId: {
-            type: Schema.Types.ObjectId,
-            ref: "Exam",
-            required: true,
-        },
-        studentId: {
-            type: Schema.Types.ObjectId,
-            ref: "Student",
-            required: true,
-        },
-        proctoringSessionId: {
-            type: Schema.Types.ObjectId,
-            ref: "ProctoringSession",
-            required: true,
-        },
+        examId: { type: Schema.Types.ObjectId, ref: "Exam", required: true },
+        studentId: { type: Schema.Types.ObjectId, ref: "Student", required: true },
+        proctoringSessionId: { type: Schema.Types.ObjectId, ref: "ProctoringSession", required: true },
         type: {
             type: String,
             required: true,
@@ -44,45 +32,18 @@ const proctoringIncidentSchema = new Schema(
             ],
             trim: true,
         },
-        timestamp: {
-            type: Date,
-            default: Date.now,
-        },
-        severity: {
-            type: String,
-            enum: ["LOW", "MEDIUM", "HIGH"],
-            default: "MEDIUM",
-        },
+        timestamp: { type: Date, default: Date.now },
+        severity: { type: String, enum: ["LOW", "MEDIUM", "HIGH"], default: "MEDIUM" },
         metadata: {
             type: Schema.Types.Mixed,
             default: {},
         },
-        reviewed: {
-            type: Boolean,
-            default: false,
-        },
-        reviewStatus: {
-            type: String,
-            enum: ["PENDING_REVIEW", "REVIEWED", "DISMISSED", "ACTION_TAKEN"],
-            default: "PENDING_REVIEW",
-        },
-        reviewedBy: {
-            type: Schema.Types.ObjectId,
-            ref: "Admin",
-            default: null,
-        },
-        reviewedAt: {
-            type: Date,
-            default: null,
-        },
-        action: {
-            type: String,
-            default: null,
-        },
-        notes: {
-            type: String,
-            default: null,
-        },
+        reviewed: { type: Boolean, default: false },
+        reviewStatus: { type: String, enum: ["PENDING_REVIEW", "REVIEWED", "DISMISSED", "ACTION_TAKEN"], default: "PENDING_REVIEW" },
+        reviewedBy: { type: Schema.Types.ObjectId, ref: "Admin", default: null },
+        reviewedAt: { type: Date, default: null },
+        action: { type: String, default: null },
+        notes: { type: String, default: null },
     },
     { timestamps: true }
 );

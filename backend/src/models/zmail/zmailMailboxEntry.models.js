@@ -16,81 +16,26 @@ const FOLDERS = ["inbox", "sent", "drafts", "trash", "archive", "all"];
 
 const zmailMailboxEntrySchema = new Schema(
     {
-        userId: {
-            type: Schema.Types.ObjectId,
-            required: true,
-            index: true,
-        },
-        messageId: {
-            type: Schema.Types.ObjectId,
-            ref: "ZMailMessage",
-            required: true,
-            index: true,
-        },
-        threadId: {
-            type: Schema.Types.ObjectId,
-            ref: "ZMailThread",
-            required: true,
-            index: true,
-        },
-        folder: {
-            type: String,
-            enum: FOLDERS,
-            required: true,
-            index: true,
-        },
-        isRead: {
-            type: Boolean,
-            default: false,
-            index: true,
-        },
-        isStarred: {
-            type: Boolean,
-            default: false,
-        },
-        isImportant: {
-            type: Boolean,
-            default: false,
-        },
+        userId: { type: Schema.Types.ObjectId, required: true, index: true },
+        messageId: { type: Schema.Types.ObjectId, ref: "ZMailMessage", required: true, index: true },
+        threadId: { type: Schema.Types.ObjectId, ref: "ZMailThread", required: true, index: true },
+        folder: { type: String, enum: FOLDERS, required: true, index: true },
+        isRead: { type: Boolean, default: false, index: true },
+        isStarred: { type: Boolean, default: false },
+        isImportant: { type: Boolean, default: false },
         // Soft-delete — message moved to trash
-        isTrashed: {
-            type: Boolean,
-            default: false,
-            index: true,
-        },
-        trashedAt: {
-            type: Date,
-            default: null,
-        },
+        isTrashed: { type: Boolean, default: false, index: true },
+        trashedAt: { type: Date, default: null },
         // Archived (removed from inbox, still searchable)
-        isArchived: {
-            type: Boolean,
-            default: false,
-        },
-        archivedAt: {
-            type: Date,
-            default: null,
-        },
+        isArchived: { type: Boolean, default: false },
+        archivedAt: { type: Date, default: null },
         // Hard-delete from user's perspective (NOT the underlying message)
-        isDeleted: {
-            type: Boolean,
-            default: false,
-            index: true,
-        },
-        deletedAt: {
-            type: Date,
-            default: null,
-        },
+        isDeleted: { type: Boolean, default: false, index: true },
+        deletedAt: { type: Date, default: null },
         // When the user last opened this message
-        lastSeenAt: {
-            type: Date,
-            default: null,
-        },
+        lastSeenAt: { type: Date, default: null },
         // Labels / tags for future extensibility
-        labels: {
-            type: [String],
-            default: [],
-        },
+        labels: { type: [String], default: [] },
     },
     { timestamps: true }
 );

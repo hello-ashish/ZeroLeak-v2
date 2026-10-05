@@ -1,86 +1,26 @@
 import mongoose from "mongoose";
 
 const examSchema = new mongoose.Schema({
-    title: {
-        type: String,
-        required: true,
-        trim: true,
-    },
-    description: {
-        type: String,
-        required: true,
-    },
-    durationMinutes: {
-        type: Number,
-        required: true,
-        default: 60,
-    },
-    passingPercentage: {
-        type: Number,
-        default: 50, // % required to pass
-    },
-    totalMarks: {
-        type: Number,
-        default: 0,
-    },
-    status: {
-        type: String,
-        enum: ["Draft", "Scheduled", "Live", "Completed", "Archived"],
-        default: "Draft",
-    },
-    scheduledAt: {
-        type: Date,
-        default: null,
-    },
-    endsAt: {
-        type: Date,
-        default: null,
-    },
-    createdBy: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Admin',
-        required: true,
-    },
-    examinationId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Examination',
-        required: true,
-    },
-    subject: {
-        type: String,
-        required: true,
-    },
-    mode: {
-        type: String,
-        enum: ["Normal", "Zeroleak"],
-        default: "Normal",
-    },
+    title: { type: String, required: true, trim: true },
+    description: { type: String, required: true },
+    durationMinutes: { type: Number, required: true, default: 60 },
+    passingPercentage: { type: Number, default: 50, // % required to pass },
+    totalMarks: { type: Number, default: 0 },
+    status: { type: String, enum: ["Draft", "Scheduled", "Live", "Completed", "Archived"], default: "Draft" },
+    scheduledAt: { type: Date, default: null },
+    endsAt: { type: Date, default: null },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin', required: true },
+    examinationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Examination', required: true },
+    subject: { type: String, required: true },
+    mode: { type: String, enum: ["Normal", "Zeroleak"], default: "Normal" },
     zeroleakConfig: {
-        numQuestions: {
-            type: Number,
-            default: 0
-        }
+        numQuestions: { type: Number, default: 0 }
     },
-    questions: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Question',
-    }],
-    questionMerkleRoot: {
-        type: String,
-        default: null,
-    },
-    commitmentId: {
-        type: String,
-        default: null,
-    },
-    commitmentHash: {
-        type: String,
-        default: null,
-    },
-    isResultReleased: {
-        type: Boolean,
-        default: false,
-    },
+    questions: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Question' }],
+    questionMerkleRoot: { type: String, default: null },
+    commitmentId: { type: String, default: null },
+    commitmentHash: { type: String, default: null },
+    isResultReleased: { type: Boolean, default: false },
 }, { timestamps: true })
 
 // Indexes for high-performance querying

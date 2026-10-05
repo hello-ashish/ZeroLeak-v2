@@ -4,42 +4,15 @@ import jwt from "jsonwebtoken"
 
 const adminSchema = new Schema(
     {
-        adminId: {
-            type: String,
-            required: true,
-            unique: true,
-        },
-        name: {
-            type: String,
-            trim: true,
-            default: "",
-        },
-        email: {
-            type: String,
-            required: true,
-            unique: true,
-            lowercase: true,
-            trim: true
-        },
-        password: {
-            type: String,
-            required: [true, "Password is required"],
-        },
-        lastActiveAt: {
-            type: Date,
-            default: null
-        },
+        adminId: { type: String, required: true, unique: true },
+        name: { type: String, trim: true, default: "" },
+        email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+        password: { type: String, required: [true, "Password is required"] },
+        lastActiveAt: { type: Date, default: null },
         isLoggedIn: { type: Boolean, default: false },
-        sessionVersion: {
-            type: Number,
-            default: 0
-        },
+        sessionVersion: { type: Number, default: 0 },
         // When true, this admin is a member of the support team
-        isSupport: {
-            type: Boolean,
-            default: false,
-            index: true,
-        },
+        isSupport: { type: Boolean, default: false, index: true },
     }, { timestamps: true }
 )
 

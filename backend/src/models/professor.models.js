@@ -4,48 +4,16 @@ import jwt from "jsonwebtoken"
 
 const professorSchema = new Schema(
     {
-        id: {
-            type: String,
-            required: true,
-            unique: true,
-        },
-        name: {
-            type: String,
-            required: true,
-            trim: true
-        },
-        email: {
-            type: String,
-            required: true,
-            unique: true,
-            lowercase: true,
-            trim: true
-        },
-        contact: {
-            type: String,
-            trim: true
-        },
-        address: {
-            type: String,
-            trim: true
-        },
-        password: {
-            type: String,
-            required: [true, "Password is required"],
-        },
-        lastActiveAt: {
-            type: Date,
-            default: null
-        },
+        id: { type: String, required: true, unique: true },
+        name: { type: String, required: true, trim: true },
+        email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+        contact: { type: String, trim: true },
+        address: { type: String, trim: true },
+        password: { type: String, required: [true, "Password is required"] },
+        lastActiveAt: { type: Date, default: null },
         isLoggedIn: { type: Boolean, default: false },
-        isBlocked: { 
-            type: Boolean, 
-            default: false 
-        },
-        sessionVersion: {
-            type: Number,
-            default: 0
-        }
+        isBlocked: { type: Boolean, default: false },
+        sessionVersion: { type: Number, default: 0 }
     }, { timestamps: true }
 )
 
