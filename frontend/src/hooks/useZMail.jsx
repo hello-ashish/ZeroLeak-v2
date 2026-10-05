@@ -40,7 +40,8 @@ function getAuthHeader() {
     return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-const API = '/api/zmail';
+const BACKEND_URL = import.meta.env.DEV ? "" : "https://zeroleak-v2.onrender.com";
+const API = `${BACKEND_URL}/api/zmail`;
 
 export function ZMailProvider({ children }) {
     const [account, setAccount] = useState(null);
