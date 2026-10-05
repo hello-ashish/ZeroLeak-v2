@@ -100,7 +100,9 @@ export async function ensureZMailAccount({ userId, userType, displayName, loginE
     if (existing) return existing;
 
     let zmailAddress = loginEmail;
-    if (!zmailAddress) {
+    // Only use the login email directly if it is already a @zeroleak.com address.
+    // External emails (gmail, etc.) must be converted to a @zeroleak.com address.
+    if (!zmailAddress || !zmailAddress.toLowerCase().trim().endsWith("@zeroleak.com")) {
         const base = deriveBase(displayName, loginEmail);
         zmailAddress = await findAvailableAddress(base);
     }

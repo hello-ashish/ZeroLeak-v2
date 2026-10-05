@@ -91,7 +91,8 @@ export function ZMailCompose({
             onSent && onSent();
             onClose();
         } catch (e) {
-            toast.error(e?.response?.data?.error || 'Failed to send message. Please try again.');
+            console.error('[ZMail] Send failed:', e?.response?.status, e?.response?.data, e?.message);
+            toast.error(e?.response?.data?.error || e?.message || 'Failed to send message. Please try again.');
         }
         setSending(false);
     };
