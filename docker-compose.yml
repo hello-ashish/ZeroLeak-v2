@@ -1,16 +1,4 @@
-# =============================================================================
-# ZeroLeak v2 — Docker Compose Configuration
-# =============================================================================
-# Usage:
-#   Development:  docker compose up
-#   Production:   docker compose --profile production up
-#   Services only (MongoDB + Redis): docker compose up mongodb redis
-# =============================================================================
-
 services:
-  # ---------------------------------------------------------------------------
-  # MongoDB
-  # ---------------------------------------------------------------------------
   mongodb:
     image: mongo:7
     container_name: zeroleak-mongodb
@@ -31,10 +19,6 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
-
-  # ---------------------------------------------------------------------------
-  # Redis
-  # ---------------------------------------------------------------------------
   redis:
     image: redis:7-alpine
     container_name: zeroleak-redis
@@ -51,10 +35,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
-  # ---------------------------------------------------------------------------
-  # Backend (Development)
-  # ---------------------------------------------------------------------------
   backend:
     build:
       context: ./backend
@@ -80,10 +60,6 @@ services:
         condition: service_healthy
     networks:
       - zeroleak-network
-
-  # ---------------------------------------------------------------------------
-  # Frontend (Development)
-  # ---------------------------------------------------------------------------
   frontend:
     build:
       context: ./frontend
@@ -102,10 +78,6 @@ services:
       - backend
     networks:
       - zeroleak-network
-
-  # ---------------------------------------------------------------------------
-  # Backend (Production) — activate with: --profile production
-  # ---------------------------------------------------------------------------
   backend-prod:
     build:
       context: ./backend
@@ -130,10 +102,6 @@ services:
         condition: service_healthy
     networks:
       - zeroleak-network
-
-  # ---------------------------------------------------------------------------
-  # Frontend (Production) — activate with: --profile production
-  # ---------------------------------------------------------------------------
   frontend-prod:
     build:
       context: ./frontend
@@ -149,19 +117,11 @@ services:
       - backend-prod
     networks:
       - zeroleak-network
-
-# =============================================================================
-# Volumes
-# =============================================================================
 volumes:
   mongodb_data:
     driver: local
   redis_data:
     driver: local
-
-# =============================================================================
-# Networks
-# =============================================================================
 networks:
   zeroleak-network:
     driver: bridge

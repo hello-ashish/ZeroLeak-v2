@@ -5,7 +5,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Send, Save, ChevronDown, ChevronUp, Paperclip, Minimize2 } from 'lucide-react';
 import { ZMailRecipientInput } from './ZMailRecipientInput.jsx';
 import {
-    sendMessage, createDraft, updateDraft, sendDraft,
+    sendMessage, createDraft, updateDraft, sendDraft, uploadAttachment,
 } from '../../hooks/useZMail.jsx';
 import { useToast } from '../Toast.jsx';
 import { useZMail } from '../../hooks/useZMail.jsx';
@@ -36,6 +36,7 @@ export function ZMailCompose({
     const [draftId, setDraftId] = useState(existingDraftId);
     const [draftVersion, setDraftVersion] = useState(existingDraftVersion);
     const [attachments, setAttachments] = useState([]);
+    const [uploading, setUploading] = useState(false);
     const autosaveRef = useRef(null);
     const fileInputRef = useRef(null);
     const toast = useToast();
@@ -111,31 +112,31 @@ export function ZMailCompose({
 
     const handleFileSelect = async (e) => {
         const files = Array.from(e.target.files || []);
+        if (!files.length) return;
+
         if (attachments.length + files.length > 10) {
             toast.warning('Maximum 10 attachments allowed.');
+            e.target.value = '';
             return;
         }
-        for (const file of files) {
-            if (file.size > 25 * 1024 * 1024) {
-                toast.warning(`File "${file.name}" exceeds 25 MB limit.`);
-                continue;
-            }
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                const base64data = ev.target.result.split(',')[1];
-                const att = {
-                    originalName: file.name,
-                    storageName: file.name,
-                    storageKey: `local:${file.name}`, // uploaded later
-                    mimeType: file.type || 'application/octet-stream',
-                    sizeBytes: file.size,
-                    base64data,
-                    uploadedAt: new Date().toISOString(),
-                };
-                setAttachments(prev => [...prev, att]);
-            };
-            reader.readAsDataURL(file);
+
+        const oversized = files.filter(f => f.size > 25 * 1024 * 1024);
+        if (oversized.length) {
+            oversized.forEach(f => toast.warning(`"${f.name}" exceeds 25 MB limit.`));
         }
+        const validFiles = files.filter(f => f.size <= 25 * 1024 * 1024);
+        if (!validFiles.length) { e.target.value = ''; return; }
+
+        setUploading(true);
+        for (const file of validFiles) {
+            try {
+                const att = await uploadAttachment(file);
+                setAttachments(prev => [...prev, att]);
+            } catch (err) {
+                toast.error(`Failed to upload "${file.name}": ${err.message}`);
+            }
+        }
+        setUploading(false);
         e.target.value = '';
     };
 
@@ -247,23 +248,24 @@ export function ZMailCompose({
                     {sending ? 'Sending...' : 'Send'}
                 </button>
 
-                <button
-                    type="button"
+                <label
                     className="topbar-btn"
-                    onClick={() => fileInputRef.current?.click()}
-                    aria-label="Attach file"
-                    title="Attach file"
+                    aria-label={uploading ? 'Uploading...' : 'Attach file'}
+                    title={uploading ? 'Uploading...' : 'Attach file'}
+                    style={{ cursor: uploading ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: 0, opacity: uploading ? 0.6 : 1 }}
                 >
                     <Paperclip size={18} />
-                </button>
-                <input
-                    ref={fileInputRef}
-                    type="file"
-                    style={{ display: 'none' }}
-                    multiple
-                    onChange={handleFileSelect}
-                    aria-label="Select file to attach"
-                />
+                    {uploading && <span style={{ fontSize: 10, marginLeft: 3 }}>...</span>}
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        style={{ display: 'none' }}
+                        multiple
+                        disabled={uploading}
+                        onChange={handleFileSelect}
+                        aria-label="Select file to attach"
+                    />
+                </label>
 
                 <button
                     type="button"

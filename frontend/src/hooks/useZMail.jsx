@@ -268,3 +268,30 @@ export async function deleteDraft(draftId) {
     const { data } = await axios.delete(`${API}/drafts/${draftId}`, { headers });
     return data;
 }
+
+export async function uploadAttachment(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = async (ev) => {
+            try {
+                const base64data = ev.target.result.split(',')[1];
+                const headers = getAuthHeader();
+                const { data } = await axios.post(
+                    `${API}/attachments/upload`,
+                    {
+                        filename: file.name,
+                        mimeType: file.type || 'application/octet-stream',
+                        base64data,
+                    },
+                    { headers }
+                );
+                if (!data.success) throw new Error(data.error || 'Upload failed');
+                resolve(data.attachment);
+            } catch (err) {
+                reject(err);
+            }
+        };
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsDataURL(file);
+    });
+}
