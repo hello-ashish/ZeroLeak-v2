@@ -217,78 +217,107 @@ export const StudentLayout = ({ children, noPadding = false }) => {
             {/* Main */}
             <div className={`app-main ${collapsed ? 'sidebar-collapsed' : ''}`}>
                 {/* Topbar */}
-                <header className="topbar" role="banner">
-                    <button
-                        className="topbar-toggle"
-                        onClick={() => { setCollapsed(c => !c); setMobileOpen(c => !c) }}
-                        aria-label="Toggle sidebar"
-                    >
-                        ☰
-                    </button>
+                <header className="topbar" role="banner" style={{ borderBottom: '1px solid var(--border-default)', padding: '0 24px', height: '64px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(var(--bg-surface-rgb), 0.8)', backdropFilter: 'blur(12px)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 1 }}>
+                        <button
+                            className="topbar-toggle"
+                            onClick={() => { setCollapsed(c => !c); setMobileOpen(c => !c) }}
+                            aria-label="Toggle sidebar"
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, borderRadius: 8, background: 'transparent', border: '1px solid transparent', cursor: 'pointer', transition: 'all 0.2s', color: 'var(--text-secondary)' }}
+                            onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.borderColor = 'var(--border-default)' }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent' }}
+                        >
+                            ☰
+                        </button>
 
-                    <div
-                        className="topbar-search"
-                        onClick={() => setShowCommand(true)}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={e => e.key === 'Enter' && setShowCommand(true)}
-                        aria-label="Open command palette"
-                    >
-                        <Search size={16} style={{ color: 'var(--text-tertiary)' }} />
-                        <span className="topbar-search-text">Search {studentData.name ? studentData.name.split(' ')[0] + "'s" : "your"} exams and results...</span>
-                        <span className="topbar-search-kbd">⌘K</span>
+                        <div
+                            className="topbar-search"
+                            onClick={() => setShowCommand(true)}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={e => e.key === 'Enter' && setShowCommand(true)}
+                            aria-label="Open command palette"
+                            style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--bg-body)', border: '1px solid var(--border-default)', borderRadius: 24, padding: '0 16px', height: 40, width: '100%', maxWidth: 480, cursor: 'text', transition: 'all 0.2s', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}
+                            onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--border-strong)'}
+                            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border-default)'}
+                        >
+                            <Search size={16} style={{ color: 'var(--text-tertiary)' }} />
+                            <span className="topbar-search-text" style={{ flex: 1, fontSize: 14, color: 'var(--text-tertiary)', userSelect: 'none' }}>
+                                Search {studentData.name ? studentData.name.split(' ')[0] + "'s" : "your"} exams and results...
+                            </span>
+                            <span className="topbar-search-kbd" style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 6, padding: '2px 6px', letterSpacing: '1px' }}>⌘K</span>
+                        </div>
                     </div>
 
-                    <div className="topbar-actions">
+                    <div className="topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <HeaderThemeToggle />
 
-                        {/* Refresh Button */}
                         <button
                             className="topbar-btn"
                             onClick={handleRefresh}
                             title="Refresh Page"
                             aria-label="Refresh Page"
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, borderRadius: '50%', background: 'transparent', border: '1px solid var(--border-default)', cursor: 'pointer', transition: 'all 0.2s', color: 'var(--text-secondary)' }}
+                            onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--text-primary)' }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
                         >
-                            <RefreshCw size={18} />
+                            <RefreshCw size={16} className={isRefreshing ? 'spin' : ''} />
                         </button>
 
+                        <div style={{ position: 'relative' }}>
+                            <NotificationDropdown
+                                notifications={notifications}
+                                unreadCount={unreadCount}
+                                markAsRead={markAsRead}
+                                markAllAsRead={markAllAsRead}
+                                showNotifications={showNotifications}
+                                setShowNotifications={setShowNotifications}
+                                setShowProfile={setShowProfile}
+                                dropdownRef={notifRef}
+                            />
+                        </div>
 
-                        {/* Notifications Dropdown */}
-                        <NotificationDropdown
-                            notifications={notifications}
-                            unreadCount={unreadCount}
-                            markAsRead={markAsRead}
-                            markAllAsRead={markAllAsRead}
-                            showNotifications={showNotifications}
-                            setShowNotifications={setShowNotifications}
-                            setShowProfile={setShowProfile}
-                            dropdownRef={notifRef}
-                        />
+                        <div style={{ width: 1, height: 24, background: 'var(--border-strong)', margin: '0 4px' }} />
 
-                        {/* Profile */}
-                        <div className="dropdown" ref={profileRef}>
+                        <div className="dropdown" ref={profileRef} style={{ position: 'relative' }}>
                             <button
                                 className="topbar-profile"
                                 onClick={() => { setShowProfile(v => !v); setShowNotifications(false) }}
                                 aria-expanded={showProfile}
                                 aria-label="Student profile menu"
+                                style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 8px', borderRadius: 8, transition: 'background 0.2s' }}
+                                onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                             >
-                                <span className="avatar avatar-sm" aria-hidden="true" style={{ background: 'var(--brand-primary)', color: 'white' }}>{initials}</span>
-                                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                                    {studentData.name || studentData.email?.split('@')[0] || 'Student'}
-                                </span>
-                                <ChevronDown size={14} style={{ color: 'var(--text-tertiary)' }} />
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1 }}>
+                                        {studentData.name || studentData.email?.split('@')[0] || 'Student'}
+                                    </span>
+                                    <span style={{ fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1 }}>Student</span>
+                                </div>
+                                <div className="avatar avatar-sm" aria-hidden="true" style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--brand-primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 600, border: '2px solid var(--bg-surface)' }}>
+                                    {initials}
+                                </div>
+                                <ChevronDown size={14} style={{ color: 'var(--text-tertiary)', marginLeft: 2 }} />
                             </button>
+
                             {showProfile && (
-                                <div className="dropdown-menu">
-                                    <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-default)' }}>
-                                        <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>
+                                <div className="dropdown-menu" style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 220, background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.1)', overflow: 'hidden', zIndex: 100 }}>
+                                    <div style={{ padding: '16px', borderBottom: '1px solid var(--border-default)', background: 'var(--bg-card)' }}>
+                                        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                             {studentData.name || studentData.email?.split('@')[0] || 'Student'}
                                         </div>
-                                        <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{studentData.email}</div>
+                                        <div style={{ fontSize: 12, color: 'var(--text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{studentData.email}</div>
                                     </div>
-                                    <button className="dropdown-item" onClick={() => { navigate('/student/profile'); setShowProfile(false) }}><User size={14} style={{ marginRight: 4 }} /> Profile</button>                                    <div className="dropdown-divider" />
-                                    <button className="dropdown-item danger" onClick={handleLogout}><LogOut size={14} style={{ marginRight: 4 }} /> Logout</button>
+                                    <div style={{ padding: '8px' }}>
+                                        <button className="dropdown-item" onClick={() => { navigate('/student/profile'); setShowProfile(false) }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'transparent', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, color: 'var(--text-secondary)', transition: 'all 0.2s', textAlign: 'left' }} onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--text-primary)' }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}>
+                                            <User size={16} /> My Profile
+                                        </button>
+                                        <div style={{ height: 1, background: 'var(--border-subtle)', margin: '4px 0' }} />
+                                        <button className="dropdown-item danger" onClick={handleLogout} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'transparent', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, color: 'var(--danger)', transition: 'all 0.2s', textAlign: 'left' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)' }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
+                                            <LogOut size={16} /> Sign out
+                                        </button>
+                                    </div>
                                 </div>
                             )}
                         </div>

@@ -76,7 +76,7 @@ const StudentPerformancePage = () => {
         setIsAnalyzing(true);
         setAiError(null);
         setAiReport(null);
-        
+
         try {
             const token = localStorage.getItem('studentToken');
             const response = await axios.get('/api/ai/student/performance-analysis', {
@@ -221,7 +221,7 @@ const StudentPerformancePage = () => {
                     <h1 style={{ fontSize: 32, fontWeight: 300, color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: 8 }}>Academic Performance</h1>
                     <p style={{ fontSize: 15, color: 'var(--text-secondary)' }}>Understand your progress, strengths, and areas for improvement.</p>
                 </div>
-                <button 
+                <button
                     className="btn btn-primary"
                     style={{ padding: '10px 20px', borderRadius: 8, fontSize: 14, display: 'flex', alignItems: 'center', gap: 8, opacity: isAnalyzing ? 0.7 : 1, cursor: isAnalyzing ? 'not-allowed' : 'pointer' }}
                     onClick={handleGenerateAiAnalysis}
@@ -239,7 +239,7 @@ const StudentPerformancePage = () => {
                     <span>{aiError}</span>
                 </div>
             )}
-            
+
             {aiReport && (
                 <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', borderRadius: 16, padding: '32px', marginBottom: 40, boxShadow: 'var(--shadow-sm)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
@@ -251,11 +251,11 @@ const StudentPerformancePage = () => {
                             <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Analyzed from your authorized academic history</p>
                         </div>
                     </div>
-                    
+
                     <p style={{ fontSize: 16, color: 'var(--text-primary)', lineHeight: 1.6, marginBottom: 24 }}>
                         {aiReport.summary}
                     </p>
-                    
+
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 24, marginBottom: 24 }}>
                         <div style={{ padding: 20, background: 'var(--bg-body)', borderRadius: 12 }}>
                             <h4 style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Strengths</h4>
@@ -274,7 +274,7 @@ const StudentPerformancePage = () => {
                             </ul>
                         </div>
                     </div>
-                    
+
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 24 }}>
                         <div style={{ padding: 20, background: 'var(--bg-body)', borderRadius: 12 }}>
                             <h4 style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Key Observations</h4>

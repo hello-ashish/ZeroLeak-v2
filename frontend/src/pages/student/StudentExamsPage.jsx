@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Search, PlayCircle, CheckCircle2, Clock, Calendar, FileText, ShieldAlert, Lock, ChevronDown, ChevronRight, Timer } from 'lucide-react';
+import { Search, PlayCircle, CheckCircle2, Clock, Calendar, FileText, ShieldAlert, Lock, ChevronDown, ChevronRight, Timer, BookOpen } from 'lucide-react';
 
 const StudentExamsPage = () => {
     const [exams, setExams] = useState([]);
@@ -112,10 +112,19 @@ const StudentExamsPage = () => {
 
     if (loading) {
         return (
-            <div style={{ padding: 32 }}>
-                <div style={{ height: 40, width: 200, background: 'var(--bg-card)', borderRadius: 8, marginBottom: 32, animation: 'pulse 2s infinite' }} />
+            <div style={{ maxWidth: 1100, margin: '0 auto', padding: '40px 24px', display: 'flex', flexDirection: 'column', gap: 32 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <div>
+                        <div style={{ height: 36, width: 200, background: 'var(--bg-card)', borderRadius: 8, marginBottom: 12, animation: 'pulse 2s infinite' }} />
+                        <div style={{ height: 20, width: 300, background: 'var(--bg-card)', borderRadius: 6, animation: 'pulse 2s infinite' }} />
+                    </div>
+                    <div style={{ height: 44, width: 280, background: 'var(--bg-card)', borderRadius: 12, animation: 'pulse 2s infinite' }} />
+                </div>
+                <div style={{ display: 'flex', gap: 12 }}>
+                    {[1, 2, 3, 4, 5].map(i => <div key={i} style={{ height: 36, width: 100, background: 'var(--bg-card)', borderRadius: 20, animation: 'pulse 2s infinite' }} />)}
+                </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    {[1, 2, 3].map(i => <div key={i} style={{ height: 120, background: 'var(--bg-card)', borderRadius: 12, animation: 'pulse 2s infinite' }} />)}
+                    {[1, 2, 3].map(i => <div key={i} style={{ height: 140, background: 'var(--bg-card)', borderRadius: 16, animation: 'pulse 2s infinite' }} />)}
                 </div>
             </div>
         );
@@ -156,88 +165,81 @@ const StudentExamsPage = () => {
         const isUpcoming = status === 'upcoming';
         const isAvailable = status === 'available';
 
-        let borderColor = 'var(--brand-primary)';
-        if (isBlocked) borderColor = 'var(--danger)';
-        if (isCompleted) borderColor = 'var(--success)';
-        if (isClosed) borderColor = 'var(--text-tertiary)';
-        if (isUpcoming) borderColor = 'var(--warning)';
+        let statusConfig = { color: 'var(--brand-primary)', bg: 'var(--brand-primary-subtle)', border: 'var(--border-default)', label: 'Available', icon: <PlayCircle size={14} /> };
+        if (isBlocked) statusConfig = { color: 'var(--danger)', bg: 'rgba(239, 68, 68, 0.1)', border: 'rgba(239, 68, 68, 0.2)', label: 'Blocked', icon: <Lock size={14} /> };
+        if (isCompleted) statusConfig = { color: 'var(--success)', bg: 'var(--success-subtle)', border: 'var(--success-border, rgba(16,185,129,0.2))', label: 'Completed', icon: <CheckCircle2 size={14} /> };
+        if (isClosed) statusConfig = { color: 'var(--text-tertiary)', bg: 'var(--bg-body)', border: 'var(--border-default)', label: 'Closed', icon: <Lock size={14} /> };
+        if (isUpcoming) statusConfig = { color: 'var(--warning)', bg: 'var(--warning-subtle)', border: 'var(--warning-border, rgba(245,158,11,0.2))', label: 'Upcoming', icon: <Clock size={14} /> };
 
         return (
             <div
                 key={exam._id}
                 style={{
-                    padding: isChild ? '20px 24px' : 24,
+                    padding: isChild ? '20px 24px' : 28,
                     display: 'flex',
+                    flexDirection: 'row',
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     background: isChild ? 'transparent' : 'var(--bg-card)',
-                    borderRadius: isChild ? 0 : 'var(--radius-lg)',
+                    borderRadius: isChild ? 0 : 20,
                     border: isChild ? 'none' : '1px solid var(--border-default)',
                     borderBottom: isChild ? '1px solid var(--border-subtle)' : undefined,
-                    transition: 'transform 0.2s ease, border-color 0.2s ease',
-                    borderLeft: `4px solid ${borderColor}`,
-                    opacity: isBlocked ? 0.85 : 1,
-                    marginBottom: isChild ? 0 : 16
+                    transition: 'all 0.2s ease',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    opacity: isBlocked ? 0.75 : 1,
+                    marginBottom: isChild ? 0 : 16,
+                    boxShadow: isChild ? 'none' : '0 2px 8px rgba(0,0,0,0.02)'
                 }}
             >
-                <div style={{ flex: 1, paddingRight: 32 }}>
+                {!isChild && <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: statusConfig.color }} />}
+                
+                <div style={{ flex: 1, paddingRight: 32, paddingLeft: isChild ? 0 : 4 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                        <h3 style={{ fontSize: isChild ? 16 : 18, fontWeight: 600, color: 'var(--text-primary)' }}>
+                        <h3 style={{ fontSize: isChild ? 16 : 18, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
                             {isChild ? exam.title.split(' - ').pop() : exam.title}
                         </h3>
-
-                        {isBlocked ? (
-                            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--danger)', background: 'rgba(239,68,68,0.1)', padding: '2px 8px', borderRadius: 12, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                                <Lock size={11} /> Blocked
-                            </span>
-                        ) : isCompleted ? (
-                            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--success)', background: 'var(--success-subtle)', padding: '2px 8px', borderRadius: 12, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                                <CheckCircle2 size={12} /> Completed
-                            </span>
-                        ) : isClosed ? (
-                            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', background: 'var(--bg-body)', padding: '2px 8px', borderRadius: 12, display: 'inline-flex', alignItems: 'center', gap: 4, border: '1px solid var(--border-default)' }}>
-                                <Lock size={11} /> Closed
-                            </span>
-                        ) : isUpcoming ? (
-                            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--warning)', background: 'var(--warning-subtle)', padding: '2px 8px', borderRadius: 12, border: '1px solid var(--warning-border)' }}>Upcoming</span>
-                        ) : (
-                            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--brand-primary)', background: 'var(--bg-body)', padding: '2px 8px', borderRadius: 12, border: '1px solid var(--border-default)' }}>Available</span>
-                        )}
+                        <span style={{ 
+                            fontSize: 12, fontWeight: 600, color: statusConfig.color, background: statusConfig.bg, border: `1px solid ${statusConfig.border}`,
+                            padding: '4px 10px', borderRadius: 12, display: 'inline-flex', alignItems: 'center', gap: 6
+                        }}>
+                            {statusConfig.icon} {statusConfig.label}
+                        </span>
                     </div>
 
-                    {!isChild && <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: isBlocked ? 12 : 16, lineHeight: 1.5 }}>{exam.description}</p>}
+                    {!isChild && exam.description && <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: isBlocked ? 12 : 16, lineHeight: 1.5 }}>{exam.description}</p>}
 
                     {isBlocked && (
-                        <div style={{ fontSize: 12, color: 'var(--danger)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <ShieldAlert size={13} />
+                        <div style={{ fontSize: 13, color: 'var(--danger)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 500 }}>
+                            <ShieldAlert size={14} />
                             Terminated due to anti-cheating violations.
                         </div>
                     )}
 
-                    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 24, fontSize: 13, color: 'var(--text-tertiary)' }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><FileText size={14} /> {exam.questions?.length || 0} Questions</span>
+                    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 20, fontSize: 13, color: 'var(--text-tertiary)', fontWeight: 500 }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-body)', padding: '4px 10px', borderRadius: 8 }}><FileText size={14} /> {exam.questions?.length || 0} Questions</span>
 
                         {(exam.status === "Scheduled" || exam.status === "Live") && exam.scheduledAt && exam.endsAt ? (
                             <>
-                                <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-primary)', fontWeight: 500 }}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-primary)', background: 'var(--bg-body)', padding: '4px 10px', borderRadius: 8 }}>
                                     <Calendar size={14} /> {new Date(exam.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(exam.endsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </span>
                                 {isUpcoming && (
-                                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--warning)', fontWeight: 600 }}>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--warning)', background: 'var(--warning-subtle)', padding: '4px 10px', borderRadius: 8 }}>
                                         <Timer size={14} /> Starts in {formatTimeLeft(new Date(exam.scheduledAt).getTime() - now.getTime())}
                                     </span>
                                 )}
                                 {isAvailable && (
-                                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--danger)', fontWeight: 600 }}>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--danger)', background: 'rgba(239, 68, 68, 0.1)', padding: '4px 10px', borderRadius: 8 }}>
                                         <Timer size={14} /> Ends in {formatTimeLeft(new Date(exam.endsAt).getTime() - now.getTime())}
                                     </span>
                                 )}
-                                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-body)', padding: '4px 10px', borderRadius: 8 }}>
                                     <Clock size={14} /> {exam.durationMinutes} mins
                                 </span>
                             </>
                         ) : (
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary)' }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-body)', padding: '4px 10px', borderRadius: 8 }}>
                                 <Timer size={14} /> {exam.durationMinutes} mins
                             </span>
                         )}
@@ -246,75 +248,24 @@ const StudentExamsPage = () => {
 
                 <div>
                     {isBlocked ? (
-                        <button
-                            disabled
-                            style={{
-                                padding: '10px 20px',
-                                fontSize: 14,
-                                background: 'rgba(239,68,68,0.08)',
-                                color: 'var(--danger)',
-                                border: '1px solid rgba(239,68,68,0.2)',
-                                borderRadius: 8,
-                                cursor: 'not-allowed',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 8,
-                                opacity: 0.7
-                            }}
-                        >
-                            <Lock size={14} /> Access Blocked
+                        <button disabled style={{ padding: '10px 20px', fontSize: 14, fontWeight: 600, background: 'rgba(239,68,68,0.08)', color: 'var(--danger)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, cursor: 'not-allowed', display: 'flex', alignItems: 'center', gap: 8 }}>
+                            Access Blocked
                         </button>
                     ) : isClosed ? (
-                        <button
-                            disabled
-                            style={{
-                                padding: '8px 16px',
-                                fontSize: 14,
-                                background: 'var(--bg-body)',
-                                color: 'var(--text-tertiary)',
-                                border: '1px solid var(--border-default)',
-                                borderRadius: 8,
-                                cursor: 'not-allowed',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 8
-                            }}
-                        >
+                        <button disabled style={{ padding: '10px 20px', fontSize: 14, fontWeight: 600, background: 'var(--bg-body)', color: 'var(--text-tertiary)', border: '1px solid var(--border-default)', borderRadius: 10, cursor: 'not-allowed', display: 'flex', alignItems: 'center', gap: 8 }}>
                             Exam Closed
                         </button>
                     ) : isCompleted ? (
-                        <button
-                            onClick={() => navigate('/student/results')}
-                            className="btn btn-secondary"
-                            style={{ padding: '8px 16px', fontSize: 14 }}
-                        >
+                        <button onClick={() => navigate('/student/results')} style={{ padding: '10px 24px', fontSize: 14, fontWeight: 600, background: 'transparent', color: 'var(--text-primary)', border: '1px solid var(--border-strong)', borderRadius: 10, cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 8 }} onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.borderColor = 'var(--text-primary)' }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'var(--border-strong)' }}>
                             View Result
                         </button>
                     ) : isUpcoming ? (
-                        <button
-                            disabled
-                            style={{
-                                padding: '8px 16px',
-                                fontSize: 14,
-                                background: 'var(--warning-subtle)',
-                                color: 'var(--warning)',
-                                border: '1px solid var(--warning-border)',
-                                borderRadius: 8,
-                                cursor: 'not-allowed',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 8
-                            }}
-                        >
-                            <Lock size={14} /> Starts Soon
+                        <button disabled style={{ padding: '10px 20px', fontSize: 14, fontWeight: 600, background: 'var(--warning-subtle)', color: 'var(--warning)', border: '1px solid var(--warning-border)', borderRadius: 10, cursor: 'not-allowed', display: 'flex', alignItems: 'center', gap: 8 }}>
+                            Starts Soon
                         </button>
                     ) : (
-                        <button
-                            onClick={() => navigate(`/student/take-exam/${exam._id}`)}
-                            className="btn btn-primary"
-                            style={{ padding: '8px 16px', fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}
-                        >
-                            Start <PlayCircle size={16} />
+                        <button onClick={() => navigate(`/student/take-exam/${exam._id}`)} style={{ padding: '10px 24px', fontSize: 14, fontWeight: 600, background: 'var(--brand-primary)', color: 'white', border: 'none', borderRadius: 10, cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)' }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 16px rgba(37, 99, 235, 0.3)'; }} onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.2)'; }}>
+                            Start Exam <ChevronRight size={16} />
                         </button>
                     )}
                 </div>
@@ -323,91 +274,82 @@ const StudentExamsPage = () => {
     };
 
     return (
-        <div style={{ maxWidth: 1100, margin: '0 auto', paddingBottom: 48 }}>
-            <div className="page-header" style={{ marginBottom: 32, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', paddingBottom: 64, fontFamily: 'Inter, system-ui, sans-serif' }}>
+            <div style={{ marginBottom: 40, display: 'flex', flexWrap: 'wrap', gap: 24, justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid var(--border-default)', paddingBottom: 24 }}>
                 <div>
-                    <h1 className="page-title" style={{ fontSize: 28, letterSpacing: '-0.02em' }}>My Exams</h1>
-                    <p className="page-subtitle" style={{ fontSize: 15 }}>Browse and take your assigned examinations.</p>
+                    <h1 style={{ fontSize: 32, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: '0 0 8px 0' }}>My Exams</h1>
+                    <p style={{ fontSize: 15, color: 'var(--text-secondary)', margin: 0 }}>Browse, search, and take your assigned examinations.</p>
                 </div>
 
-                <div style={{ display: 'flex', gap: 12 }}>
-                    <div style={{ position: 'relative', width: 280 }}>
-                        <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
-                        <input
-                            type="text"
-                            placeholder="Search exams..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="form-input"
-                            style={{ width: '100%', padding: '10px 16px 10px 36px', background: 'var(--bg-card)', border: '1px solid var(--border-default)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 14 }}
-                        />
-                    </div>
+                <div style={{ position: 'relative', width: 320 }}>
+                    <Search size={18} style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
+                    <input
+                        type="text"
+                        placeholder="Search by title, subject..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        style={{ width: '100%', padding: '12px 16px 12px 44px', background: 'var(--bg-card)', border: '1px solid var(--border-default)', borderRadius: 12, color: 'var(--text-primary)', fontSize: 14, transition: 'border-color 0.2s', outline: 'none' }}
+                        onFocus={e => e.currentTarget.style.borderColor = 'var(--brand-primary)'}
+                        onBlur={e => e.currentTarget.style.borderColor = 'var(--border-default)'}
+                    />
                 </div>
             </div>
 
             {/* Tabs */}
-            <div style={{ display: 'flex', gap: 24, borderBottom: '1px solid var(--border-default)', marginBottom: 32 }}>
-                {['Available', 'Completed', 'Missed', 'Blocked', 'All'].map(tab => (
-                    <button
-                        key={tab}
-                        onClick={() => setActiveTab(tab)}
-                        style={{
-                            background: 'none',
-                            border: 'none',
-                            padding: '0 0 16px',
-                            fontSize: 14,
-                            fontWeight: activeTab === tab ? 600 : 500,
-                            color: tab === 'Blocked'
-                                ? (activeTab === tab ? 'var(--danger)' : 'rgba(239,68,68,0.55)')
-                                : (activeTab === tab ? 'var(--brand-primary)' : 'var(--text-secondary)'),
-                            borderBottom: activeTab === tab
-                                ? `2px solid ${tab === 'Blocked' ? 'var(--danger)' : 'var(--brand-primary)'}`
-                                : '2px solid transparent',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s ease',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 6
-                        }}
-                    >
-                        {tab}
-                        {tab !== 'All' && tabCounts[tab] > 0 && (
-                            <span style={{
-                                fontSize: 11,
-                                fontWeight: 600,
-                                background: tab === 'Blocked' ? 'rgba(239,68,68,0.12)' : 'var(--bg-body)',
-                                color: tab === 'Blocked' ? 'var(--danger)' : 'var(--text-tertiary)',
-                                padding: '1px 6px',
-                                borderRadius: 10,
-                                minWidth: 18,
-                                textAlign: 'center'
-                            }}>
-                                {tabCounts[tab]}
-                            </span>
-                        )}
-                    </button>
-                ))}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 32 }}>
+                {['Available', 'Completed', 'Missed', 'Blocked', 'All'].map(tab => {
+                    const isActive = activeTab === tab;
+                    const count = tabCounts[tab];
+                    return (
+                        <button
+                            key={tab}
+                            onClick={() => setActiveTab(tab)}
+                            style={{
+                                background: isActive ? (tab === 'Blocked' ? 'var(--danger)' : 'var(--text-primary)') : 'var(--bg-card)',
+                                border: `1px solid ${isActive ? 'transparent' : 'var(--border-default)'}`,
+                                padding: '8px 16px',
+                                borderRadius: 20,
+                                fontSize: 14,
+                                fontWeight: isActive ? 600 : 500,
+                                color: isActive ? 'var(--bg-app)' : 'var(--text-secondary)',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8
+                            }}
+                            onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'var(--bg-hover)' }}
+                            onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'var(--bg-card)' }}
+                        >
+                            {tab}
+                            {tab !== 'All' && count > 0 && (
+                                <span style={{
+                                    fontSize: 11,
+                                    fontWeight: 700,
+                                    background: isActive ? 'rgba(255,255,255,0.2)' : 'var(--bg-body)',
+                                    color: isActive ? 'var(--bg-app)' : 'var(--text-primary)',
+                                    padding: '2px 8px',
+                                    borderRadius: 12
+                                }}>
+                                    {count}
+                                </span>
+                            )}
+                        </button>
+                    )
+                })}
             </div>
 
             {/* Blocked Banner */}
             {activeTab === 'Blocked' && tabCounts.Blocked > 0 && (
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: 12,
-                    padding: '14px 18px',
-                    borderRadius: 10,
-                    background: 'rgba(239,68,68,0.06)',
-                    border: '1px solid rgba(239,68,68,0.2)',
-                    marginBottom: 24,
-                    fontSize: 13,
-                    color: 'var(--text-secondary)',
-                    lineHeight: 1.6
-                }}>
-                    <ShieldAlert size={18} style={{ color: 'var(--danger)', flexShrink: 0, marginTop: 1 }} />
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, padding: 24, borderRadius: 16, background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.2)', marginBottom: 24 }}>
+                    <div style={{ background: 'rgba(239, 68, 68, 0.1)', padding: 12, borderRadius: 12, color: 'var(--danger)' }}>
+                        <ShieldAlert size={24} />
+                    </div>
                     <div>
-                        <strong style={{ color: 'var(--danger)' }}>Exam access blocked.</strong> These exams were locked because your attempt was terminated after exceeding the maximum allowed security violations.
-                        Contact your administrator to review and potentially restore access.
+                        <h4 style={{ fontSize: 16, fontWeight: 600, color: 'var(--danger)', marginBottom: 4 }}>Exam Access Blocked</h4>
+                        <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+                            These exams were locked because your attempt was terminated after exceeding the maximum allowed security violations. Please contact your administrator to review your attempt and potentially restore access.
+                        </p>
                     </div>
                 </div>
             )}
@@ -415,12 +357,14 @@ const StudentExamsPage = () => {
             {/* List */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {filteredExams.length === 0 ? (
-                    <div className="card" style={{ padding: 48, textAlign: 'center', borderStyle: 'dashed' }}>
-                        <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--bg-body)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', color: 'var(--text-tertiary)' }}>
-                            <FileText size={32} />
+                    <div style={{ padding: 64, textAlign: 'center', background: 'var(--bg-card)', border: '1px dashed var(--border-strong)', borderRadius: 20, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'var(--bg-body)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24, color: 'var(--text-tertiary)', border: '1px solid var(--border-default)' }}>
+                            <BookOpen size={36} opacity={0.5} />
                         </div>
-                        <h3 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>No exams found</h3>
-                        <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>There are no {activeTab.toLowerCase()} exams matching your criteria.</p>
+                        <h3 style={{ fontSize: 20, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 12 }}>No exams found</h3>
+                        <p style={{ fontSize: 15, color: 'var(--text-secondary)', maxWidth: 400, margin: '0 auto' }}>
+                            {searchQuery ? `We couldn't find any exams matching "${searchQuery}". Try adjusting your search.` : `There are no ${activeTab.toLowerCase()} exams for you right now.`}
+                        </p>
                     </div>
                 ) : (
                     <>
@@ -428,41 +372,33 @@ const StudentExamsPage = () => {
                         {groups.map(group => {
                             const isExpanded = expandedExams[group.examination._id];
                             return (
-                                <div key={group.examination._id} className="card" style={{ overflow: 'hidden', marginBottom: 16 }}>
+                                <div key={group.examination._id} style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', borderRadius: 20, overflow: 'hidden', marginBottom: 16, transition: 'all 0.2s', boxShadow: isExpanded ? '0 4px 20px rgba(0,0,0,0.05)' : 'none' }}>
                                     <div
                                         onClick={() => toggleExpand(group.examination._id)}
                                         style={{
-                                            padding: 24,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: 20,
-                                            cursor: 'pointer',
-                                            background: isExpanded ? 'var(--bg-active)' : 'transparent',
-                                            transition: 'background 0.2s ease',
+                                            padding: '24px 28px', display: 'flex', alignItems: 'center', gap: 20, cursor: 'pointer',
+                                            background: isExpanded ? 'var(--bg-hover)' : 'transparent', transition: 'background 0.2s ease',
                                             borderBottom: isExpanded ? '1px solid var(--border-default)' : 'none'
                                         }}
                                     >
-                                        <div style={{
-                                            width: 32, height: 32, borderRadius: 8, background: 'var(--bg-body)',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center'
-                                        }}>
-                                            {isExpanded ? <ChevronDown size={20} color="var(--text-tertiary)" /> : <ChevronRight size={20} color="var(--text-tertiary)" />}
-                                        </div>
                                         <div style={{ flex: 1 }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
-                                                <h3 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)' }}>{group.examination.title}</h3>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
+                                                <h3 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>{group.examination.title}</h3>
                                             </div>
-                                            <div style={{ fontSize: 13, color: 'var(--text-tertiary)', display: 'flex', gap: 16 }}>
-                                                <span>{group.subjects.length} Subject{group.subjects.length !== 1 ? 's' : ''}</span>
+                                            <div style={{ fontSize: 13, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 8, fontWeight: 500 }}>
+                                                <span style={{ background: 'var(--bg-body)', padding: '4px 10px', borderRadius: 8 }}>{group.subjects.length} Module{group.subjects.length !== 1 ? 's' : ''}</span>
                                             </div>
+                                        </div>
+                                        <div style={{ width: 40, height: 40, borderRadius: '50%', background: isExpanded ? 'var(--bg-card)' : 'var(--bg-body)', border: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'transform 0.2s', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                                            <ChevronDown size={20} color="var(--text-secondary)" />
                                         </div>
                                     </div>
 
                                     {/* Children */}
                                     {isExpanded && (
-                                        <div style={{ background: 'var(--bg-body)', padding: '0 24px' }}>
-                                            <div style={{ padding: '16px 0 0 16px', fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                                SUBJECTS
+                                        <div style={{ background: 'var(--bg-body)' }}>
+                                            <div style={{ padding: '24px 28px 12px 28px', fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                                                Modules inside this examination
                                             </div>
                                             {group.subjects.map((subj, idx) => {
                                                 const isLast = idx === group.subjects.length - 1;
