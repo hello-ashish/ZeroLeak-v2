@@ -1,5 +1,6 @@
 import { Professor } from "../models/professor.models.js";
 import { Admin } from "../models/admin.models.js";
+import { Auditor } from "../models/auditor.models.js";
 import { Batch } from "../models/batch.models.js";
 import { Question } from "../models/question.models.js";
 import { Student } from "../models/student.models.js";
@@ -27,6 +28,15 @@ export const logAction = async ({ actor, actorRole = "Admin", action, targetType
 // ─── Register Admin ───────────────────────────────────────────────────────────
 export const registerAdmin = async (req, res) => {
     try {
+        if (process.env.NODE_ENV === 'production') {
+            return res.status(403).json({ message: "Admin registration is disabled in production" });
+        }
+
+        const adminCount = await Admin.countDocuments();
+        if (adminCount >= 1) {
+            return res.status(403).json({ message: "Admin registration is disabled. An admin already exists." });
+        }
+
         const { adminId, email, password } = req.body;
         if (!adminId || !email || !password) {
             return res.status(400).json({ message: "adminId, email, and password are required" });
@@ -45,6 +55,28 @@ export const registerAdmin = async (req, res) => {
     }
 };
 
+// ─── Register Support Member ──────────────────────────────────────────────────
+export const registerSupportMember = async (req, res) => {
+    try {
+        const { adminId, email, password, name } = req.body;
+        if (!adminId || !email || !password || !name) {
+            return res.status(400).json({ message: "adminId, email, name, and password are required" });
+        }
+        const existingAdmin = await Admin.findOne({ $or: [{ adminId }, { email }] });
+        if (existingAdmin) {
+            return res.status(400).json({ message: "User with this adminId or email already exists" });
+        }
+        const supportMember = await Admin.create({ adminId, email, password, name, isSupport: true });
+        const createdSupport = supportMember.toObject();
+        delete createdSupport.password;
+        await logAction({ actor: req.admin?.email, action: "SUPPORT_MEMBER_CREATED", targetType: "Admin", targetId: supportMember._id, targetLabel: name });
+        return res.status(201).json({ message: "Support member registered successfully", support: createdSupport });
+    } catch (error) {
+        console.error("Support Registration Error:", error.message);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
+
 // ─── Login Admin ──────────────────────────────────────────────────────────────
 export const loginAdmin = async (req, res) => {
     try {
@@ -54,9 +86,10 @@ export const loginAdmin = async (req, res) => {
         }
         const admin = await Admin.findOne({ email });
         if (!admin) return res.status(401).json({ message: "Invalid email or password" });
+        if (admin.isSupport) return res.status(403).json({ message: "Support members must use the Support portal to log in" });
         const isPasswordCorrect = await admin.isPasswordCorrect(password);
         if (!isPasswordCorrect) return res.status(401).json({ message: "Invalid credentials" });
-        
+
         if (admin.isLoggedIn && req.body.forceLogout !== true) {
             return res.status(409).json({ message: "You're logged in at some other place too. Wish to continue?", code: "ALREADY_LOGGED_IN" });
         }
@@ -65,7 +98,7 @@ export const loginAdmin = async (req, res) => {
         admin.lastActiveAt = new Date();
         admin.sessionVersion = (admin.sessionVersion || 0) + 1;
         await admin.save({ validateBeforeSave: false });
-        
+
         const token = admin.generateAccessToken();
         const loggedInAdmin = admin.toObject();
         delete loggedInAdmin.password;
@@ -295,7 +328,7 @@ export const reviewBatch = async (req, res) => {
             batch.status = 'Accepted';
             batch.adminMessage = 'Batch Approved, integrity committed to blockchain ledger';
             await logAction({ actor: req.admin?.email, action: "BATCH_APPROVED", targetType: "Batch", targetId: batch._id, targetLabel: batch.title });
-            
+
             // Notify Professor
             await createNotification({
                 userId: batch.createdBy,
@@ -310,7 +343,7 @@ export const reviewBatch = async (req, res) => {
             batch.adminMessage = adminMessage || 'Rejected without specific reason.';
             batch.questions = [];
             await logAction({ actor: req.admin?.email, action: "BATCH_REJECTED", targetType: "Batch", targetId: batch._id, targetLabel: batch.title, details: adminMessage });
-            
+
             // Notify Professor
             await createNotification({
                 userId: batch.createdBy,
@@ -324,7 +357,7 @@ export const reviewBatch = async (req, res) => {
             batch.status = 'MarkForReview';
             batch.adminMessage = adminMessage || 'Please revise these questions.';
             await logAction({ actor: req.admin?.email, action: "BATCH_MARKED_FOR_REVIEW", targetType: "Batch", targetId: batch._id, targetLabel: batch.title, details: adminMessage });
-            
+
             // Notify Professor
             await createNotification({
                 userId: batch.createdBy,
@@ -366,7 +399,7 @@ export const deleteBatch = async (req, res) => {
 
         batch.isDeletedByAdmin = true;
         await batch.save();
-        
+
         await logAction({ actor: req.admin?.email, action: "BATCH_DELETED", targetType: "Batch", targetId: batch._id, targetLabel: batch.title });
 
         res.status(200).json({ message: "Batch deleted successfully" });
@@ -610,14 +643,14 @@ export const updateExamStatus = async (req, res) => {
         const { id } = req.params;
         const { status } = req.body;
         let { scheduledAt, endsAt } = req.body;
-        
+
         const examObj = await Exam.findById(id);
         if (!examObj) return res.status(404).json({ message: "Exam not found" });
 
         if (status === "Live" && examObj.status !== "Live") {
             if (!scheduledAt) scheduledAt = new Date();
             else scheduledAt = new Date(scheduledAt);
-            
+
             if (!endsAt) {
                 endsAt = new Date(scheduledAt.getTime() + (examObj.durationMinutes || 60) * 60 * 1000);
             } else {
@@ -639,7 +672,7 @@ export const updateExamStatus = async (req, res) => {
                 updateData.durationMinutes = diffMinutes;
             }
         }
-        
+
         const exam = await Exam.findByIdAndUpdate(id, updateData, { new: true });
         await logAction({ actor: req.admin?.email, action: `EXAM_${status.toUpperCase()}`, targetType: "Exam", targetId: exam._id, targetLabel: exam.title });
         return res.status(200).json({ message: "Exam status updated", exam });
@@ -688,7 +721,7 @@ export const getLiveStudents = async (req, res) => {
             lastActiveAt: { $gte: thirtySecondsAgo },
             currentExamId: { $ne: null }
         }).select("-password").populate("currentExamId", "title");
-        
+
         return res.status(200).json({ liveStudents });
     } catch (error) {
         console.error("Error fetching live students: ", error);
@@ -701,20 +734,23 @@ export const toggleBlockStudent = async (req, res) => {
     try {
         const { id } = req.params;
         const student = await Student.findById(id);
-        
+
         if (!student) {
             return res.status(404).json({ message: "Student not found" });
         }
-        
+
         student.isBlocked = !student.isBlocked;
+        if (student.isBlocked) {
+            student.sessionVersion = (student.sessionVersion || 0) + 1;
+        }
         await student.save();
-        
-        await logAction({ 
-            actor: req.admin?.email, 
-            action: student.isBlocked ? "STUDENT_BLOCKED" : "STUDENT_UNBLOCKED", 
-            targetType: "Student", 
-            targetId: student._id, 
-            targetLabel: student.name 
+
+        await logAction({
+            actor: req.admin?.email,
+            action: student.isBlocked ? "STUDENT_BLOCKED" : "STUDENT_UNBLOCKED",
+            targetType: "Student",
+            targetId: student._id,
+            targetLabel: student.name
         });
 
         // Notify Student
@@ -726,7 +762,7 @@ export const toggleBlockStudent = async (req, res) => {
             type: student.isBlocked ? "ERROR" : "SUCCESS"
         });
 
-        return res.status(200).json({ 
+        return res.status(200).json({
             message: `Student successfully ${student.isBlocked ? 'blocked' : 'unblocked'}`,
             isBlocked: student.isBlocked
         });
@@ -746,14 +782,17 @@ export const toggleBlockProfessor = async (req, res) => {
         }
 
         professor.isBlocked = !professor.isBlocked;
+        if (professor.isBlocked) {
+            professor.sessionVersion = (professor.sessionVersion || 0) + 1;
+        }
         await professor.save();
-        
-        await logAction({ 
-            actor: req.admin?.email, 
-            action: professor.isBlocked ? "PROFESSOR_BLOCKED" : "PROFESSOR_UNBLOCKED", 
-            targetType: "Professor", 
-            targetId: professor._id, 
-            targetLabel: professor.name 
+
+        await logAction({
+            actor: req.admin?.email,
+            action: professor.isBlocked ? "PROFESSOR_BLOCKED" : "PROFESSOR_UNBLOCKED",
+            targetType: "Professor",
+            targetId: professor._id,
+            targetLabel: professor.name
         });
 
         // Notify Professor
@@ -765,7 +804,7 @@ export const toggleBlockProfessor = async (req, res) => {
             type: professor.isBlocked ? "ERROR" : "SUCCESS"
         });
 
-        return res.status(200).json({ 
+        return res.status(200).json({
             message: `Professor successfully ${professor.isBlocked ? 'blocked' : 'unblocked'}`,
             isBlocked: professor.isBlocked
         });
@@ -864,10 +903,10 @@ export const bulkImportProfessors = async (req, res) => {
 
         await logAction({ actor: req.admin?.email, action: "PROFESSORS_BULK_IMPORTED", targetType: "Professor", targetLabel: `${toInsert.length} professors imported` });
 
-        return res.status(200).json({ 
-            message: "Import complete", 
-            imported: toInsert.length, 
-            skipped: skippedCount 
+        return res.status(200).json({
+            message: "Import complete",
+            imported: toInsert.length,
+            skipped: skippedCount
         });
     } catch (error) {
         console.error("Error bulk importing professors: ", error);
@@ -966,10 +1005,10 @@ export const bulkImportStudents = async (req, res) => {
 
         await logAction({ actor: req.admin?.email, action: "STUDENTS_BULK_IMPORTED", targetType: "Student", targetLabel: `${toInsert.length} students imported` });
 
-        return res.status(200).json({ 
-            message: "Import complete", 
-            imported: toInsert.length, 
-            skipped: skippedCount 
+        return res.status(200).json({
+            message: "Import complete",
+            imported: toInsert.length,
+            skipped: skippedCount
         });
     } catch (error) {
         console.error("Error bulk importing students: ", error);
@@ -980,10 +1019,10 @@ export const broadcastAnnouncement = async (req, res) => {
     try {
         const { message, title, targetRoles = ["Student"] } = req.body;
         if (!message) return res.status(400).json({ message: "Message is required" });
-        
+
         const { Notification } = await import('../models/notification.models.js');
         const { Auditor } = await import('../models/auditor.models.js');
-        
+
         let targetUserIds = [];
 
         if (targetRoles.includes("Admin")) {
@@ -1010,14 +1049,161 @@ export const broadcastAnnouncement = async (req, res) => {
             message,
             type: "INFO"
         }));
-        
+
         if (notifications.length > 0) {
             await Notification.insertMany(notifications);
         }
-        
+
         res.status(200).json({ message: "Broadcast successful", count: notifications.length });
     } catch (error) {
         console.error("Error broadcasting:", error);
         res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+// ─── Auditor Management ────────────────────────────────────────────────────────
+
+export const getAllAuditors = async (req, res) => {
+    try {
+        const auditors = await Auditor.find({}).select("-password").lean();
+        return res.status(200).json({ auditors });
+    } catch (error) {
+        console.error("Error fetching auditors:", error);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+export const deleteAuditor = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const deletedAuditor = await Auditor.findByIdAndDelete(id);
+        if (!deletedAuditor) return res.status(404).json({ message: "Auditor not found" });
+        await logAction({ actor: req.admin?.email, action: "AUDITOR_DELETED", targetType: "Auditor", targetId: deletedAuditor._id, targetLabel: deletedAuditor.name });
+        return res.status(200).json({ message: "Auditor deleted successfully" });
+    } catch (error) {
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+export const toggleBlockAuditor = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const auditor = await Auditor.findById(id);
+        if (!auditor) return res.status(404).json({ message: "Auditor not found" });
+        auditor.isBlocked = !auditor.isBlocked;
+        await auditor.save();
+        await logAction({ actor: req.admin?.email, action: auditor.isBlocked ? "AUDITOR_BLOCKED" : "AUDITOR_UNBLOCKED", targetType: "Auditor", targetId: auditor._id, targetLabel: auditor.name });
+        return res.status(200).json({ message: `Auditor successfully ${auditor.isBlocked ? 'blocked' : 'unblocked'}`, isBlocked: auditor.isBlocked });
+    } catch (error) {
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+export const bulkDeleteAuditors = async (req, res) => {
+    try {
+        const { ids } = req.body;
+        if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ message: "No auditor IDs provided" });
+        await Auditor.deleteMany({ _id: { $in: ids } });
+        await logAction({ actor: req.admin?.email, action: "AUDITORS_BULK_DELETED", targetType: "Auditor", targetLabel: `${ids.length} auditors` });
+        return res.status(200).json({ message: "Auditors deleted successfully" });
+    } catch (error) {
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+export const bulkBlockAuditors = async (req, res) => {
+    try {
+        const { ids, block } = req.body;
+        if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ message: "No auditor IDs provided" });
+        await Auditor.updateMany({ _id: { $in: ids } }, { $set: { isBlocked: block } });
+        await logAction({ actor: req.admin?.email, action: block ? "AUDITORS_BULK_BLOCKED" : "AUDITORS_BULK_UNBLOCKED", targetType: "Auditor", targetLabel: `${ids.length} auditors` });
+        return res.status(200).json({ message: `Auditors ${block ? 'blocked' : 'unblocked'} successfully` });
+    } catch (error) {
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+// ─── Support Member Management ────────────────────────────────────────────────
+
+export const getAllSupportMembers = async (req, res) => {
+    try {
+        const supportMembers = await Admin.find({ isSupport: true }).select("-password").lean();
+        
+        const { SupportTicket } = await import("../models/supportTicket.models.js");
+        const supportIds = supportMembers.map(m => m._id);
+        const stats = await SupportTicket.aggregate([
+            { $match: { assignedTo: { $in: supportIds } } },
+            { $group: { 
+                _id: "$assignedTo", 
+                totalAssigned: { $sum: 1 },
+                totalResolved: { $sum: { $cond: [{ $in: ["$status", ["RESOLVED", "CLOSED"]] }, 1, 0] } },
+                openTickets: { $sum: { $cond: [{ $in: ["$status", ["OPEN", "IN_PROGRESS", "WAITING_FOR_USER", "WAITING_FOR_SUPPORT"]] }, 1, 0] } }
+            }}
+        ]);
+        
+        const statsMap = {};
+        stats.forEach(s => {
+            statsMap[s._id.toString()] = s;
+        });
+
+        const membersWithStats = supportMembers.map(member => ({
+            ...member,
+            ticketStats: statsMap[member._id.toString()] || { totalAssigned: 0, totalResolved: 0, openTickets: 0 }
+        }));
+
+        return res.status(200).json({ supportMembers: membersWithStats });
+    } catch (error) {
+        console.error("Error fetching support members:", error);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+export const deleteSupportMember = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const deletedSupport = await Admin.findOneAndDelete({ _id: id, isSupport: true });
+        if (!deletedSupport) return res.status(404).json({ message: "Support member not found" });
+        await logAction({ actor: req.admin?.email, action: "SUPPORT_MEMBER_DELETED", targetType: "Admin", targetId: deletedSupport._id, targetLabel: deletedSupport.name });
+        return res.status(200).json({ message: "Support member deleted successfully" });
+    } catch (error) {
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+export const toggleBlockSupportMember = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const support = await Admin.findOne({ _id: id, isSupport: true });
+        if (!support) return res.status(404).json({ message: "Support member not found" });
+        support.isBlocked = !support.isBlocked;
+        await support.save();
+        await logAction({ actor: req.admin?.email, action: support.isBlocked ? "SUPPORT_MEMBER_BLOCKED" : "SUPPORT_MEMBER_UNBLOCKED", targetType: "Admin", targetId: support._id, targetLabel: support.name });
+        return res.status(200).json({ message: `Support member successfully ${support.isBlocked ? 'blocked' : 'unblocked'}`, isBlocked: support.isBlocked });
+    } catch (error) {
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+export const bulkDeleteSupportMembers = async (req, res) => {
+    try {
+        const { ids } = req.body;
+        if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ message: "No support member IDs provided" });
+        await Admin.deleteMany({ _id: { $in: ids }, isSupport: true });
+        await logAction({ actor: req.admin?.email, action: "SUPPORT_MEMBERS_BULK_DELETED", targetType: "Admin", targetLabel: `${ids.length} support members` });
+        return res.status(200).json({ message: "Support members deleted successfully" });
+    } catch (error) {
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+export const bulkBlockSupportMembers = async (req, res) => {
+    try {
+        const { ids, block } = req.body;
+        if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ message: "No support member IDs provided" });
+        await Admin.updateMany({ _id: { $in: ids }, isSupport: true }, { $set: { isBlocked: block } });
+        await logAction({ actor: req.admin?.email, action: block ? "SUPPORT_MEMBERS_BULK_BLOCKED" : "SUPPORT_MEMBERS_BULK_UNBLOCKED", targetType: "Admin", targetLabel: `${ids.length} support members` });
+        return res.status(200).json({ message: `Support members ${block ? 'blocked' : 'unblocked'} successfully` });
+    } catch (error) {
+        return res.status(500).json({ message: "Internal server error" });
     }
 };

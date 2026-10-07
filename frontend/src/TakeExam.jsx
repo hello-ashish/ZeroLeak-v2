@@ -12,7 +12,7 @@ import { useAntiCheating } from './utils/useAntiCheating';
 import { useProctoring } from './hooks/useProctoring';
 import { ProctoringStatusPanel } from './components/ProctoringStatusPanel';
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
-const MAX_WARNINGS = 3;
+const MAX_WARNINGS = 5;
 
 const TakeExam = () => {
     const { id } = useParams();
@@ -235,11 +235,6 @@ const TakeExam = () => {
         // Also report live to proctoring admin via socket
         reportIncident(event.type, event.severity, event.description, event.details);
 
-        // --- DISABLED BY REQUEST ---
-        // Disabling the strict warning counter and termination for now
-        // so you can switch between Admin and Student tabs without getting blocked.
-        console.warn(`[DEV MODE] Anti-cheating violation detected: ${event.type}. Termination bypassed for now.`);
-        return;
         // --------------------------
 
         // If the counter is already at or beyond the limit (e.g. seeded from backend
@@ -265,8 +260,7 @@ const TakeExam = () => {
                     violationType: event.type,
                     severity: event.severity,
                     description: event.description,
-                    evidenceData: event.details || {},
-                    actionTaken: newCount >= MAX_WARNINGS ? 'EXAM_TERMINATED' : 'WARNING'
+                    evidenceData: event.details || {}
                 }, { headers: { Authorization: `Bearer ${token}` } });
 
                 // Sync frontend counter with the server's authoritative count (clamped to MAX_WARNINGS for display)
@@ -291,8 +285,7 @@ const TakeExam = () => {
                 violationType: event.type,
                 severity: event.severity,
                 description: event.description,
-                evidenceData: event.details || {},
-                actionTaken: newCount >= MAX_WARNINGS ? 'EXAM_TERMINATED' : 'WARNING'
+                evidenceData: event.details || {}
             });
             localStorage.setItem(queueKey, JSON.stringify(queue));
         }

@@ -22,6 +22,8 @@ const ProfessorProfile = lazy(() => import('./ProfessorProfile'))
 const StudentLogin = lazy(() => import('./StudentLogin'))
 const TakeExam = lazy(() => import('./TakeExam'))
 const StudentProfile = lazy(() => import('./StudentProfile'))
+const AuditorProfile = lazy(() => import('./AuditorProfile'))
+const SupportProfile = lazy(() => import('./SupportProfile'))
 
 // Student pages
 const StudentDashboardPage = lazy(() => import('./pages/student/StudentDashboardPage.jsx'))
@@ -39,6 +41,8 @@ const AdminPaperSimulatorPage = lazy(() => import('./pages/admin/AdminPaperSimul
 const AdminQuestionsPage = lazy(() => import('./pages/admin/AdminQuestionsPage.jsx'))
 const AdminStudentsPage = lazy(() => import('./pages/admin/AdminStudentsPage.jsx'))
 const AdminProfessorsPage = lazy(() => import('./pages/admin/AdminProfessorsPage.jsx'))
+const AdminAuditorsPage = lazy(() => import('./pages/admin/AdminAuditorsPage.jsx'))
+const AdminSupportMembersPage = lazy(() => import('./pages/admin/AdminSupportMembersPage.jsx'))
 const AdminBatchesPage = lazy(() => import('./pages/admin/AdminBatchesPage.jsx'))
 const AdminGradebookPage = lazy(() => import('./pages/admin/AdminGradebookPage.jsx'))
 const AdminActivityPage = lazy(() => import('./pages/admin/AdminActivityPage.jsx'))
@@ -99,6 +103,8 @@ function App() {
             <Route path="/admin/questions" element={<AdminQuestionsPage />} />
             <Route path="/admin/students" element={<AdminStudentsPage />} />
             <Route path="/admin/professors" element={<AdminProfessorsPage />} />
+            <Route path="/admin/auditors" element={<AdminAuditorsPage />} />
+            <Route path="/admin/support-members" element={<AdminSupportMembersPage />} />
             <Route path="/admin/batches" element={<AdminBatchesPage />} />
             <Route path="/admin/gradebook" element={<AdminGradebookPage />} />
             <Route path="/admin/activity" element={<AdminActivityPage />} />
@@ -110,6 +116,7 @@ function App() {
             
             {/* ── Support Team Route ── */}
             <Route path="/support/login" element={<SupportLogin />} />
+            <Route path="/support/profile" element={<SupportProfile />} />
             <Route path="/support" element={<SupportPage />} />
             <Route path="/support/history" element={<SupportGlobalHistory />} />
 
@@ -139,6 +146,7 @@ function App() {
 
             {/* ── Auditor Routes ── */}
             <Route path="/auditor/login" element={<AuditorLogin />} />
+            <Route path="/auditor/profile" element={<AuditorProfile />} />
             <Route path="/auditor/dashboard" element={<AuditorDashboardPage />} />
             <Route path="/auditor/audit" element={<AuditorAuditExplorerPage />} />
             <Route path="/auditor/anomalies" element={<AuditorAnomaliesPage />} />

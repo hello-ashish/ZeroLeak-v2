@@ -25,8 +25,19 @@ app.use(cors({
 }))
 
 // we need this to parse json data coming from requests (like req.body)
-app.use(express.json({ limit: "50mb" }))
-app.use(express.urlencoded({ extended: true, limit: "50mb" }))
+app.use((req, res, next) => {
+    if (req.path.includes("/zmail/attachments") || req.path.includes("/ai") || req.path.includes("/questions/bulk") || req.path.includes("/question/bulk")) {
+        return express.json({ limit: "50mb" })(req, res, next);
+    }
+    return express.json({ limit: "2mb" })(req, res, next);
+});
+
+app.use((req, res, next) => {
+    if (req.path.includes("/zmail/attachments") || req.path.includes("/ai") || req.path.includes("/questions/bulk") || req.path.includes("/question/bulk")) {
+        return express.urlencoded({ extended: true, limit: "50mb" })(req, res, next);
+    }
+    return express.urlencoded({ extended: true, limit: "2mb" })(req, res, next);
+});
 app.use(express.static("public"))
 
 // this says: any request starting with /api/admin goes to the adminRouter

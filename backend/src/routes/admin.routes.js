@@ -4,6 +4,17 @@ import {
     getAllProfessors,
     deleteProfessor,
     registerAdmin,
+    registerSupportMember,
+    getAllSupportMembers,
+    deleteSupportMember,
+    toggleBlockSupportMember,
+    bulkDeleteSupportMembers,
+    bulkBlockSupportMembers,
+    getAllAuditors,
+    deleteAuditor,
+    toggleBlockAuditor,
+    bulkDeleteAuditors,
+    bulkBlockAuditors,
     loginAdmin,
     logoutAdmin,
     updateAdminProfile,
@@ -30,6 +41,7 @@ import {
 } from "../controllers/admin.controllers.js"
 import { verifyAdminJWT } from "../middlewares/auth.middleware.js"
 import notificationRouter from "./notification.routes.js"
+import { registerAuditor } from "../controllers/auditor.controllers.js"
 
 const router = Router()
 
@@ -77,6 +89,22 @@ router.route("/audit-logs").get(verifyAdminJWT, getAuditLogs)
 
 // Admin Profile
 router.route("/profile").put(verifyAdminJWT, updateAdminProfile)
+
+// Auditor Management
+router.route("/auditors").post(verifyAdminJWT, registerAuditor)
+router.route("/auditors").get(verifyAdminJWT, getAllAuditors)
+router.route("/auditors/bulk-delete").post(verifyAdminJWT, bulkDeleteAuditors)
+router.route("/auditors/bulk-block").post(verifyAdminJWT, bulkBlockAuditors)
+router.route("/auditors/:id/block").post(verifyAdminJWT, toggleBlockAuditor)
+router.route("/auditors/:id").delete(verifyAdminJWT, deleteAuditor)
+
+// Support Member Management
+router.route("/support-members").post(verifyAdminJWT, registerSupportMember)
+router.route("/support-members").get(verifyAdminJWT, getAllSupportMembers)
+router.route("/support-members/bulk-delete").post(verifyAdminJWT, bulkDeleteSupportMembers)
+router.route("/support-members/bulk-block").post(verifyAdminJWT, bulkBlockSupportMembers)
+router.route("/support-members/:id/block").post(verifyAdminJWT, toggleBlockSupportMember)
+router.route("/support-members/:id").delete(verifyAdminJWT, deleteSupportMember)
 
 // Professor Management
 router.route("/professors/bulk-import").post(verifyAdminJWT, bulkImportProfessors)

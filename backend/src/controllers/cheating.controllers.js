@@ -13,7 +13,7 @@ import { createNotification, notifyAdmins, notifyAuditors } from "./notification
 const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
 
 // Max allowed cheating violations before auto-termination (enforced server-side)
-const MAX_VIOLATIONS = 3;
+const MAX_VIOLATIONS = 5;
 
 // 1. Record a cheating incident for the authenticated student's active exam attempt.
 //    After recording, checks the cumulative incident count. If >= MAX_VIOLATIONS,
@@ -46,7 +46,21 @@ export const recordIncident = async (req, res) => {
             }
         }
 
-        const finalAction = actionTaken || "NONE";
+        // ── SERVER-SIDE 3-STRIKE ENFORCEMENT ────────────────────────────────────
+        const latestResetResult = await Result.findOne({
+            student: student._id,
+            exam: examId,
+            resetByAdmin: true
+        }).sort({ resetByAdminAt: -1 });
+
+        const incidentQuery = { studentId: student._id, examId };
+        if (latestResetResult && latestResetResult.resetByAdminAt) {
+            incidentQuery.createdAt = { $gt: latestResetResult.resetByAdminAt };
+        }
+
+        const previousCount = await CheatingIncident.countDocuments(incidentQuery);
+        const incidentCount = previousCount + 1;
+        const computedAction = incidentCount >= MAX_VIOLATIONS ? "EXAM_TERMINATED" : "WARNING";
 
         const incident = await CheatingIncident.create({
             studentId: student._id,
@@ -56,7 +70,7 @@ export const recordIncident = async (req, res) => {
             severity: severity || "Medium",
             description,
             detectedAt: new Date(),
-            actionTaken: finalAction,
+            actionTaken: computedAction,
             evidenceData: evidenceData || {},
             reviewStatus: "Pending"
         });
@@ -75,22 +89,6 @@ export const recordIncident = async (req, res) => {
             type: "WARNING"
         }).catch(e => console.error(e));
 
-        // ── SERVER-SIDE 3-STRIKE ENFORCEMENT ────────────────────────────────────
-        // Count cumulative incidents for this student+exam that occurred AFTER the most recent reset (if any).
-        // This gives students a clean slate of 0/3 violations for their second chance attempt.
-        const latestResetResult = await Result.findOne({
-            student: student._id,
-            exam: examId,
-            resetByAdmin: true
-        }).sort({ resetByAdminAt: -1 });
-
-        const incidentQuery = { studentId: student._id, examId };
-        if (latestResetResult && latestResetResult.resetByAdminAt) {
-            incidentQuery.createdAt = { $gt: latestResetResult.resetByAdminAt };
-        }
-
-        const incidentCount = await CheatingIncident.countDocuments(incidentQuery);
-
         let shouldTerminate = false;
         let isNowBlocked = false;
 
@@ -106,15 +104,29 @@ export const recordIncident = async (req, res) => {
                     result.terminationReason = description || "Auto-terminated: exceeded maximum security violations.";
                     await result.save();
                 } else {
-                    result = await Result.create({
-                        student: student._id,
-                        exam: examId,
-                        score: 0,
-                        totalQuestions: exam.questions ? exam.questions.length : 0,
-                        status: "Terminated",
-                        isTerminated: true,
-                        terminationReason: description || "Auto-terminated: exceeded maximum security violations."
-                    });
+                    try {
+                        result = await Result.create({
+                            student: student._id,
+                            exam: examId,
+                            score: 0,
+                            totalQuestions: exam.questions ? exam.questions.length : 0,
+                            status: "Terminated",
+                            isTerminated: true,
+                            terminationReason: description || "Auto-terminated: exceeded maximum security violations."
+                        });
+                    } catch (error) {
+                        if (error.code === 11000) {
+                            result = await Result.findOne({ student: student._id, exam: examId, resetByAdmin: { $ne: true } });
+                            if (result) {
+                                result.status = "Terminated";
+                                result.isTerminated = true;
+                                result.terminationReason = description || "Auto-terminated: exceeded maximum security violations.";
+                                await result.save();
+                            }
+                        } else {
+                            throw error;
+                        }
+                    }
                 }
             }
 
@@ -247,15 +259,29 @@ export const terminateAttempt = async (req, res) => {
             await result.save();
         } else {
             // Create a new terminated Result record
-            result = await Result.create({
-                student: student._id,
-                exam: examId,
-                score: 0,
-                totalQuestions: exam.questions ? exam.questions.length : 0,
-                status: "Terminated",
-                isTerminated: true,
-                terminationReason: reason || "Auto-terminated due to cheating violations."
-            });
+            try {
+                result = await Result.create({
+                    student: student._id,
+                    exam: examId,
+                    score: 0,
+                    totalQuestions: exam.questions ? exam.questions.length : 0,
+                    status: "Terminated",
+                    isTerminated: true,
+                    terminationReason: reason || "Auto-terminated due to cheating violations."
+                });
+            } catch (error) {
+                if (error.code === 11000) {
+                    result = await Result.findOne({ student: student._id, exam: examId, resetByAdmin: { $ne: true } });
+                    if (result) {
+                        result.status = "Terminated";
+                        result.isTerminated = true;
+                        result.terminationReason = reason || "Auto-terminated due to cheating violations.";
+                        await result.save();
+                    }
+                } else {
+                    throw error;
+                }
+            }
         }
 
         let isBlocked = student.isBlocked;

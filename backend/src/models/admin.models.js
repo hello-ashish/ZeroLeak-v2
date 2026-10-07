@@ -11,7 +11,8 @@ const adminSchema = new Schema(
         lastActiveAt: { type: Date, default: null },
         isLoggedIn: { type: Boolean, default: false },
         sessionVersion: { type: Number, default: 0 },
-        isSupport: { type: Boolean, default: false, index: true }
+        isSupport: { type: Boolean, default: false, index: true },
+        isBlocked: { type: Boolean, default: false }
     }, { timestamps: true }
 )
 

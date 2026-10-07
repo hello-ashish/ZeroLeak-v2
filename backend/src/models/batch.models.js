@@ -30,7 +30,7 @@ const batchSchema = new Schema({
 }, { timestamps: true})
 
 
-batchSchema.index({ name: 'text', subject: 'text' });
+batchSchema.index({ title: 'text', subject: 'text' });
 batchSchema.index({ createdBy: 1, status: 1 });
 batchSchema.index({ status: 1, isDeletedByAdmin: 1 });
 batchSchema.index({ createdAt: -1 });

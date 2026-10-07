@@ -6,6 +6,7 @@ export const StatusBadge = ({ status }) => {
         Draft: 'draft',
         Scheduled: 'scheduled',
         Live: 'live',
+        GracePeriod: 'warning',
         Completed: 'completed',
         Archived: 'archived',
         // Batch statuses
@@ -21,6 +22,7 @@ export const StatusBadge = ({ status }) => {
 
     const labels = {
         MarkForReview: 'Review',
+        GracePeriod: 'Finishing...',
     }
 
     const cls = map[status] || 'neutral'

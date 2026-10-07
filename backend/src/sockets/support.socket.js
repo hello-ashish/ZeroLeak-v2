@@ -16,28 +16,13 @@
  *   support:join            (no payload) — joins the support:team room after auth check
  */
 
-import jwt from "jsonwebtoken";
-import { Admin } from "../models/admin.models.js";
+import { authenticateWebSocket } from "../middlewares/auth.middleware.js";
 
-async function authenticateSupportSocket(socket, next) {
-    try {
-        const token =
-            socket.handshake.auth?.token ||
-            socket.handshake.headers?.authorization?.split(" ")[1];
-
-        if (!token) return next(new Error("Support auth: token missing"));
-
-        const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
-
-        if (decoded.role !== "SupportAgent" || decoded.email !== "support@zeroleak.com") {
-            return next(new Error("Support auth: not a support team member"));
-        }
-
-        socket.supportUser = { id: decoded.id, name: "ZeroLeak Support", email: decoded.email };
-        return next();
-    } catch (e) {
-        return next(new Error("Support auth: invalid token"));
+function verifySupport(socket, next) {
+    if (!socket.user || !socket.user.isSupport) {
+        return next(new Error("Support auth: not a support team member"));
     }
+    next();
 }
 
 let _supportNs = null;
@@ -48,10 +33,11 @@ export function getSupportSocketNamespace() {
 
 export function setupSupportSockets(io) {
     const ns = io.of("/support");
-    ns.use(authenticateSupportSocket);
+    ns.use(authenticateWebSocket);
+    ns.use(verifySupport);
 
     ns.on("connection", (socket) => {
-        const agent = socket.supportUser;
+        const agent = socket.user;
         if (!agent) { socket.disconnect(true); return; }
 
         // Automatically join the protected support room

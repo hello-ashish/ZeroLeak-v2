@@ -60,7 +60,7 @@ const StudentExamsPage = () => {
 
         if (exam.status === 'Completed') return 'closed';
 
-        if ((exam.status === "Scheduled" || exam.status === "Live") && exam.scheduledAt && exam.endsAt) {
+        if ((exam.status === "Scheduled" || exam.status === "Live" || exam.status === "GracePeriod") && exam.scheduledAt && exam.endsAt) {
             const startTime = new Date(exam.scheduledAt);
             const endTime = new Date(exam.endsAt);
             const timeDiff = startTime.getTime() - now.getTime();
@@ -219,7 +219,7 @@ const StudentExamsPage = () => {
                     <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 20, fontSize: 13, color: 'var(--text-tertiary)', fontWeight: 500 }}>
                         <span style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-body)', padding: '4px 10px', borderRadius: 8 }}><FileText size={14} /> {exam.questions?.length || 0} Questions</span>
 
-                        {(exam.status === "Scheduled" || exam.status === "Live") && exam.scheduledAt && exam.endsAt ? (
+                        {(exam.status === "Scheduled" || exam.status === "Live" || exam.status === "GracePeriod") && exam.scheduledAt && exam.endsAt ? (
                             <>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-primary)', background: 'var(--bg-body)', padding: '4px 10px', borderRadius: 8 }}>
                                     <Calendar size={14} /> {new Date(exam.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(exam.endsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

@@ -22,6 +22,7 @@
 import jwt from "jsonwebtoken";
 import { Admin }              from "../models/admin.models.js";
 import { Student }            from "../models/student.models.js";
+import { authenticateWebSocket } from "../middlewares/auth.middleware.js";
 import { ProctoringSession }  from "../models/proctoringSession.models.js";
 import { ProctoringIncident } from "../models/proctoringIncident.models.js";
 import { ProctoringAIEvent }  from "../models/proctoringAIEvent.models.js";
@@ -148,47 +149,7 @@ function validateEventPayload(data) {
     return { type, severity, description, details };
 }
 
-// ─── Socket auth ─────────────────────────────────────────────────────────────
-const authenticateSocket = async (socket, next) => {
-    try {
-        const token = socket.handshake.auth?.token
-            || socket.handshake.headers?.authorization?.split(" ")[1];
-        if (!token) return next(new Error("Authentication error: Token missing"));
 
-        const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
-
-        if (decoded.role === "Student") {
-            const s = await Student.findById(decoded.id).select("_id studentId isBlocked").lean();
-            if (!s)           return next(new Error("Authentication error: Student not found"));
-            if (s.isBlocked)  return next(new Error("Authentication error: Student is blocked"));
-            socket.user = { id: s._id, role: "Student", studentId: s.studentId };
-            return next();
-        }
-
-        if (decoded.role === "Admin") {
-            const a = await Admin.findById(decoded.id).select("_id email").lean();
-            if (!a) return next(new Error("Authentication error: Admin not found"));
-            socket.user = { id: a._id, role: "Admin", email: a.email };
-            return next();
-        }
-
-        // Fallback (no role in JWT)
-        const s = await Student.findById(decoded.id).select("_id studentId isBlocked").lean();
-        if (s) {
-            if (s.isBlocked) return next(new Error("Authentication error: Student is blocked"));
-            socket.user = { id: s._id, role: "Student", studentId: s.studentId };
-            return next();
-        }
-        const a = await Admin.findById(decoded.id).select("_id email").lean();
-        if (a) {
-            socket.user = { id: a._id, role: "Admin", email: a.email };
-            return next();
-        }
-        return next(new Error("Authentication error: User not found"));
-    } catch (e) {
-        return next(new Error("Authentication error: Invalid token"));
-    }
-};
 
 // ─── Main export ──────────────────────────────────────────────────────────────
 export const setupProctoringSockets = (io) => {
@@ -256,7 +217,7 @@ export const setupProctoringSockets = (io) => {
         }, 60_000);
     }
 
-    ns.use(authenticateSocket);
+    ns.use(authenticateWebSocket);
 
     // ── Helpers ───────────────────────────────────────────────────────────────
     const broadcastToAdmins = (event, examId, data) => {

@@ -10,7 +10,8 @@ import {
     scanAnomalies,
     getExams,
     getStudents,
-    getProfessors
+    getProfessors,
+    updateAuditorProfile
 } from "../controllers/auditor.controllers.js";
 import { verifyAuditorJWT } from "../middlewares/auth.middleware.js";
 import notificationRouter from "./notification.routes.js";
@@ -18,13 +19,14 @@ import notificationRouter from "./notification.routes.js";
 const router = Router();
 
 // ─── Public Routes ────────────────────────────────────────────────────────────
-router.route("/register").post(registerAuditor);
+// Note: Auditor registration is moved to admin.routes.js
 router.route("/login").post(loginAuditor);
 router.route("/logout").post(verifyAuditorJWT, logoutAuditor);
 
 // ─── Protected Routes (Read-Only & Auditor Specific) ──────────────────────────
 router.use(verifyAuditorJWT); // Apply to all below
 
+router.route("/profile").put(updateAuditorProfile);
 router.use("/notifications", notificationRouter);
 
 router.route("/metrics").get(getDashboardMetrics);

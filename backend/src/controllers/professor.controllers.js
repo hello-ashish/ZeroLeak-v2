@@ -105,7 +105,7 @@ export const addQuestionToBatch = async (req, res) => {
         const { batchId } = req.params
         const questionData = req.body
 
-        const batch = await Batch.findById(batchId)
+        const batch = await Batch.findOne({ _id: batchId, createdBy: req.professor._id })
         if (!batch) {
             return res.status(404).json({ message: "Batch not found." })
         }
@@ -129,7 +129,7 @@ export const bulkAddQuestionsToBatch = async (req, res) => {
         const { batchId } = req.params;
         const { questions } = req.body; // array of questions
 
-        const batch = await Batch.findById(batchId);
+        const batch = await Batch.findOne({ _id: batchId, createdBy: req.professor._id });
         if (!batch) {
             return res.status(404).json({ message: "Batch not found." });
         }
@@ -161,7 +161,7 @@ export const editQuestionInBatch = async (req, res) => {
         const { batchId, questionId } = req.params
         const questionData = req.body
 
-        const batch = await Batch.findById(batchId)
+        const batch = await Batch.findOne({ _id: batchId, createdBy: req.professor._id })
         if (!batch) {
             return res.status(404).json({ message: "Batch not found." })
         }
@@ -189,7 +189,7 @@ export const deleteQuestionFromBatch = async (req, res) => {
     try {
         const { batchId, questionId } = req.params
 
-        const batch = await Batch.findById(batchId)
+        const batch = await Batch.findOne({ _id: batchId, createdBy: req.professor._id })
         if (!batch) {
             return res.status(404).json({ message: "Batch not found." })
         }
@@ -210,7 +210,7 @@ export const deleteQuestionFromBatch = async (req, res) => {
 export const submitBatch = async (req, res) => {
     try {
         const { batchId } = req.params
-        const batch = await Batch.findByIdAndUpdate(batchId, {
+        const batch = await Batch.findOneAndUpdate({ _id: batchId, createdBy: req.professor._id }, {
             status: "Submitted" }, {new: true})
             
         await notifyAdmins({
@@ -270,7 +270,10 @@ export const updateProfessorProfile = async (req, res) => {
         if (email) professor.email = email
         if (contact) professor.contact = contact
         if (address) professor.address = address
-        if (password) professor.password = password
+        if (password) {
+            professor.password = password;
+            professor.sessionVersion = (professor.sessionVersion || 0) + 1;
+        }
 
         await professor.save()
 
@@ -296,6 +299,7 @@ export const changeProfessorPassword = async (req, res) => {
         }
         
         professor.password = newPassword
+        professor.sessionVersion = (professor.sessionVersion || 0) + 1;
         await professor.save()
         
         return res.status(200).json({ message: "Password updated successfully" })

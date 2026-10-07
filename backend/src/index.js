@@ -26,8 +26,6 @@ connectDB()
         startOutboxWorker();
         startAnchorWorker();
         startExamExpirationWorker();
-        // Start the exam lifecycle cron (Scheduled → Live → Completed)
-        await import("./cron/examScheduler.js");
         console.log("ZeroLeak background workers initialized.");
 
         // Create HTTP server and initialize Socket.IO

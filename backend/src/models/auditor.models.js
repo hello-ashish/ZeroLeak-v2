@@ -10,7 +10,8 @@ const auditorSchema = new Schema(
         name: { type: String, required: true, default: "Platform Auditor" },
         lastActiveAt: { type: Date, default: null },
         isLoggedIn: { type: Boolean, default: false },
-        sessionVersion: { type: Number, default: 0 }
+        sessionVersion: { type: Number, default: 0 },
+        isBlocked: { type: Boolean, default: false }
     }, { timestamps: true }
 )
 
@@ -28,6 +29,7 @@ auditorSchema.methods.generateAccessToken = function () {
         {
             id: this._id,
             email: this.email,
+            role: "Auditor",
             sessionVersion: this.sessionVersion,
         },
         process.env.ACCESS_TOKEN_SECRET,

@@ -41,6 +41,7 @@ router.get("/my-tickets/:ticketId",           verifyAnyJWT, supportController.ge
 router.post("/my-tickets/:ticketId/reply",    verifyAnyJWT, supportController.userReply);
 
 // ── Support team endpoints (isSupport admin only) ──────────────────────────────
+router.put("/profile",                        verifySupportJWT, supportController.updateSupportProfile);
 router.get("/tickets",                        verifySupportJWT, supportController.listTickets);
 router.get("/global-history",                 verifySupportJWT, supportController.getGlobalHistory);
 router.get("/stats",                          verifySupportJWT, supportController.getStats);

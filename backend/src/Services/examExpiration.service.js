@@ -9,12 +9,9 @@ export const startExamExpirationWorker = () => {
     setInterval(async () => {
         try {
             const now = new Date();
-            const expiredExams = await Exam.find({
-                status: "Live",
-                endsAt: { $lt: now }
-            }).populate("questions").populate("examinationId");
+            const GRACE_PERIOD_MS = 5 * 60 * 1000;
 
-            // 2. Find all Scheduled exams where scheduledAt has passed
+            // 1. Find all Scheduled exams where scheduledAt has passed
             const scheduledExams = await Exam.find({
                 status: "Scheduled",
                 scheduledAt: { $lte: now }
@@ -26,8 +23,26 @@ export const startExamExpirationWorker = () => {
                     exam.endsAt = new Date(exam.scheduledAt.getTime() + (exam.durationMinutes || 60) * 60 * 1000);
                 }
                 await exam.save();
-                console.log(`[ExamExpiration] Exam ${exam.title} started and marked as Live.`);
+                console.log(`[ExamLifecycle] Exam ${exam.title} started and marked as Live.`);
             }
+
+            // 2. Find all Live exams where endsAt has passed, move to GracePeriod
+            const liveExams = await Exam.find({
+                status: "Live",
+                endsAt: { $lt: now }
+            });
+
+            for (const exam of liveExams) {
+                exam.status = "GracePeriod";
+                await exam.save();
+                console.log(`[ExamLifecycle] Exam ${exam.title} ended and marked as GracePeriod.`);
+            }
+
+            // 3. Find all GracePeriod exams where grace period has expired, move to Completed
+            const expiredExams = await Exam.find({
+                status: "GracePeriod",
+                endsAt: { $lt: new Date(now.getTime() - GRACE_PERIOD_MS) }
+            }).populate("questions").populate("examinationId");
 
             for (const exam of expiredExams) {
                 // Find all InProgress results for this exam
@@ -43,7 +58,7 @@ export const startExamExpirationWorker = () => {
 
                 exam.status = "Completed";
                 await exam.save();
-                console.log(`[ExamExpiration] Exam ${exam.title} finalized and marked as Completed.`);
+                console.log(`[ExamLifecycle] Exam ${exam.title} finalized and marked as Completed.`);
             }
         } catch (error) {
             console.error("[ExamExpiration] Error in expiration worker:", error);

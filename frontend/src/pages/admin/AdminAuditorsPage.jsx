@@ -10,8 +10,8 @@ import { Search, Users, Trash2, AlertTriangle, BookOpen, Clock, Activity, X, Mai
 const API = '/api'
 const getToken = () => localStorage.getItem('adminToken')
 
-export default function AdminProfessorsPage() {
-    const [professors, setProfessors] = useState([])
+export default function AdminAuditorsPage() {
+    const [auditors, setAuditors] = useState([])
     const [stats, setStats] = useState(null)
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
@@ -19,13 +19,13 @@ export default function AdminProfessorsPage() {
     const [deleteTarget, setDeleteTarget] = useState(null)
     const [deleting, setDeleting] = useState(false)
     const [creating, setCreating] = useState(false)
-    const [selectedProf, setSelectedProf] = useState(null)
+    const [selectedAud, setSelectedProf] = useState(null)
     const [selectedIds, setSelectedIds] = useState([])
     const [isSelectMode, setIsSelectMode] = useState(false)
     const [filterStatus, setFilterStatus] = useState('all')
     const [sortConfig, setSortConfig] = useState('default')
     const [isImporting, setIsImporting] = useState(false)
-    const [form, setForm] = useState({ id: '', name: '', email: '', contact: '', address: '', password: '' })
+    const [form, setForm] = useState({ auditorId: '', name: '', email: '', contact: '', address: '', password: '' })
     const [formErrors, setFormErrors] = useState({})
     const [showPass, setShowPass] = useState(false)
     const [previewModal, setPreviewModal] = useState({ isOpen: false, title: '', content: '', headers: [], rows: [], filename: '' })
@@ -38,11 +38,11 @@ export default function AdminProfessorsPage() {
         if (!token) { navigate('/admin/login'); return }
         try {
             setLoading(true)
-            const [profRes, statsRes] = await Promise.all([
-                axios.get(`${API}/admin/professors`, { headers: { Authorization: `Bearer ${token}` } }),
+            const [audRes, statsRes] = await Promise.all([
+                axios.get(`${API}/admin/auditors`, { headers: { Authorization: `Bearer ${token}` } }),
                 axios.get(`${API}/admin/stats`, { headers: { Authorization: `Bearer ${token}` } })
             ]);
-            setProfessors(profRes.data.professors || [])
+            setAuditors(audRes.data.auditors || [])
             setStats(statsRes.data.stats || null)
         } catch {
             toast.error('Failed to load data')
@@ -54,7 +54,7 @@ export default function AdminProfessorsPage() {
     useEffect(() => { fetchData() }, [])
 
     const filtered = useMemo(() => {
-        let result = professors;
+        let result = auditors;
 
         if (filterStatus === 'active') {
             result = result.filter(p => !p.isBlocked);
@@ -66,7 +66,7 @@ export default function AdminProfessorsPage() {
             const s = search.toLowerCase();
             result = result.filter(p =>
                 p.name?.toLowerCase().includes(s) ||
-                p.id?.toLowerCase().includes(s) ||
+                p.auditorId?.toLowerCase().includes(s) ||
                 p.email?.toLowerCase().includes(s)
             );
         }
@@ -76,8 +76,8 @@ export default function AdminProfessorsPage() {
                 switch (sortConfig) {
                     case 'name-asc': return (a.name || '').localeCompare(b.name || '');
                     case 'name-desc': return (b.name || '').localeCompare(a.name || '');
-                    case 'id-asc': return (a.id || '').localeCompare(b.id || '');
-                    case 'id-desc': return (b.id || '').localeCompare(a.id || '');
+                    case 'auditorId-asc': return (a.id || '').localeCompare(b.id || '');
+                    case 'auditorId-desc': return (b.id || '').localeCompare(a.id || '');
                     case 'date-asc': return new Date(a.createdAt) - new Date(b.createdAt);
                     case 'date-desc': return new Date(b.createdAt) - new Date(a.createdAt);
                     default: return 0;
@@ -85,17 +85,17 @@ export default function AdminProfessorsPage() {
             });
         }
         return result;
-    }, [professors, search, filterStatus, sortConfig])
+    }, [auditors, search, filterStatus, sortConfig])
 
     const activeCreatorsCount = useMemo(() => {
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        return professors.filter(p => p.lastActiveAt && new Date(p.lastActiveAt) > sevenDaysAgo).length;
-    }, [professors]);
+        return auditors.filter(p => p.lastActiveAt && new Date(p.lastActiveAt) > sevenDaysAgo).length;
+    }, [auditors]);
 
     const validate = () => {
         const e = {}
-        if (!form.id.trim()) e.id = 'Professor ID is required'
+        if (!form.auditorId.trim()) e.id = 'Auditor ID is required'
         if (!form.name.trim()) e.name = 'Name is required'
         if (!form.email.trim() || !form.email.includes('@')) e.email = 'Valid email is required'
         if (!form.password || form.password.length < 6) e.password = 'Password must be at least 6 characters'
@@ -104,15 +104,15 @@ export default function AdminProfessorsPage() {
 
     const handleOpenAdd = () => {
         let nextNum = 1;
-        if (professors.length > 0) {
-            const nums = professors.map(p => {
-                const match = p.id?.match(/PROF-(\d+)/i);
+        if (auditors.length > 0) {
+            const nums = auditors.map(a => {
+                const match = a.auditorId?.match(/AUD-(\d+)/i);
                 return match ? parseInt(match[1], 10) : 0;
             });
             nextNum = Math.max(...nums, 0) + 1;
         }
-        const nextId = `PROF-${nextNum.toString().padStart(3, '0')}`;
-        setForm(f => ({ ...f, id: nextId }));
+        const nextId = `AUD-${nextNum.toString().padStart(3, '0')}`;
+        setForm(f => ({ ...f, auditorId: nextId }));
         setShowAdd(true);
     };
 
@@ -122,16 +122,16 @@ export default function AdminProfessorsPage() {
         if (Object.keys(errs).length > 0) { setFormErrors(errs); return }
         setCreating(true)
         try {
-            await axios.post(`${API}/admin/professors`, form, {
+            await axios.post(`${API}/admin/auditors`, form, {
                 headers: { Authorization: `Bearer ${getToken()}` }
             })
-            toast.success('Professor created successfully')
+            toast.success('Auditor created successfully')
             setShowAdd(false)
-            setForm({ id: '', name: '', email: '', contact: '', address: '', password: '' })
+            setForm({ auditorId: '', name: '', email: '', contact: '', address: '', password: '' })
             setFormErrors({})
             fetchData()
         } catch (err) {
-            toast.error(err.response?.data?.message || 'Failed to create professor')
+            toast.error(err.response?.data?.message || 'Failed to create auditor')
         } finally {
             setCreating(false)
         }
@@ -140,15 +140,15 @@ export default function AdminProfessorsPage() {
     const handleDelete = async () => {
         setDeleting(true)
         try {
-            await axios.delete(`${API}/admin/professors/${deleteTarget.id}`, {
+            await axios.delete(`${API}/admin/auditors/${deleteTarget.id}`, {
                 headers: { Authorization: `Bearer ${getToken()}` }
             })
-            toast.success('Professor removed')
-            if (selectedProf?._id === deleteTarget._id) setSelectedProf(null)
+            toast.success('Auditor removed')
+            if (selectedAud?._id === deleteTarget._id) setSelectedProf(null)
             setDeleteTarget(null)
             fetchData()
         } catch {
-            toast.error('Failed to delete professor')
+            toast.error('Failed to delete auditor')
         } finally {
             setDeleting(false)
         }
@@ -167,14 +167,14 @@ export default function AdminProfessorsPage() {
     }
 
     const handleBulkDelete = async () => {
-        if (!window.confirm(`Are you sure you want to delete ${selectedIds.length} professors?`)) return;
+        if (!window.confirm(`Are you sure you want to delete ${selectedIds.length} auditors?`)) return;
         try {
-            await axios.post(`${API}/admin/professors/bulk-delete`, { ids: selectedIds }, { headers: { Authorization: `Bearer ${getToken()}` } });
-            toast.success('Professors deleted successfully');
+            await axios.post(`${API}/admin/auditors/bulk-delete`, { ids: selectedIds }, { headers: { Authorization: `Bearer ${getToken()}` } });
+            toast.success('Auditors deleted successfully');
             setSelectedIds([]);
             fetchData();
         } catch {
-            toast.error('Failed to delete professors');
+            toast.error('Failed to delete auditors');
         }
     }
     const handleDownload = (content, filename) => {
@@ -192,9 +192,9 @@ export default function AdminProfessorsPage() {
         setPreviewModal({
             isOpen: true,
             title: 'Download Template',
-            content: 'Professor ID,Name,Email,Contact,Address',
-            headers: ['Professor ID', 'Name', 'Email', 'Contact', 'Address'],
-            filename: 'professor_template.csv'
+            content: 'Auditor ID,Name,Email,Contact,Address',
+            headers: ['Auditor ID', 'Name', 'Email', 'Contact', 'Address'],
+            filename: 'auditor_template.csv'
         });
     };
 
@@ -223,14 +223,14 @@ export default function AdminProfessorsPage() {
     const confirmImport = async () => {
         setIsImporting(true);
         try {
-            const res = await axios.post(`${API}/admin/professors/bulk-import`, {
-                professors: importPreview
+            const res = await axios.post(`${API}/admin/auditors/bulk-import`, {
+                auditors: importPreview
             }, { headers: { Authorization: `Bearer ${getToken()}` } });
-            toast.success(`Imported ${res.data.imported} professors (${res.data.skipped} skipped)`);
+            toast.success(`Imported ${res.data.imported} auditors (${res.data.skipped} skipped)`);
             fetchData();
             setImportPreview(null);
         } catch (err) {
-            toast.error(err.response?.data?.message || 'Failed to import professors');
+            toast.error(err.response?.data?.message || 'Failed to import auditors');
         } finally {
             setIsImporting(false);
         }
@@ -238,7 +238,7 @@ export default function AdminProfessorsPage() {
 
     const handleToggleBlock = async (prof) => {
         try {
-            const res = await axios.post(`${API}/admin/professors/${prof._id}/block`, {}, {
+            const res = await axios.post(`${API}/admin/auditors/${prof._id}/block`, {}, {
                 headers: { Authorization: `Bearer ${getToken()}` }
             });
             toast.success(res.data.message);
@@ -251,14 +251,14 @@ export default function AdminProfessorsPage() {
 
     const handleBulkBlock = async (block) => {
         try {
-            await axios.post(`${API}/admin/professors/bulk-block`, { ids: selectedIds, block }, {
+            await axios.post(`${API}/admin/auditors/bulk-block`, { ids: selectedIds, block }, {
                 headers: { Authorization: `Bearer ${getToken()}` }
             });
-            toast.success(`Professors ${block ? 'blocked' : 'unblocked'} successfully`);
+            toast.success(`Auditors ${block ? 'blocked' : 'unblocked'} successfully`);
             setSelectedIds([]);
             fetchData();
         } catch {
-            toast.error('Failed to update professors');
+            toast.error('Failed to update auditors');
         }
     };
 
@@ -268,7 +268,7 @@ export default function AdminProfessorsPage() {
                 <div className="page-header-top">
                     <div>
                         <h1 className="page-title">Faculty Overview</h1>
-                        <p className="page-subtitle">Manage institutional professors and content contributors</p>
+                        <p className="page-subtitle">Manage institutional auditors and content contributors</p>
                     </div>
                     <div style={{ display: 'flex', gap: 12 }}>
                         <button className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: 8 }} onClick={handleTemplateDownload}>
@@ -284,24 +284,24 @@ export default function AdminProfessorsPage() {
                             <input type="file" accept=".csv" style={{ display: 'none' }} onChange={handleFileUpload} disabled={isImporting} />
                         </label>
                         <button className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: 8 }} onClick={() => {
-                            const headers = ['Name', 'Professor ID', 'Email', 'Contact', 'Address', 'Created At', 'Updated At'];
-                            const rows = professors.map(p => [p.name || '', p.id || '', p.email || '', p.contact || '', p.address || '', p.createdAt ? new Date(p.createdAt).toLocaleString() : '', p.updatedAt ? new Date(p.updatedAt).toLocaleString() : '']);
+                            const headers = ['Name', 'Auditor ID', 'Email', 'Contact', 'Address', 'Created At', 'Updated At'];
+                            const rows = auditors.map(p => [p.name || '', p.auditorId || '', p.email || '', p.contact || '', p.address || '', p.createdAt ? new Date(p.createdAt).toLocaleString() : '', p.updatedAt ? new Date(p.updatedAt).toLocaleString() : '']);
                             const csv = [
                                 headers.join(','),
                                 ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
                             ].join('\n');
                             setPreviewModal({
                                 isOpen: true,
-                                title: 'Professors Export Preview',
+                                title: 'Auditors Export Preview',
                                 content: csv,
                                 headers: headers,
                                 rows: rows,
-                                filename: 'professors.csv'
+                                filename: 'auditors.csv'
                             });
                         }}>
                             <Download size={16} /> Export
                         </button>
-                        <button className="btn btn-primary" onClick={handleOpenAdd}>+ Add Professor</button>
+                        <button className="btn btn-primary" onClick={handleOpenAdd}>+ Add Auditor</button>
                     </div>
                 </div>
             </div>
@@ -312,7 +312,7 @@ export default function AdminProfessorsPage() {
                         <span className="kpi-label">Total Faculty</span>
                         <span className="kpi-icon" style={{ background: 'rgba(124,58,237,0.12)', color: 'var(--brand-secondary)' }}><Users size={20} /></span>
                     </div>
-                    <div className="kpi-value">{loading ? '—' : professors.length}</div>
+                    <div className="kpi-value">{loading ? '—' : auditors.length}</div>
                 </div>
                 <div className="kpi-card">
                     <div className="kpi-card-header">
@@ -363,8 +363,8 @@ export default function AdminProfessorsPage() {
                             <option value="default">Sort by</option>
                             <option value="name-asc">Name (A-Z)</option>
                             <option value="name-desc">Name (Z-A)</option>
-                            <option value="id-asc">Professor ID (A-Z)</option>
-                            <option value="id-desc">Professor ID (Z-A)</option>
+                            <option value="auditorId-asc">Auditor ID (A-Z)</option>
+                            <option value="auditorId-desc">Auditor ID (Z-A)</option>
                             <option value="date-desc">Newest First</option>
                             <option value="date-asc">Oldest First</option>
                         </select>
@@ -406,7 +406,7 @@ export default function AdminProfessorsPage() {
                                             />
                                         </th>
                                     )}
-                                    <th>Professor</th>
+                                    <th>Auditor</th>
                                     <th>ID</th>
                                     <th>Email</th>
                                     <th>Contact</th>
@@ -422,13 +422,13 @@ export default function AdminProfessorsPage() {
                                         <tr><td colSpan={isSelectMode ? 7 : 6}>
                                             <EmptyState
                                                 icon={<Users size={32} color="var(--text-tertiary)" />}
-                                                title="No professors found"
-                                                description={search ? 'No professors match that search.' : 'Add your first faculty member to get started.'}
-                                                action={!search && <button className="btn btn-primary" onClick={handleOpenAdd}>+ Add Professor</button>}
+                                                title="No auditors found"
+                                                description={search ? 'No auditors match that search.' : 'Add your first faculty member to get started.'}
+                                                action={!search && <button className="btn btn-primary" onClick={handleOpenAdd}>+ Add Auditor</button>}
                                             />
                                         </td></tr>
                                     ) : filtered.map(prof => {
-                                        const isSelected = selectedProf?._id === prof._id
+                                        const isSelected = selectedAud?._id === prof._id
                                         return (
                                             <tr key={prof._id}
                                                 onClick={() => setSelectedProf(prof)}
@@ -476,7 +476,7 @@ export default function AdminProfessorsPage() {
                 </div>
 
                 {/* Right Side Drawer / Panel */}
-                {selectedProf && (
+                {selectedAud && (
                     <div style={{
                         width: 380,
                         flexShrink: 0,
@@ -493,13 +493,13 @@ export default function AdminProfessorsPage() {
                     }}>
                         <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border-default)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <div className="flex items-center gap-3">
-                                <div className="avatar" style={{ background: selectedProf.isBlocked ? 'var(--danger-subtle)' : 'var(--brand-secondary)', color: selectedProf.isBlocked ? 'var(--danger)' : 'var(--text-inverse)', width: 40, height: 40, fontSize: 16 }}>
-                                    {selectedProf.name?.charAt(0)?.toUpperCase()}
+                                <div className="avatar" style={{ background: selectedAud.isBlocked ? 'var(--danger-subtle)' : 'var(--brand-secondary)', color: selectedAud.isBlocked ? 'var(--danger)' : 'var(--text-inverse)', width: 40, height: 40, fontSize: 16 }}>
+                                    {selectedAud.name?.charAt(0)?.toUpperCase()}
                                 </div>
                                 <div>
-                                    <h3 style={{ fontSize: 16, fontWeight: 600, color: selectedProf.isBlocked ? 'var(--danger)' : 'var(--text-primary)', textDecoration: selectedProf.isBlocked ? 'line-through' : 'none' }}>{selectedProf.name}</h3>
-                                    <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2, fontFamily: 'var(--font-mono)' }}>{selectedProf.id}</p>
-                                    {selectedProf.isBlocked && <span className="badge badge-danger" style={{ marginTop: 4 }}>BLOCKED</span>}
+                                    <h3 style={{ fontSize: 16, fontWeight: 600, color: selectedAud.isBlocked ? 'var(--danger)' : 'var(--text-primary)', textDecoration: selectedAud.isBlocked ? 'line-through' : 'none' }}>{selectedAud.name}</h3>
+                                    <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2, fontFamily: 'var(--font-mono)' }}>{selectedAud.id}</p>
+                                    {selectedAud.isBlocked && <span className="badge badge-danger" style={{ marginTop: 4 }}>BLOCKED</span>}
                                 </div>
                             </div>
                             <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setSelectedProf(null)}>
@@ -511,9 +511,9 @@ export default function AdminProfessorsPage() {
                             <div style={{ marginBottom: 24 }}>
                                 <div style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', marginBottom: 8 }}>Contact & Profile</div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>
-                                    <Mail size={14} /> {selectedProf.email}
+                                    <Mail size={14} /> {selectedAud.email}
                                 </div>
-                                <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Joined {new Date(selectedProf.createdAt).toLocaleDateString()}</div>
+                                <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Joined {new Date(selectedAud.createdAt).toLocaleDateString()}</div>
                             </div>
 
                             <div style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', marginBottom: 12 }}>Contributions Snapshot</div>
@@ -522,23 +522,23 @@ export default function AdminProfessorsPage() {
                                 <div style={{ background: 'var(--bg-surface)', padding: 16, borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
                                     <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Batches Submitted</div>
                                     <div style={{ fontSize: 24, fontWeight: 600, color: 'var(--text-primary)', marginTop: 4 }}>
-                                        {selectedProf.batchesSubmitted || 0}
+                                        {selectedAud.batchesSubmitted || 0}
                                     </div>
                                 </div>
                                 <div style={{ background: 'var(--bg-surface)', padding: 16, borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
                                     <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Questions Approved</div>
                                     <div style={{ fontSize: 24, fontWeight: 600, color: 'var(--text-primary)', marginTop: 4 }}>
-                                        {selectedProf.questionsApproved || 0}
+                                        {selectedAud.questionsApproved || 0}
                                     </div>
                                 </div>
                             </div>
 
                             <div style={{ marginTop: 32, display: 'flex', gap: 12 }}>
-                                <button className={`btn ${selectedProf.isBlocked ? 'btn-secondary' : 'btn-danger-subtle'}`} style={{ flex: 1, justifyContent: 'center' }} onClick={() => handleToggleBlock(selectedProf)}>
-                                    {selectedProf.isBlocked ? 'Unblock Access' : 'Block Access'}
+                                <button className={`btn ${selectedAud.isBlocked ? 'btn-secondary' : 'btn-danger-subtle'}`} style={{ flex: 1, justifyContent: 'center' }} onClick={() => handleToggleBlock(selectedAud)}>
+                                    {selectedAud.isBlocked ? 'Unblock Access' : 'Block Access'}
                                 </button>
-                                <button className="btn btn-danger" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setDeleteTarget(selectedProf)}>
-                                    <Trash2 size={16} /> Remove Professor
+                                <button className="btn btn-danger" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setDeleteTarget(selectedAud)}>
+                                    <Trash2 size={16} /> Remove Auditor
                                 </button>
                             </div>
                         </div>
@@ -546,16 +546,16 @@ export default function AdminProfessorsPage() {
                 )}
             </div>
 
-            {/* Add Professor Modal */}
+            {/* Add Auditor Modal */}
             <Modal
                 open={showAdd}
                 onClose={() => { setShowAdd(false); setFormErrors({}) }}
-                title="Create New Professor"
+                title="Create New Auditor"
                 footer={
                     <>
                         <button className="btn btn-secondary" onClick={() => setShowAdd(false)}>Cancel</button>
                         <button className="btn btn-primary" onClick={handleCreate} disabled={creating}>
-                            {creating ? 'Creating...' : 'Create Professor'}
+                            {creating ? 'Creating...' : 'Create Auditor'}
                         </button>
                     </>
                 }
@@ -563,19 +563,19 @@ export default function AdminProfessorsPage() {
                 <form onSubmit={handleCreate}>
                     <div className="form-row">
                         <div className="form-group">
-                            <label className="form-label">Professor ID *</label>
-                            <input className="form-input" placeholder="e.g. PROF-001" value={form.id} onChange={e => setForm(f => ({ ...f, id: e.target.value }))} />
+                            <label className="form-label">Auditor ID *</label>
+                            <input className="form-input" placeholder="e.g. AUD-001" value={form.auditorId} onChange={e => setForm(f => ({ ...f, id: e.target.value }))} />
                             {formErrors.id && <span className="form-error flex items-center gap-1"><AlertTriangle size={14} /> {formErrors.id}</span>}
                         </div>
                         <div className="form-group">
                             <label className="form-label">Full Name *</label>
-                            <input className="form-input" placeholder="e.g. Dr. Jane Smith" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+                            <input className="form-input" placeholder="e.g. Alice Walker" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
                             {formErrors.name && <span className="form-error flex items-center gap-1"><AlertTriangle size={14} /> {formErrors.name}</span>}
                         </div>
                     </div>
                     <div className="form-group">
                         <label className="form-label">Email Address *</label>
-                        <input className="form-input" type="email" placeholder="professor@zeroleak.com" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
+                        <input className="form-input" type="email" placeholder="auditor@zeroleak.com" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
                         {formErrors.email && <span className="form-error flex items-center gap-1"><AlertTriangle size={14} /> {formErrors.email}</span>}
                     </div>
                     <div className="form-row">
@@ -601,9 +601,9 @@ export default function AdminProfessorsPage() {
                 open={!!deleteTarget}
                 onClose={() => setDeleteTarget(null)}
                 onConfirm={handleDelete}
-                title="Remove Professor"
-                message={`Are you sure you want to remove Professor ${deleteTarget?.name} (${deleteTarget?.id})? Their submitted question batches will remain in the system.`}
-                confirmLabel="Remove Professor"
+                title="Remove Auditor"
+                message={`Are you sure you want to remove Auditor ${deleteTarget?.name} (${deleteTarget?.id})? Their submitted question batches will remain in the system.`}
+                confirmLabel="Remove Auditor"
                 danger
                 loading={deleting}
             />
@@ -651,7 +651,7 @@ export default function AdminProfessorsPage() {
             <Modal
                 open={!!importPreview}
                 onClose={() => setImportPreview(null)}
-                title="Preview Professors Import"
+                title="Preview Auditors Import"
                 size="full"
                 footer={
                     <>

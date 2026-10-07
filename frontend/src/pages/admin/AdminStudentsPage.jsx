@@ -70,7 +70,7 @@ export default function AdminStudentsPage() {
 
     useEffect(() => {
         const studentId = searchParams.get('studentId')
-        
+
         if (!studentId) {
             processedStudentId.current = null
             return
@@ -219,6 +219,20 @@ export default function AdminStudentsPage() {
         if (!form.password || form.password.length < 6) e.password = 'Password must be at least 6 characters'
         return e
     }
+
+    const handleOpenAdd = () => {
+        let nextNum = 1;
+        if (students.length > 0) {
+            const nums = students.map(s => {
+                const match = s.studentId?.match(/STU-(\d+)/i);
+                return match ? parseInt(match[1], 10) : 0;
+            });
+            nextNum = Math.max(...nums, 0) + 1;
+        }
+        const nextId = `STU-${nextNum.toString().padStart(3, '0')}`;
+        setForm(f => ({ ...f, studentId: nextId }));
+        setShowAdd(true);
+    };
 
     const handleCreate = async (e) => {
         e.preventDefault()
@@ -399,7 +413,7 @@ export default function AdminStudentsPage() {
                         }}>
                             <Download size={16} /> Export
                         </button>
-                        <button className="btn btn-primary" onClick={() => setShowAdd(true)}>+ Add Student</button>
+                        <button className="btn btn-primary" onClick={handleOpenAdd}>+ Add Student</button>
                     </div>
                 </div>
             </div>
@@ -531,7 +545,7 @@ export default function AdminStudentsPage() {
                                                 icon={<User size={32} color="var(--text-tertiary)" />}
                                                 title="No students found"
                                                 description={search ? 'No students match that search.' : 'Register your first student to get started.'}
-                                                action={!search && <button className="btn btn-primary" onClick={() => setShowAdd(true)}>+ Add Student</button>}
+                                                action={!search && <button className="btn btn-primary" onClick={handleOpenAdd}>+ Add Student</button>}
                                             />
                                         </td></tr>
                                     ) : filtered.map(stu => {
@@ -634,13 +648,13 @@ export default function AdminStudentsPage() {
                                     {blockingId === selectedStudent._id ? '...' : (selectedStudent.isBlocked ? 'Unblock' : 'Block Access')}
                                 </button>
                                 <button className="btn btn-ghost btn-sm btn-icon" onClick={() => {
-                                                    setSelectedStudent(null)
-                                                    if (searchParams.has('studentId')) {
-                                                        const p = new URLSearchParams(searchParams)
-                                                        p.delete('studentId')
-                                                        setSearchParams(p, { replace: true })
-                                                    }
-                                                }}>
+                                    setSelectedStudent(null)
+                                    if (searchParams.has('studentId')) {
+                                        const p = new URLSearchParams(searchParams)
+                                        p.delete('studentId')
+                                        setSearchParams(p, { replace: true })
+                                    }
+                                }}>
                                     <X size={16} />
                                 </button>
                             </div>
@@ -694,9 +708,9 @@ export default function AdminStudentsPage() {
                             <div style={{ marginTop: 24, padding: 16, background: 'var(--bg-surface)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--brand-primary-subtle)' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: aiAnalysis ? 16 : 0 }}>
                                     <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--brand-primary)' }}>✨ AI Performance Analysis</div>
-                                    <button 
-                                        className="btn btn-sm btn-primary" 
-                                        onClick={handleGenerateInsight} 
+                                    <button
+                                        className="btn btn-sm btn-primary"
+                                        onClick={handleGenerateInsight}
                                         disabled={isAnalyzing || examsForStudent(selectedStudent._id) === 0}
                                         title={examsForStudent(selectedStudent._id) === 0 ? "Student must complete at least one exam." : ""}
                                     >
@@ -778,7 +792,7 @@ export default function AdminStudentsPage() {
                     <div className="form-row">
                         <div className="form-group">
                             <label className="form-label">Email Address *</label>
-                            <input className="form-input" type="email" placeholder="student@example.com" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
+                            <input className="form-input" type="email" placeholder="student@zeroleak.com" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
                             {formErrors.email && <span className="form-error flex items-center gap-1"><AlertTriangle size={14} /> {formErrors.email}</span>}
                         </div>
                         <div className="form-group">

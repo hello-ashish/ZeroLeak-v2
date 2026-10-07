@@ -12,6 +12,7 @@ import { getSupportSocketNamespace } from "../sockets/support.socket.js";
 import { getZMailNamespace } from "../sockets/zmail.socket.js";
 import jwt from "jsonwebtoken";
 import { SUPPORT_SYSTEM_ID } from "../Services/support/supportIdentity.service.js";
+import { Admin } from "../models/admin.models.js";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -401,17 +402,57 @@ function notifySupportUpdate(ticket, event) {
 export const supportLogin = async (req, res) => {
     try {
         const { email, password } = req.body;
-        if (email === "support@zeroleak.com" && password === "helloSupport") {
-            const token = jwt.sign(
-                { id: SUPPORT_SYSTEM_ID, email: "support@zeroleak.com", role: "SupportAgent" },
-                process.env.ACCESS_TOKEN_SECRET,
-                { expiresIn: "12h" }
-            );
-            return res.status(200).json({ success: true, token });
+
+        const admin = await Admin.findOne({ email, isSupport: true });
+        if (admin) {
+            if (admin.isBlocked) {
+                return res.status(403).json({ success: false, message: "Your account is blocked" });
+            }
+            const isMatch = await admin.isPasswordCorrect(password);
+            if (isMatch) {
+                if (admin.isLoggedIn && req.body.forceLogout !== true) {
+                    return res.status(409).json({ message: "You're logged in at some other place too. Wish to continue?", code: "ALREADY_LOGGED_IN" });
+                }
+                admin.isLoggedIn = true;
+                admin.lastActiveAt = new Date();
+                admin.sessionVersion = (admin.sessionVersion || 0) + 1;
+                await admin.save({ validateBeforeSave: false });
+
+                const token = jwt.sign(
+                    { id: admin._id, email: admin.email, role: "SupportAgent", sessionVersion: admin.sessionVersion },
+                    process.env.ACCESS_TOKEN_SECRET,
+                    { expiresIn: "1d" }
+                );
+                return res.status(200).json({ success: true, token, user: { name: admin.name, email: admin.email } });
+            }
         }
         return res.status(401).json({ success: false, message: "Invalid credentials" });
     } catch (error) {
         console.error("[Support Controller] supportLogin Error:", error);
         return res.status(500).json({ success: false, message: "Internal server error." });
+    }
+};
+
+export const updateSupportProfile = async (req, res) => {
+    try {
+        const { name, password, newPassword } = req.body;
+        const admin = await Admin.findById(req.user._id);
+        if (!admin) return res.status(404).json({ message: "Support member not found" });
+
+        if (password && newPassword) {
+            const isMatch = await admin.isPasswordCorrect(password);
+            if (!isMatch) return res.status(400).json({ message: "Incorrect current password" });
+            admin.password = newPassword;
+        }
+
+        if (name) admin.name = name;
+        await admin.save();
+        
+        const updated = admin.toObject();
+        delete updated.password;
+        
+        return res.status(200).json({ message: "Profile updated successfully", support: updated });
+    } catch (error) {
+        return res.status(500).json({ message: "Internal server error" });
     }
 };

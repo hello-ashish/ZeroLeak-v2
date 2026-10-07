@@ -30,7 +30,7 @@ export const globalSearch = async (req, res) => {
                     .select("name email contact")
                     .limit(10).lean(),
                 Batch.find({ $text: { $search: q } })
-                    .select("name subject status")
+                    .select("title subject status")
                     .limit(10).lean(),
                 Exam.find({ $text: { $search: q } })
                     .select("title subject status")
@@ -39,9 +39,9 @@ export const globalSearch = async (req, res) => {
         } else if (role === "Professor") {
             [batches, exams] = await Promise.all([
                 Batch.find({
-                    professor: req.user._id,
+                    createdBy: req.user._id,
                     $text: { $search: q }
-                }).select("name subject status").limit(10).lean()
+                }).select("title subject status").limit(10).lean()
             ]);
         } else if (role === "Student") {
             exams = await Exam.find({ $text: { $search: q } })

@@ -85,6 +85,29 @@ export const logoutAuditor = async (req, res) => {
     }
 };
 
+export const updateAuditorProfile = async (req, res) => {
+    try {
+        const { name, password, newPassword } = req.body;
+        const auditor = await Auditor.findById(req.user._id); // req.user is set by verifyAuditorJWT
+        if (!auditor) return res.status(404).json({ message: "Auditor not found" });
+
+        if (password && newPassword) {
+            const isMatch = await auditor.isPasswordCorrect(password);
+            if (!isMatch) return res.status(400).json({ message: "Incorrect current password" });
+            auditor.password = newPassword;
+        }
+
+        if (name) auditor.name = name;
+        await auditor.save();
+        
+        const updated = auditor.toObject();
+        delete updated.password;
+        return res.status(200).json({ message: "Profile updated successfully", auditor: updated });
+    } catch (error) {
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
+
 // ─── Get Dashboard Metrics ──────────────────────────────────────────────────
 export const getDashboardMetrics = async (req, res) => {
     try {

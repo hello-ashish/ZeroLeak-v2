@@ -133,15 +133,29 @@ export const pingSession = async (req, res) => {
                         result.terminationReason = "Auto-terminated via telemetry ping: exceeded maximum security violations.";
                         await result.save();
                     } else {
-                        result = await Result.create({
-                            student: student._id,
-                            exam: currentExamId,
-                            score: 0,
-                            totalQuestions: exam.questions ? exam.questions.length : 0,
-                            status: "Terminated",
-                            isTerminated: true,
-                            terminationReason: "Auto-terminated via telemetry ping: exceeded maximum security violations."
-                        });
+                        try {
+                            result = await Result.create({
+                                student: student._id,
+                                exam: currentExamId,
+                                score: 0,
+                                totalQuestions: exam.questions ? exam.questions.length : 0,
+                                status: "Terminated",
+                                isTerminated: true,
+                                terminationReason: "Auto-terminated via telemetry ping: exceeded maximum security violations."
+                            });
+                        } catch (error) {
+                            if (error.code === 11000) {
+                                result = await Result.findOne({ student: student._id, exam: currentExamId, resetByAdmin: { $ne: true } });
+                                if (result) {
+                                    result.status = "Terminated";
+                                    result.isTerminated = true;
+                                    result.terminationReason = "Auto-terminated via telemetry ping: exceeded maximum security violations.";
+                                    await result.save();
+                                }
+                            } else {
+                                throw error;
+                            }
+                        }
                     }
 
                     // Create an incident record for audit
@@ -252,7 +266,7 @@ export const getExamById = async (req, res) => {
             })
         }
 
-        if (exam.status !== "Live") {
+        if (exam.status !== "Live" && exam.status !== "GracePeriod") {
             return res.status(403).json({
                 message: "This exam is not currently active."
             });
@@ -388,14 +402,21 @@ export const getExamById = async (req, res) => {
         }
 
         if (needsNewResult) {
-            existingResult = await Result.create({
-                student: req.student._id,
-                exam: exam._id,
-                score: 0,
-                totalQuestions: questionsToAssign.length,
-                status: "InProgress",
-                assignedQuestions: questionsToAssign
-            });
+            try {
+                existingResult = await Result.create({
+                    student: req.student._id,
+                    exam: exam._id,
+                    score: 0,
+                    totalQuestions: questionsToAssign.length,
+                    status: "InProgress",
+                    assignedQuestions: questionsToAssign
+                });
+            } catch (error) {
+                if (error.code === 11000) {
+                    return res.status(409).json({ message: "Exam session already initialized. Please refresh the page to continue." });
+                }
+                throw error;
+            }
         }
 
         // Convert mongoose document to plain object
@@ -471,7 +492,7 @@ export const submitExamResult = async (req, res) => {
             })
         }
 
-        if (exam.status !== "Live") {
+        if (exam.status !== "Live" && exam.status !== "GracePeriod") {
             return res.status(403).json({
                 message: "This exam is no longer active."
             });
@@ -725,7 +746,10 @@ export const updateStudentProfile = async (req, res) => {
 
         if (name) student.name = name
         if (email) student.email = email
-        if (password) student.password = password
+        if (password) {
+            student.password = password;
+            student.sessionVersion = (student.sessionVersion || 0) + 1;
+        }
 
         await student.save()
 
@@ -753,6 +777,7 @@ export const changeStudentPassword = async (req, res) => {
         }
 
         student.password = newPassword
+        student.sessionVersion = (student.sessionVersion || 0) + 1;
         await student.save()
 
         return res.status(200).json({ message: "Password updated successfully" })

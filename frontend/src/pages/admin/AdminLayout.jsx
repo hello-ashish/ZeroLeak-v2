@@ -33,6 +33,8 @@ const NAV = [
         items: [
             { label: 'Students', icon: <GraduationCap size={18} />, path: '/admin/students' },
             { label: 'Professors', icon: <Users size={18} />, path: '/admin/professors' },
+            { label: 'Auditors', icon: <Users size={18} />, path: '/admin/auditors' },
+            { label: 'Support Team', icon: <Headset size={18} />, path: '/admin/support-members' },
         ]
     },
     {
