@@ -437,9 +437,9 @@ export const searchUsers = async (req, res) => {
 
 // ─── Attachment upload (simple local file storage) ────────────────────────────
 
-// Upload directory: backend/public/zmail-attachments/
+// Upload directory: backend/data/zmail-attachments/
 // In production, swap storageKey logic to S3/GCS.
-const UPLOAD_DIR = path.join(process.cwd(), "public", "zmail-attachments");
+const UPLOAD_DIR = path.join(process.cwd(), "data", "zmail-attachments");
 
 // Ensure upload directory exists
 try {

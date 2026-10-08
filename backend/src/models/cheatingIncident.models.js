@@ -17,8 +17,7 @@ const cheatingIncidentSchema = new Schema(
         },
         reviewedBy: { type: Schema.Types.ObjectId, ref: "Admin", default: null },
         reviewedAt: { type: Date, default: null },
-        commitmentId: { type: String, default: null },
-        commitmentHash: { type: String, default: null }
+
     },
     { timestamps: true }
 );

@@ -31,22 +31,21 @@ export const authenticateWebSocket = async (socket, next) => {
             user = await validateSession(Student, decoded);
         } else if (role === "Admin") {
             user = await validateSession(Admin, decoded);
+            if (user.isSupport) {
+                return next(new Error("Authentication error: Support accounts cannot masquerade as Admin"));
+            }
         } else if (role === "Professor") {
             user = await validateSession(Professor, decoded);
         } else if (role === "Auditor") {
             user = await validateSession(Auditor, decoded);
-        } else {
-            try { user = await validateSession(Student, decoded); role = "Student"; } 
-            catch(e) { 
-                try { user = await validateSession(Admin, decoded); role = "Admin"; } 
-                catch(e) {
-                    try { user = await validateSession(Professor, decoded); role = "Professor"; }
-                    catch(e) {
-                        try { user = await validateSession(Auditor, decoded); role = "Auditor"; }
-                        catch(e) { return next(new Error("Authentication error: Invalid session or user not found")); }
-                    }
-                }
+        } else if (role === "SupportAgent" || role === "Support") {
+            user = await validateSession(Admin, decoded);
+            if (!user.isSupport) {
+                return next(new Error("Authentication error: User is not a support member"));
             }
+            role = "Support";
+        } else {
+            return next(new Error("Authentication error: Invalid or missing role"));
         }
         
         socket.user = { 
@@ -163,30 +162,19 @@ export const verifyAdminOrAuditorJWT = async (req, res, next) => {
 
         const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET)
 
-        const admin = await Admin.findById(decodedToken.id).select("-password")
-        if (admin) {
-            if (admin.sessionVersion !== decodedToken.sessionVersion) {
-                return res.status(401).json({ message: "This session has been replaced by a new login.", code: "SESSION_REPLACED" })
+        if (decodedToken.role === "Admin") {
+            const admin = await validateSession(Admin, decodedToken);
+            if (admin.isSupport) {
+                return res.status(403).json({ message: "Forbidden: Support members cannot access Admin/Auditor routes" });
             }
-            if (admin.isBlocked) {
-                return res.status(403).json({ message: "BLOCKED" })
-            }
-            req.admin = admin
-            req.userRole = "Admin"
-            return next()
-        }
-
-        const auditor = await Auditor.findById(decodedToken.id).select("-password")
-        if (auditor) {
-            if (auditor.sessionVersion !== decodedToken.sessionVersion) {
-                return res.status(401).json({ message: "This session has been replaced by a new login.", code: "SESSION_REPLACED" })
-            }
-            if (auditor.isBlocked) {
-                return res.status(403).json({ message: "BLOCKED" })
-            }
-            req.auditor = auditor
-            req.userRole = "Auditor"
-            return next()
+            req.admin = admin;
+            req.userRole = "Admin";
+            return next();
+        } else if (decodedToken.role === "Auditor") {
+            const auditor = await validateSession(Auditor, decodedToken);
+            req.auditor = auditor;
+            req.userRole = "Auditor";
+            return next();
         }
 
         return res.status(401).json({ message: "Unauthorized request: Neither Admin nor Auditor found" })
@@ -208,66 +196,36 @@ export const verifyAnyJWT = async (req, res, next) => {
 
         // Sequential lookups with early return
         if (decodedToken.role === "Admin") {
-            const admin = await Admin.findById(decodedToken.id).select("-password")
-            if (admin) {
-                if (admin.sessionVersion !== decodedToken.sessionVersion) {
-                    return res.status(401).json({ message: "This session has been replaced by a new login.", code: "SESSION_REPLACED" })
-                }
-                if (admin.isBlocked) {
-                    return res.status(403).json({ message: "BLOCKED" })
-                }
-                req.user = admin
-                req.userRole = "Admin"
-                if (admin.isSupport) {
-                    req.userRole = "Support" // Map support admins to Support role for ZMail and other systems
-                }
-                return next()
+            const admin = await validateSession(Admin, decodedToken);
+            if (admin.isSupport) {
+                return res.status(403).json({ message: "Forbidden: Support members cannot masquerade as Admin" });
             }
+            req.user = admin;
+            req.userRole = "Admin";
+            return next();
         } else if (decodedToken.role === "Professor") {
-            const professor = await Professor.findById(decodedToken.id).select("-password")
-            if (professor) {
-                if (professor.sessionVersion !== decodedToken.sessionVersion) {
-                    return res.status(401).json({ message: "This session has been replaced by a new login.", code: "SESSION_REPLACED" })
-                }
-                req.user = professor
-                req.userRole = "Professor"
-                return next()
-            }
+            const professor = await validateSession(Professor, decodedToken);
+            req.user = professor;
+            req.userRole = "Professor";
+            return next();
         } else if (decodedToken.role === "Student") {
-            const student = await Student.findById(decodedToken.id).select("-password")
-            if (student) {
-                if (student.sessionVersion !== decodedToken.sessionVersion) {
-                    return res.status(401).json({ message: "This session has been replaced by a new login.", code: "SESSION_REPLACED" })
-                }
-                req.user = student
-                req.userRole = "Student"
-                return next()
-            }
+            const student = await validateSession(Student, decodedToken);
+            req.user = student;
+            req.userRole = "Student";
+            return next();
         } else if (decodedToken.role === "Auditor") {
-            const auditor = await Auditor.findById(decodedToken.id).select("-password")
-            if (auditor) {
-                if (auditor.sessionVersion !== decodedToken.sessionVersion) {
-                    return res.status(401).json({ message: "This session has been replaced by a new login.", code: "SESSION_REPLACED" })
-                }
-                if (auditor.isBlocked) {
-                    return res.status(403).json({ message: "BLOCKED" })
-                }
-                req.user = auditor
-                req.userRole = "Auditor"
-                return next()
+            const auditor = await validateSession(Auditor, decodedToken);
+            req.user = auditor;
+            req.userRole = "Auditor";
+            return next();
+        } else if (decodedToken.role === "SupportAgent" || decodedToken.role === "Support") {
+            const admin = await validateSession(Admin, decodedToken);
+            if (!admin.isSupport) {
+                return res.status(403).json({ message: "Forbidden: User is not a Support member" });
             }
-        }
-
-        if (decodedToken.role === "SupportAgent") {
-            const admin = await Admin.findById(decodedToken.id).select("-password")
-            if (admin && admin.isSupport && !admin.isBlocked) {
-                if (admin.sessionVersion !== decodedToken.sessionVersion) {
-                    return res.status(401).json({ message: "This session has been replaced by a new login.", code: "SESSION_REPLACED" })
-                }
-                req.userRole = "Support"
-                req.user = admin
-                return next()
-            }
+            req.userRole = "Support";
+            req.user = admin;
+            return next();
         }
 
         return res.status(401).json({ message: "User not found" })

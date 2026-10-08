@@ -25,8 +25,7 @@ const batchSchema = new Schema({
     isDeletedByAdmin: { type: Boolean, default: false },
     isDeletedByProfessor: { type: Boolean, default: false },
     merkleRoot: { type: String, default: null },
-    commitmentId: { type: String, default: null },
-    commitmentHash: { type: String, default: null }
+
 }, { timestamps: true})
 
 

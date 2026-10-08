@@ -2,7 +2,7 @@ import { Examination } from "../models/examination.models.js";
 import { Exam } from "../models/exam.models.js";
 import { Question } from "../models/question.models.js";
 import { buildMerkleRoot } from "../Services/merkle.service.js";
-import { createCommitment } from "../blockchain/commitment.service.js";
+
 import mongoose from "mongoose";
 import crypto from "crypto";
 import { selectQuestionsByDifficultyRatio } from "../Services/question.service.js";
@@ -69,27 +69,7 @@ export const createExamination = async (req, res) => {
 
             await exam.save({ session });
 
-            // Blockchain Commitment
-            try {
-                const commitment = await createCommitment({
-                    objectType: "Exam",
-                    objectId: exam._id,
-                    commitmentType: "EXAM_VERSION",
-                    payload: {
-                        title: exam.title,
-                        description: exam.description,
-                        durationMinutes: exam.durationMinutes,
-                        questionCount: exam.questions.length,
-                        questionMerkleRoot,
-                        actorId: req.admin?._id || req.user?._id,
-                    }
-                });
-                exam.commitmentId = commitment.eventId;
-                exam.commitmentHash = commitment.canonicalHash;
-                await exam.save({ session });
-            } catch (blockchainError) {
-                throw new Error(`Blockchain commitment failed for ${subject}: ${blockchainError.message}`);
-            }
+
 
             createdExams.push(exam);
         }

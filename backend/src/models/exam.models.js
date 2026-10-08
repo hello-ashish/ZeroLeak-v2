@@ -18,8 +18,7 @@ const examSchema = new mongoose.Schema({
     },
     questions: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Question' }],
     questionMerkleRoot: { type: String, default: null },
-    commitmentId: { type: String, default: null },
-    commitmentHash: { type: String, default: null },
+
     isResultReleased: { type: Boolean, default: false },
 }, { timestamps: true })
 

@@ -2,7 +2,7 @@ import { Exam } from "../models/exam.models.js";
 import { Result } from "../models/result.models.js";
 import { Question } from "../models/question.models.js";
 import { buildMerkleRoot } from "../Services/merkle.service.js";
-import { createCommitment } from "../blockchain/commitment.service.js";
+
 
 export const createExam = async (req, res) => {
     try {
@@ -106,27 +106,6 @@ export const createExam = async (req, res) => {
             questionMerkleRoot
         });
 
-        try {
-            const commitment = await createCommitment({
-                objectType: "Exam",
-                objectId: exam._id,
-                commitmentType: "EXAM_VERSION",
-                payload: {
-                    title,
-                    description,
-                    durationMinutes: duration || 60,
-                    questionCount: questions.length,
-                    questionMerkleRoot,
-                    actorId: req.admin?._id,
-                }
-            });
-            exam.commitmentId = commitment.eventId;
-            exam.commitmentHash = commitment.canonicalHash;
-            await exam.save();
-        } catch (blockchainError) {
-            await Exam.deleteOne({ _id: exam._id });
-            throw new Error(`Exam creation rolled back: blockchain commitment failed (${blockchainError.message})`);
-        }
 
         return res.status(201).json({
             message:

@@ -8,7 +8,7 @@ import { Exam } from "../models/exam.models.js";
 import { Result } from "../models/result.models.js";
 import { AuditLog } from "../models/auditlog.models.js";
 import { buildMerkleRoot } from "../Services/merkle.service.js";
-import { createCommitment } from "../blockchain/commitment.service.js";
+
 import { ensureZMailAccount } from "../Services/zmail/zmailIdentity.service.js";
 import {
     encryptQuestionContent,
@@ -267,8 +267,8 @@ export const reviewBatch = async (req, res) => {
         if (!batch) return res.status(404).json({ message: "Batch not found" });
 
         if (action === 'Accept') {
-            if (batch.status === 'Accepted' && batch.blockchainBlockHash) {
-                return res.status(400).json({ message: 'Batch is already accepted and committed to the blockchain ledger.' });
+            if (batch.status === 'Accepted') {
+                return res.status(400).json({ message: 'Batch is already accepted.' });
             }
 
             if (!batch.questions || batch.questions.length === 0) {
@@ -304,29 +304,9 @@ export const reviewBatch = async (req, res) => {
             const questionHashes = insertedQuestions.map((question) => question.contentHash);
             const merkleRoot = buildMerkleRoot(questionHashes);
 
-            let commitment;
-            try {
-                commitment = await createCommitment({
-                    objectType: "Batch",
-                    objectId: batch._id,
-                    commitmentType: "QUESTION_BATCH",
-                    payload: {
-                        subject: batch.subject,
-                        questionCount: insertedQuestions.length,
-                        merkleRoot,
-                        actorId: req.admin?._id,
-                    }
-                });
-            } catch (blockchainError) {
-                await Question.deleteMany({ _id: { $in: insertedQuestions.map((question) => question._id) } });
-                throw new Error(`Batch approval rolled back: blockchain commitment failed (${blockchainError.message})`);
-            }
-
             batch.merkleRoot = merkleRoot;
-            batch.commitmentId = commitment.eventId;
-            batch.commitmentHash = commitment.canonicalHash;
             batch.status = 'Accepted';
-            batch.adminMessage = 'Batch Approved, integrity committed to blockchain ledger';
+            batch.adminMessage = 'Batch Approved';
             await logAction({ actor: req.admin?.email, action: "BATCH_APPROVED", targetType: "Batch", targetId: batch._id, targetLabel: batch.title });
 
             // Notify Professor
@@ -415,7 +395,10 @@ export const updateAdminProfile = async (req, res) => {
         const { email, password } = req.body;
         const admin = await Admin.findById(req.admin._id);
         if (email) admin.email = email;
-        if (password) admin.password = password;
+        if (password) {
+            admin.password = password;
+            admin.sessionVersion = (admin.sessionVersion || 0) + 1;
+        }
         await admin.save();
         const updatedAdmin = admin.toObject();
         delete updatedAdmin.password;

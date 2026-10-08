@@ -8,7 +8,7 @@ import adminRouter from "./routes/admin.routes.js"
 import professorRouter from "./routes/professor.routes.js"
 import auditorRouter from "./routes/auditor.routes.js"
 import cheatingRouter from "./routes/cheating.routes.js"
-import blockchainRouter from "./routes/blockchain.routes.js"
+
 import searchRouter from "./routes/search.routes.js"
 import proctoringRouter from "./routes/proctoring.routes.js"
 import aiRouter from "./routes/ai.routes.js"
@@ -71,7 +71,7 @@ app.use("/api/auditor", auditorRouter);
 app.use("/api/anti-cheating", cheatingRouter);
 
 // Blockchain ledger route
-app.use("/api/blockchain", blockchainRouter);
+
 
 // Global search route
 app.use("/api/search", searchRouter);

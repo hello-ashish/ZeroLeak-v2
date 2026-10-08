@@ -13,8 +13,7 @@ const resultSchema = new mongoose.Schema({
     terminationReason: { type: String, default: null },
     resetByAdmin: { type: Boolean, default: false },
     resetByAdminAt: { type: Date, default: null },
-    commitmentId: { type: String, default: null },
-    commitmentHash: { type: String, default: null }
+
 }, { timestamps: true })
 
 

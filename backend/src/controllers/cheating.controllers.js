@@ -5,8 +5,7 @@ import { Result } from "../models/result.models.js";
 import { CheatingIncident } from "../models/cheatingIncident.models.js";
 import { AuditLog } from "../models/auditlog.models.js";
 import { Anomaly } from "../models/anomaly.models.js";
-import { canonicalize, sha256 } from "../blockchain/commitment.service.js";
-import { createCommitment } from "../blockchain/commitment.service.js";
+
 import { createNotification, notifyAdmins, notifyAuditors } from "./notification.controllers.js";
 
 // Helper to check valid ObjectId
@@ -173,27 +172,6 @@ export const recordIncident = async (req, res) => {
                 status: "success"
             }).catch(auditErr => console.error("Error creating auto-block audit log:", auditErr.message));
 
-            // Cryptographic Incident Commitment for Auto-Termination
-            const incidentPayload = canonicalize({
-                incidentId: String(incident._id),
-                studentId: String(student._id),
-                examId: String(examId),
-                violationType: incident.violationType,
-                severity: incident.severity,
-                actionTaken: incident.actionTaken,
-                timestamp: incident.detectedAt
-            });
-
-            await createCommitment({
-                objectType: "CheatingIncident",
-                objectId: incident._id,
-                commitmentType: "CRITICAL_INTEGRITY_INCIDENT",
-                payload: {
-                    studentId: String(student._id),
-                    examId: String(examId),
-                    incidentHash: sha256(JSON.stringify(incidentPayload))
-                }
-            });
         }
         // ─────────────────────────────────────────────────────────────────────────
 

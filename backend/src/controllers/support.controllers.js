@@ -443,6 +443,7 @@ export const updateSupportProfile = async (req, res) => {
             const isMatch = await admin.isPasswordCorrect(password);
             if (!isMatch) return res.status(400).json({ message: "Incorrect current password" });
             admin.password = newPassword;
+            admin.sessionVersion = (admin.sessionVersion || 0) + 1;
         }
 
         if (name) admin.name = name;

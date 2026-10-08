@@ -10,8 +10,7 @@ import {
 } from "../Services/crypto.service.js"
 
 import { buildMerkleRoot } from "../Services/merkle.service.js"
-import { canonicalize, sha256 } from "../blockchain/commitment.service.js"
-import { createCommitment } from "../blockchain/commitment.service.js"
+
 import crypto from "crypto";
 import { selectQuestionsByDifficultyRatio } from "../Services/question.service.js";
 import { ensureZMailAccount } from "../Services/zmail/zmailIdentity.service.js";
@@ -93,7 +92,7 @@ export const pingSession = async (req, res) => {
         // The verifyStudentJWT middleware will automatically reject this if the student is blocked.
         const student = req.student;
 
-        const MAX_VIOLATIONS = 3;
+        const MAX_VIOLATIONS = 5;
 
         // Happy Path Optimization: Atomic update, skip heavy logic and document saves
         if (warningCount < MAX_VIOLATIONS) {
@@ -171,27 +170,6 @@ export const pingSession = async (req, res) => {
                         reviewStatus: "Pending"
                     });
 
-                    // Cryptographic Incident Commitment
-                    const incidentPayload = canonicalize({
-                        incidentId: String(incident._id),
-                        studentId: String(student._id),
-                        examId: String(currentExamId),
-                        violationType: incident.violationType,
-                        severity: incident.severity,
-                        actionTaken: incident.actionTaken,
-                        timestamp: incident.detectedAt
-                    });
-
-                    await createCommitment({
-                        objectType: "CheatingIncident",
-                        objectId: incident._id,
-                        commitmentType: "CRITICAL_INTEGRITY_INCIDENT",
-                        payload: {
-                            studentId: String(student._id),
-                            examId: String(currentExamId),
-                            incidentHash: sha256(JSON.stringify(incidentPayload))
-                        }
-                    });
                 }
 
                 // Block the student
@@ -648,30 +626,7 @@ export const submitExamResult = async (req, res) => {
         existingResult.status = "Completed";
         const result = await existingResult.save();
 
-        // Generate Submission Hash & Result Commitment
-        const submissionPayload = canonicalize({
-            examId: String(examId),
-            studentId: String(req.student._id),
-            answers: answers.map(a => ({ questionId: String(a.questionId), selectedOptionIndex: a.selectedOptionIndex })),
-            timestamp: result.createdAt
-        });
-        const submissionHash = sha256(JSON.stringify(submissionPayload));
 
-        const commitment = await createCommitment({
-            objectType: "Result",
-            objectId: result._id,
-            commitmentType: "RESULT",
-            payload: {
-                examId: String(examId),
-                studentId: String(req.student._id),
-                score: score,
-                totalQuestions: totalQuestions,
-                submissionHash: submissionHash // Cryptographically proves the exact answers submitted
-            }
-        });
-        result.commitmentId = commitment.eventId;
-        result.commitmentHash = commitment.canonicalHash;
-        await result.save();
 
         // --- ENFORCE RESULT-RELEASE POLICY ON RETURN ---
         const isReleased = exam.examinationId

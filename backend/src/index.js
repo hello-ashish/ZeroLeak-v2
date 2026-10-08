@@ -19,12 +19,7 @@ connectDB()
         // Connect Redis
         await connectRedis();
 
-        // Init background workers for blockchain
-        const { startOutboxWorker } = await import("./blockchain/workers/outboxWorker.service.js");
-        const { startAnchorWorker } = await import("./blockchain/workers/anchorWorker.service.js");
         const { startExamExpirationWorker } = await import("./Services/examExpiration.service.js");
-        startOutboxWorker();
-        startAnchorWorker();
         startExamExpirationWorker();
         console.log("ZeroLeak background workers initialized.");
 

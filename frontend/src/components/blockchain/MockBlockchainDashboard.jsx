@@ -169,7 +169,7 @@ export default function MockBlockchainDashboard() {
                     
                     {activeTab === 'network' && (
                         <div style={{ maxWidth: '600px' }}>
-                            <PublicAnchorPanel anchor={null} isMock={true} />
+                            <PublicAnchorPanel />
                         </div>
                     )}
                 </div>
