@@ -5,6 +5,7 @@ import {
     hashQuestionContent,
     decryptQuestionContent,
 } from "../Services/crypto.service.js"
+import { enqueueQuestionCommitment } from "../Services/integrityOutbox.service.js";
 
 export const createQuestion = async (req, res) => {
     try {
@@ -58,6 +59,9 @@ export const createQuestion = async (req, res) => {
             createdBy: req.professor._id,
         })
 
+        enqueueQuestionCommitment(question, 1, '').catch(err =>
+            console.error('[FABRIC] Failed to enqueue question commitment:', err.message)
+        );
         return res.status(201).json({
             message: "Question created successfully",
             question,
@@ -208,9 +212,9 @@ export const getAllQuestions = async (req, res) => {
         // Apply filters
         const qSearch = search.toLowerCase();
         const filtered = allDecrypted.filter(q => {
-            const matchSearch = q.title?.toLowerCase().includes(qSearch) || 
-                                q.subject?.toLowerCase().includes(qSearch) || 
-                                q.topic?.toLowerCase().includes(qSearch);
+            const matchSearch = q.title?.toLowerCase().includes(qSearch) ||
+                q.subject?.toLowerCase().includes(qSearch) ||
+                q.topic?.toLowerCase().includes(qSearch);
             const matchDiff = !difficulty || q.difficultyLevel === difficulty;
             const matchSub = !subject || q.subject === subject;
             return matchSearch && matchDiff && matchSub;

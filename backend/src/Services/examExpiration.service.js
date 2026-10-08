@@ -1,7 +1,7 @@
 import { Exam } from "../models/exam.models.js";
 import { Result } from "../models/result.models.js";
-import { buildMerkleRoot } from "./merkle.service.js";
 import { decryptQuestionContent, verifyQuestionIntegrity } from "./crypto.service.js";
+import { enqueueResultCommitment } from "./integrityOutbox.service.js";
 
 
 export const startExamExpirationWorker = () => {
@@ -63,7 +63,7 @@ export const startExamExpirationWorker = () => {
         } catch (error) {
             console.error("[ExamExpiration] Error in expiration worker:", error);
         }
-    }, 30 * 1000); 
+    }, 30 * 1000);
 };
 
 const finalizeResult = async (exam, existingResult) => {
@@ -120,7 +120,10 @@ const finalizeResult = async (exam, existingResult) => {
         existingResult.status = "Completed";
         const result = await existingResult.save();
 
-
+        // --- FABRIC INTEGRITY COMMITMENT (non-blocking) ---
+        enqueueResultCommitment(result).catch(err =>
+            console.error('[FABRIC] Failed to enqueue auto-finalized result commitment:', err.message)
+        );
         console.log(`[ExamExpiration] Result ${result._id} auto-finalized`);
     } catch (err) {
         console.error(`[ExamExpiration] Error finalizing result ${existingResult._id}:`, err);

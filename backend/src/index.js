@@ -19,9 +19,21 @@ connectDB()
         // Connect Redis
         await connectRedis();
 
+        // Initialize Fabric Gateway (non-blocking: if Fabric is down, outbox retries)
+        const { initFabricGateway, closeFabricGateway } = await import("./Services/fabric.service.js");
+        await initFabricGateway();
+
+        // Start IntegrityOutbox worker (submits pending commitments to Fabric)
+        const { startIntegrityOutboxWorker } = await import("./Services/integrityOutbox.service.js");
+        startIntegrityOutboxWorker();
+
         const { startExamExpirationWorker } = await import("./Services/examExpiration.service.js");
         startExamExpirationWorker();
         console.log("ZeroLeak background workers initialized.");
+
+        // Clean shutdown of Fabric Gateway on process exit
+        process.on('SIGTERM', async () => { await closeFabricGateway(); process.exit(0); });
+        process.on('SIGINT', async () => { await closeFabricGateway(); process.exit(0); });
 
         // Create HTTP server and initialize Socket.IO
         const server = http.createServer(app);

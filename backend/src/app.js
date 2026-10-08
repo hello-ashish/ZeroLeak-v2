@@ -14,6 +14,7 @@ import proctoringRouter from "./routes/proctoring.routes.js"
 import aiRouter from "./routes/ai.routes.js"
 import zmailRouter from "./routes/zmail.routes.js"
 import supportRouter from "./routes/support.routes.js"
+import integrityRouter from "./routes/integrity.routes.js"
 import { setupSwagger } from "./swagger.js"
 
 const app = express()
@@ -70,8 +71,8 @@ app.use("/api/auditor", auditorRouter);
 // Anti-cheating & security telemetry routes
 app.use("/api/anti-cheating", cheatingRouter);
 
-// Blockchain ledger route
-
+// Fabric integrity verification routes (Admin + Auditor only; Support is blocked)
+app.use("/api/integrity", integrityRouter)
 
 // Global search route
 app.use("/api/search", searchRouter);

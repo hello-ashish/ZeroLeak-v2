@@ -14,6 +14,7 @@ import { buildMerkleRoot } from "../Services/merkle.service.js"
 import crypto from "crypto";
 import { selectQuestionsByDifficultyRatio } from "../Services/question.service.js";
 import { ensureZMailAccount } from "../Services/zmail/zmailIdentity.service.js";
+import { enqueueResultCommitment } from "../Services/integrityOutbox.service.js";
 
 // 1. Register Student
 export const registerStudent = async (req, res) => {
@@ -626,7 +627,9 @@ export const submitExamResult = async (req, res) => {
         existingResult.status = "Completed";
         const result = await existingResult.save();
 
-
+        enqueueResultCommitment(result).catch(err =>
+            console.error('[FABRIC] Failed to enqueue result commitment:', err.message)
+        );
 
         // --- ENFORCE RESULT-RELEASE POLICY ON RETURN ---
         const isReleased = exam.examinationId

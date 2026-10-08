@@ -2,6 +2,7 @@ import { Exam } from "../models/exam.models.js";
 import { Result } from "../models/result.models.js";
 import { Question } from "../models/question.models.js";
 import { buildMerkleRoot } from "../Services/merkle.service.js";
+import { enqueueExamCommitment } from "../Services/integrityOutbox.service.js";
 
 
 export const createExam = async (req, res) => {
@@ -106,6 +107,9 @@ export const createExam = async (req, res) => {
             questionMerkleRoot
         });
 
+        enqueueExamCommitment(exam, 1, '').catch(err =>
+            console.error('[FABRIC] Failed to enqueue exam commitment:', err.message)
+        );
 
         return res.status(201).json({
             message:
@@ -189,25 +193,25 @@ export const getExamResults = async (req, res) => {
 export const bulkDeleteResults = async (req, res) => {
     try {
         const { resultIds } = req.body;
-        
+
         if (!resultIds || !Array.isArray(resultIds) || resultIds.length === 0) {
             return res.status(400).json({
                 message: "No result IDs provided for deletion"
             });
         }
-        
+
         await Result.deleteMany({ _id: { $in: resultIds } });
-        
+
         return res.status(200).json({
             message: "Results deleted successfully"
         });
-        
+
     } catch (error) {
         console.error(
             "Error bulk deleting results: ",
             error
         );
-        
+
         return res.status(500).json({
             message: "Something went wrong while deleting results"
         });

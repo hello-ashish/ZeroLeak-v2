@@ -4,15 +4,14 @@ import MockBlockchainCanvas from './MockBlockchainCanvas';
 import MockSimulationLog from './MockSimulationLog';
 import MockInspector from './MockInspector';
 import MockMerkleTreeLab from './MockMerkleTreeLab';
-import PublicAnchorPanel from './PublicAnchorPanel';
 import { Play, Pause, SkipForward, RotateCcw, AlertTriangle, ShieldCheck } from 'lucide-react';
 
 export default function MockBlockchainDashboard() {
     const [activeTab, setActiveTab] = useState('inspector');
-    
-    const { 
-        ledger, 
-        simulationStatus, 
+
+    const {
+        ledger,
+        simulationStatus,
         setSimulationStatus,
         simulationSpeed,
         setSimulationSpeed,
@@ -21,9 +20,9 @@ export default function MockBlockchainDashboard() {
         simulationLog,
         selectedBlockIndex,
         setSelectedBlockIndex,
-        stepSimulation, 
-        resetSimulation, 
-        simulateTampering, 
+        stepSimulation,
+        resetSimulation,
+        simulateTampering,
         verifyLedger,
         verifyResult
     } = useMockBlockchain();
@@ -77,22 +76,22 @@ export default function MockBlockchainDashboard() {
 
                     <div className="control-section main-controls">
                         <button className={`btn ${simulationStatus === 'Running' ? 'btn-secondary' : 'btn-primary'}`} onClick={handleRunToggle}>
-                            {simulationStatus === 'Running' ? <><Pause size={16}/> Pause</> : <><Play size={16}/> Run Simulation</>}
+                            {simulationStatus === 'Running' ? <><Pause size={16} /> Pause</> : <><Play size={16} /> Run Simulation</>}
                         </button>
                         <button className="btn btn-secondary" onClick={stepSimulation} disabled={simulationStatus === 'Running'}>
-                            <SkipForward size={16}/> Step
+                            <SkipForward size={16} /> Step
                         </button>
                         <button className="btn btn-secondary" onClick={resetSimulation}>
-                            <RotateCcw size={16}/> Reset
+                            <RotateCcw size={16} /> Reset
                         </button>
                     </div>
 
                     <div className="control-section">
                         <button className="btn btn-danger" onClick={handleTamper}>
-                            <AlertTriangle size={16}/> Simulate Tampering
+                            <AlertTriangle size={16} /> Simulate Tampering
                         </button>
                         <button className="btn btn-success" onClick={verifyLedger}>
-                            <ShieldCheck size={16}/> Verify Chain
+                            <ShieldCheck size={16} /> Verify Chain
                         </button>
                     </div>
                 </div>
@@ -121,57 +120,33 @@ export default function MockBlockchainDashboard() {
             </div>
 
             {/* Canvas */}
-            <MockBlockchainCanvas 
-                ledger={ledger} 
-                selectedBlockIndex={selectedBlockIndex} 
-                onSelectBlock={setSelectedBlockIndex} 
+            <MockBlockchainCanvas
+                ledger={ledger}
+                selectedBlockIndex={selectedBlockIndex}
+                onSelectBlock={setSelectedBlockIndex}
             />
 
             {/* Bottom Section - Tabbed Interface to reduce clutter */}
             <div className="mock-bottom-tabs">
                 <div className="tabs-header" style={{ display: 'flex', gap: '16px', borderBottom: '1px solid var(--border-default)', marginBottom: '24px' }}>
-                    <button 
+                    <button
                         className={`tab-btn ${activeTab === 'inspector' ? 'active' : ''}`}
                         onClick={() => setActiveTab('inspector')}
                         style={{ padding: '8px 16px', background: 'none', border: 'none', borderBottom: activeTab === 'inspector' ? '2px solid var(--brand-primary)' : '2px solid transparent', color: activeTab === 'inspector' ? 'var(--brand-primary)' : 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600 }}
                     >
                         Block Inspector
                     </button>
-                    <button 
+                    <button
                         className={`tab-btn ${activeTab === 'log' ? 'active' : ''}`}
                         onClick={() => setActiveTab('log')}
                         style={{ padding: '8px 16px', background: 'none', border: 'none', borderBottom: activeTab === 'log' ? '2px solid var(--brand-primary)' : '2px solid transparent', color: activeTab === 'log' ? 'var(--brand-primary)' : 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600 }}
                     >
                         Simulation Log
                     </button>
-                    <button 
-                        className={`tab-btn ${activeTab === 'network' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('network')}
-                        style={{ padding: '8px 16px', background: 'none', border: 'none', borderBottom: activeTab === 'network' ? '2px solid var(--brand-primary)' : '2px solid transparent', color: activeTab === 'network' ? 'var(--brand-primary)' : 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600 }}
-                    >
-                        Network & Anchor
-                    </button>
-                </div>
-                
-                <div className="tab-content">
-                    {activeTab === 'inspector' && (
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-                            <MockInspector block={selectedBlock} />
-                            <MockMerkleTreeLab block={selectedBlock} />
-                        </div>
-                    )}
-                    
-                    {activeTab === 'log' && (
-                        <div>
-                            <MockSimulationLog logs={simulationLog} />
-                        </div>
-                    )}
-                    
-                    {activeTab === 'network' && (
-                        <div style={{ maxWidth: '600px' }}>
-                            <PublicAnchorPanel />
-                        </div>
-                    )}
+                    <div>
+                        <MockSimulationLog logs={simulationLog} />
+                    </div>
+                    )
                 </div>
             </div>
         </div>

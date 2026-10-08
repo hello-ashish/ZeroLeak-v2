@@ -13,14 +13,14 @@ export const selectQuestionsByDifficultyRatio = (allQuestions, numRequired) => {
 
     const pickRandom = (pool, count, fallbackPools = []) => {
         let picked = 0;
-        
+
         while (picked < count && pool.length > 0) {
             const idx = crypto.randomInt(0, pool.length);
             selectedQuestions.push(pool[idx]);
             pool.splice(idx, 1);
             picked++;
         }
-        
+
         let remainingToPick = count - picked;
         if (remainingToPick > 0) {
             for (const fallback of fallbackPools) {
