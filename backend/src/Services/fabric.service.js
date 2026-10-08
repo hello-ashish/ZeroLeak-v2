@@ -10,7 +10,7 @@
 
 
 import * as grpc from '@grpc/grpc-js';
-import { connect, hash } from '@hyperledger/fabric-gateway';
+import { connect, hash, signers } from '@hyperledger/fabric-gateway';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
@@ -100,12 +100,7 @@ async function _connect() {
                 mspId: cfg.mspId,
                 credentials: Buffer.from(certPem),
             },
-            signer: {
-                sign: (digest) => {
-                    const privateKey = crypto.createPrivateKey(privateKeyPem);
-                    return crypto.sign(undefined, digest, privateKey);
-                },
-            },
+            signer: signers.newPrivateKeySigner(crypto.createPrivateKey(privateKeyPem)),
             hash: hash.sha256,
             evaluateOptions: () => ({ deadline: Date.now() + cfg.endorseTimeoutMs }),
             endorseOptions: () => ({ deadline: Date.now() + cfg.endorseTimeoutMs }),

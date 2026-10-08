@@ -10,7 +10,8 @@ import { createAdapter } from "@socket.io/redis-adapter"
 import redisClient, { connectRedis } from "./redis/index.js"
 
 dotenv.config({
-    path: './.env'
+    path: './.env',
+    quiet: true
 })
 
 // first connect the database

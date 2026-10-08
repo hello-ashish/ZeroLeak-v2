@@ -231,7 +231,7 @@ export const openBatchDetails = async (req, res) => {
         const batch = await Batch.findByIdAndUpdate(
             req.params.batchId,
             { openedByAdmin: true },
-            { new: true }
+            { returnDocument: 'after' }
         ).populate('createdBy', 'name email').lean();
 
         if (batch && batch.status === 'Accepted') {
@@ -656,7 +656,7 @@ export const updateExamStatus = async (req, res) => {
             }
         }
 
-        const exam = await Exam.findByIdAndUpdate(id, updateData, { new: true });
+        const exam = await Exam.findByIdAndUpdate(id, updateData, { returnDocument: 'after' });
         await logAction({ actor: req.admin?.email, action: `EXAM_${status.toUpperCase()}`, targetType: "Exam", targetId: exam._id, targetLabel: exam.title });
         return res.status(200).json({ message: "Exam status updated", exam });
     } catch (error) {
@@ -669,7 +669,7 @@ export const toggleExamResultsRelease = async (req, res) => {
     try {
         const { id } = req.params;
         const { isResultReleased } = req.body;
-        const exam = await Exam.findByIdAndUpdate(id, { isResultReleased }, { new: true });
+        const exam = await Exam.findByIdAndUpdate(id, { isResultReleased }, { returnDocument: 'after' });
         if (!exam) return res.status(404).json({ message: "Exam not found" });
         await logAction({ actor: req.admin?.email, action: `EXAM_RESULTS_${isResultReleased ? 'RELEASED' : 'HIDDEN'}`, targetType: "Exam", targetId: exam._id, targetLabel: exam.title });
         return res.status(200).json({ message: `Exam results ${isResultReleased ? 'released' : 'hidden'}`, exam });

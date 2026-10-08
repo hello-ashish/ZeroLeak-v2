@@ -28,6 +28,7 @@
     "fabric:down": "bash fabric/scripts/network-down.sh",
     "fabric:deploy": "bash fabric/scripts/deploy.sh",
     "fabric:status": "bash fabric/scripts/network-status.sh",
+    "fabric:block": "bash fabric/scripts/inspect-block.sh",
     "fabric:test": "npm run test --prefix backend"
   },
   "devDependencies": {

@@ -163,7 +163,7 @@ function LedgerStatsRow({ height, commitments }) {
 // ---------------------------------------------------------------------------
 // Recent Commitments Table
 // ---------------------------------------------------------------------------
-function RecentCommitmentsTable({ commitments, loading }) {
+function RecentCommitmentsTable({ commitments, loading, onVerify }) {
     if (loading) return (
         <div className="fi-loading-row">
             <Loader2 size={16} className="spin" /> Loading commitments...
@@ -187,6 +187,7 @@ function RecentCommitmentsTable({ commitments, loading }) {
                         <th>Data Hash</th>
                         <th>Block Timestamp</th>
                         <th>Version</th>
+                        <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -202,6 +203,15 @@ function RecentCommitmentsTable({ commitments, loading }) {
                             <td><HashDisplay hash={c.dataHash} /></td>
                             <td className="fi-timestamp">{c.blockTimestamp ? new Date(c.blockTimestamp).toLocaleString() : '—'}</td>
                             <td className="fi-center">v{c.version}</td>
+                            <td className="fi-center">
+                                <button 
+                                    className="fi-btn fi-btn-secondary fi-btn-sm" 
+                                    onClick={() => onVerify(c)}
+                                    title="Verify Integrity"
+                                >
+                                    <ShieldCheck size={12} />
+                                </button>
+                            </td>
                         </tr>
                     ))}
                 </tbody>
@@ -213,9 +223,7 @@ function RecentCommitmentsTable({ commitments, loading }) {
 // ---------------------------------------------------------------------------
 // Verification Panel
 // ---------------------------------------------------------------------------
-function VerificationPanel({ token }) {
-    const [entityType, setEntityType] = useState('result');
-    const [entityId, setEntityId] = useState('');
+function VerificationPanel({ token, entityType, setEntityType, entityId, setEntityId }) {
     const [result, setResult] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -382,6 +390,21 @@ export default function FabricIntegrityCenter({ token }) {
     const [loading, setLoading] = useState(true);
     const [loadingCommitments, setLoadingCommitments] = useState(false);
 
+    // Hoisted verify state
+    const [verifyEntityType, setVerifyEntityType] = useState('result');
+    const [verifyEntityId, setVerifyEntityId] = useState('');
+
+    const handleQuickVerify = (commitment) => {
+        let mappedType = 'result';
+        if (commitment.eventType === 'QUESTION_COMMITMENT') mappedType = 'question';
+        else if (commitment.eventType === 'EXAM_COMMITMENT') mappedType = 'exam';
+        else if (commitment.eventType === 'SECURITY_EVENT_COMMITMENT') mappedType = 'event';
+
+        setVerifyEntityType(mappedType);
+        setVerifyEntityId(commitment.entityId);
+        setActiveTab('verify');
+    };
+
     const loadStatus = useCallback(async () => {
         setLoading(true);
         try {
@@ -525,7 +548,13 @@ export default function FabricIntegrityCenter({ token }) {
 
                 {/* Verify Tab */}
                 {activeTab === 'verify' && (
-                    <VerificationPanel token={token} />
+                    <VerificationPanel 
+                        token={token} 
+                        entityType={verifyEntityType}
+                        setEntityType={setVerifyEntityType}
+                        entityId={verifyEntityId}
+                        setEntityId={setVerifyEntityId}
+                    />
                 )}
 
                 {/* Commitments Tab */}
@@ -549,6 +578,7 @@ export default function FabricIntegrityCenter({ token }) {
                             <RecentCommitmentsTable
                                 commitments={recentCommitments}
                                 loading={loadingCommitments}
+                                onVerify={handleQuickVerify}
                             />
                         </div>
                     </div>

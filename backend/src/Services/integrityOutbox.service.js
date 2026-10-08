@@ -111,7 +111,7 @@ async function _processBatch() {
             },
             {
                 sort: { createdAt: 1 },
-                new: true,
+                returnDocument: 'after',
             }
         );
 

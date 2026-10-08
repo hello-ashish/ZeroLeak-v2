@@ -345,7 +345,7 @@ export const setupProctoringSockets = (io) => {
                                 startedAt: new Date()
                             }
                         },
-                        { upsert: true, new: true }
+                        { upsert: true, returnDocument: 'after' }
                     );
 
                     currentSessionId = session._id;
@@ -379,7 +379,7 @@ export const setupProctoringSockets = (io) => {
                         const existing = await ProctoringSession.findOneAndUpdate(
                             { studentId: user.id, examId, status: { $in: ["INITIALIZING","ACTIVE","PAUSED","DISCONNECTED"] } },
                             { $set: { socketId: socket.id, status: "ACTIVE", connectionStatus: "ONLINE", lastHeartbeat: new Date() } },
-                            { new: true }
+                            { returnDocument: 'after' }
                         );
                         if (existing) {
                             currentSessionId = existing._id;

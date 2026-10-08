@@ -3,9 +3,10 @@ import BlockchainCenter from '../../components/blockchain/BlockchainCenter';
 import { AdminLayout } from './AdminLayout';
 
 export default function AdminBlockchainCenter() {
+    const token = localStorage.getItem('adminToken');
     return (
         <AdminLayout>
-            <BlockchainCenter />
+            <BlockchainCenter token={token} />
         </AdminLayout>
     );
 }

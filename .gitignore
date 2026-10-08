@@ -15,6 +15,8 @@ pids
 
 # Dependency directories
 node_modules/
+blockfile_*
+block-inspect/
 
 # Environment files
 .env

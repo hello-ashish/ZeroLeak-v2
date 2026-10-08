@@ -6,6 +6,7 @@ import { buildMerkleRoot } from "../Services/merkle.service.js";
 import mongoose from "mongoose";
 import crypto from "crypto";
 import { selectQuestionsByDifficultyRatio } from "../Services/question.service.js";
+import { enqueueExamCommitment } from "../Services/integrityOutbox.service.js";
 
 export const createExamination = async (req, res) => {
     const session = await mongoose.startSession();
@@ -77,6 +78,13 @@ export const createExamination = async (req, res) => {
         await session.commitTransaction();
         session.endSession();
 
+        // Enqueue Fabric commitments for each newly created exam
+        createdExams.forEach(exam => {
+            enqueueExamCommitment(exam, 1, '').catch(err =>
+                console.error('[FABRIC] Failed to enqueue exam commitment:', err.message)
+            );
+        });
+
         return res.status(201).json({
             message: "Examination created successfully",
             examination,
@@ -128,7 +136,7 @@ export const updateExaminationStatus = async (req, res) => {
         const { id } = req.params;
         const { status } = req.body;
         
-        const examination = await Examination.findByIdAndUpdate(id, { status }, { new: true });
+        const examination = await Examination.findByIdAndUpdate(id, { status }, { returnDocument: 'after' });
         if (!examination) return res.status(404).json({ message: "Examination not found" });
 
         // Update child exams to match the new status
@@ -146,7 +154,7 @@ export const toggleExaminationResults = async (req, res) => {
         const { id } = req.params;
         const { isResultReleased } = req.body;
         
-        const examination = await Examination.findByIdAndUpdate(id, { isResultReleased }, { new: true });
+        const examination = await Examination.findByIdAndUpdate(id, { isResultReleased }, { returnDocument: 'after' });
         if (!examination) return res.status(404).json({ message: "Examination not found" });
 
         return res.status(200).json({ message: "Results release toggled", examination });

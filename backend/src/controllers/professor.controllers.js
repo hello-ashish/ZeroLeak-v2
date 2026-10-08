@@ -211,7 +211,7 @@ export const submitBatch = async (req, res) => {
     try {
         const { batchId } = req.params
         const batch = await Batch.findOneAndUpdate({ _id: batchId, createdBy: req.professor._id }, {
-            status: "Submitted" }, {new: true})
+            status: "Submitted" }, {returnDocument: 'after'})
             
         await notifyAdmins({
             title: "New Batch Submitted",

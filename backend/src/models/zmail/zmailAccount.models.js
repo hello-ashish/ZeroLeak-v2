@@ -3,7 +3,7 @@ import mongoose, { Schema } from "mongoose";
 
 const zmailAccountSchema = new Schema(
     {
-        userId: { type: Schema.Types.ObjectId, required: true, unique: true, index: true },
+        userId: { type: Schema.Types.ObjectId, required: true, unique: true },
         userType: { type: String, enum: ["Student", "Professor", "Admin", "Auditor", "SYSTEM", "Support"], required: true },
         isSupportMailbox: { type: Boolean, default: false, index: true },
         zmailAddress: { type: String, required: true, unique: true, lowercase: true, trim: true, match: [/^[a-z0-9._+-]+@zeroleak\.com$/, "Invalid ZMail address format"] },
@@ -15,8 +15,6 @@ const zmailAccountSchema = new Schema(
     }, { timestamps: true }
 );
 
-zmailAccountSchema.index({ zmailAddress: 1 });
-zmailAccountSchema.index({ normalizedAddress: 1 });
 zmailAccountSchema.index({ userId: 1, userType: 1 });
 
 export const ZMailAccount = mongoose.model("ZMailAccount", zmailAccountSchema);

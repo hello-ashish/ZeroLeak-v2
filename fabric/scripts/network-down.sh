@@ -1,6 +1,6 @@
 set -euo pipefail
 
-FABRIC_SAMPLES_PATH="${FABRIC_SAMPLES_PATH:-${HOME}/fabric-samples}"
+FABRIC_SAMPLES_PATH="${FABRIC_SAMPLES_PATH:-/Users/helloashish/Desktop/fabric-learning/fabric-samples}"
 TEST_NETWORK_PATH="${FABRIC_SAMPLES_PATH}/test-network"
 
 echo ""

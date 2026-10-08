@@ -9,7 +9,7 @@ export const TICKET_CATEGORIES = [
 ];
 
 const supportTicketSchema = new Schema({
-    ticketNumber: { type: String, required: true, unique: true, index: true },
+    ticketNumber: { type: String, required: true, unique: true },
 
     reporterUserId: { type: Schema.Types.ObjectId, required: true, index: true },
     reporterRole: { type: String, enum: ["Student", "Professor", "Admin", "Auditor"], required: true },

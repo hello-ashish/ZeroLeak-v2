@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 
 const integrityOutboxSchema = new mongoose.Schema({
-    commitmentId: { type: String, required: true, unique: true, index: true },
+    commitmentId: { type: String, required: true, unique: true },
     eventType: { type: String, enum: ['RESULT_COMMITMENT', 'QUESTION_COMMITMENT', 'EXAM_COMMITMENT', 'SECURITY_EVENT'], required: true },
     entityType: { type: String, enum: ['Result', 'Question', 'Exam', 'SecurityEvent'], required: true },
     entityId: { type: String, required: true },
@@ -27,6 +27,5 @@ const integrityOutboxSchema = new mongoose.Schema({
 integrityOutboxSchema.index({ status: 1, createdAt: 1 });
 integrityOutboxSchema.index({ status: 1, leaseExpiresAt: 1 });
 integrityOutboxSchema.index({ entityId: 1, entityType: 1 });
-integrityOutboxSchema.index({ commitmentId: 1 }, { unique: true });
 
 export const IntegrityOutbox = mongoose.model('IntegrityOutbox', integrityOutboxSchema);

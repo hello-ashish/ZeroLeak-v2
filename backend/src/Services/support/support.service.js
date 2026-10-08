@@ -34,7 +34,7 @@ async function upsertMailboxEntry(data) {
     const entry = await ZMailMailboxEntry.findOneAndUpdate(
         { userId, messageId },
         { $setOnInsert: { userId, messageId, threadId, folder, isRead } },
-        { upsert: true, new: true }
+        { upsert: true, returnDocument: 'after' }
     );
     if (!isRead) {
         await invalidateUserUnread(userId);
