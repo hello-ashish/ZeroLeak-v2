@@ -557,6 +557,60 @@ export async function markThreadRead({ userId, threadId }) {
     return { updated: true };
 }
 
+/**
+ * Perform a bulk action on multiple messages.
+ */
+export async function bulkAction({ userId, messageIds, action }) {
+    if (!Array.isArray(messageIds) || messageIds.length === 0) return { updated: 0 };
+    
+    // Validate ObjectIds
+    const validIds = messageIds.filter(isValidObjectId);
+    if (validIds.length === 0) return { updated: 0 };
+
+    const filter = { userId, messageId: { $in: validIds }, isDeleted: false };
+    let update = {};
+    let invalidateUnread = false;
+
+    switch (action) {
+        case "markRead":
+            update = { isRead: true, lastSeenAt: new Date() };
+            invalidateUnread = true;
+            break;
+        case "markUnread":
+            update = { isRead: false };
+            invalidateUnread = true;
+            break;
+        case "star":
+            update = { isStarred: true };
+            break;
+        case "unstar":
+            update = { isStarred: false };
+            break;
+        case "archive":
+            update = { isArchived: true, archivedAt: new Date() };
+            break;
+        case "trash":
+            update = { isTrashed: true, trashedAt: new Date(), isRead: true }; // Trashing also marks as read usually
+            invalidateUnread = true;
+            break;
+        case "restore":
+            // Special filter for restore
+            const restoreFilter = { userId, messageId: { $in: validIds }, isTrashed: true };
+            const rResult = await ZMailMailboxEntry.updateMany(restoreFilter, { isTrashed: false, trashedAt: null });
+            return { updated: rResult.modifiedCount };
+        case "delete":
+            const dResult = await ZMailMailboxEntry.updateMany(filter, { isDeleted: true, deletedAt: new Date() });
+            await invalidateCachedUnread(userId);
+            return { updated: dResult.modifiedCount };
+        default:
+            throw new Error("Invalid bulk action");
+    }
+
+    const result = await ZMailMailboxEntry.updateMany(filter, update);
+    if (invalidateUnread) await invalidateCachedUnread(userId);
+    return { updated: result.modifiedCount };
+}
+
 // ─── Unread Count ─────────────────────────────────────────────────────────────
 
 export async function getUnreadCount(userId) {

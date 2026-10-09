@@ -63,12 +63,12 @@ export function ZMailCompose({
         setSaving(false);
     }, [to, cc, bcc, subject, body, attachments, draftId, draftVersion, sending, refreshCounts]);
 
-    // Debounce autosave whenever compose fields change
+    // Debounce autosave whenever compose fields change (including attachments)
     useEffect(() => {
         clearTimeout(autosaveRef.current);
         autosaveRef.current = setTimeout(saveDraft, AUTOSAVE_DELAY);
         return () => clearTimeout(autosaveRef.current);
-    }, [to, cc, bcc, subject, body]);
+    }, [to, cc, bcc, subject, body, attachments]);
 
     const handleSend = async () => {
         if (!to || to.length === 0) {
@@ -83,6 +83,8 @@ export function ZMailCompose({
         clearTimeout(autosaveRef.current);
         try {
             if (draftId) {
+                // Flush latest edits to the server before sending
+                await updateDraft(draftId, { to, cc, bcc, subject, body, attachments, version: draftVersion });
                 await sendDraft(draftId);
             } else {
                 await sendMessage({ to, cc, bcc, subject, body, attachments, replyToMessageId });
@@ -139,6 +141,7 @@ export function ZMailCompose({
         setUploading(false);
         e.target.value = '';
     };
+    const [isMaximized, setIsMaximized] = useState(false);
 
     if (minimized) {
         return (
@@ -153,7 +156,7 @@ export function ZMailCompose({
     }
 
     return (
-        <div className="zmail-compose-window" role="dialog" aria-label="Compose email" aria-modal="true">
+        <div className={`zmail-compose-window ${isMaximized ? 'maximized' : ''}`} role="dialog" aria-label="Compose email" aria-modal="true">
             {/* Header */}
             <div className="zmail-compose-header">
                 <span className="zmail-compose-title">New Message</span>
@@ -161,9 +164,12 @@ export function ZMailCompose({
                     {saving && <span className="zmail-saving-text">Saving...</span>}
                     {minimizable && (
                         <button type="button" onClick={() => setMinimized(true)} aria-label="Minimize" className="zmail-compose-action-btn">
-                            <Minimize2 size={16} />
+                            <span style={{ fontSize: 18, lineHeight: 1 }}>−</span>
                         </button>
                     )}
+                    <button type="button" onClick={() => setIsMaximized(!isMaximized)} aria-label={isMaximized ? "Restore" : "Maximize"} className="zmail-compose-action-btn">
+                        <span style={{ fontSize: 16, lineHeight: 1 }}>{isMaximized ? '🗗' : '🗖'}</span>
+                    </button>
                     <button type="button" onClick={handleDiscard} aria-label="Discard draft" className="zmail-compose-action-btn">
                         <X size={16} />
                     </button>

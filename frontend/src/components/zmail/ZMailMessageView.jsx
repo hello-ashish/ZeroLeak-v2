@@ -12,9 +12,19 @@ import {
 } from '../../hooks/useZMail.jsx';
 import { useToast } from '../Toast.jsx';
 
+function getAuthToken() {
+    return (
+        localStorage.getItem('adminToken') ||
+        localStorage.getItem('profToken') ||
+        localStorage.getItem('studentToken') ||
+        localStorage.getItem('auditorToken') ||
+        localStorage.getItem('supportToken') ||
+        null
+    );
+}
+
 function getAuthHeader() {
-    const token = localStorage.getItem('adminToken') || localStorage.getItem('profToken') ||
-        localStorage.getItem('studentToken') || localStorage.getItem('auditorToken');
+    const token = getAuthToken();
     return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
@@ -26,7 +36,7 @@ function formatDate(d) {
     });
 }
 
-export function ZMailMessageView({ message, onBack, onRefresh, onUpdate }) {
+export function ZMailMessageView({ message, onBack, onRefresh, onUpdate, hideHeaderSubject = false, hideBackButton = false }) {
     const [replyOpen, setReplyOpen] = useState(false);
     const [forwardOpen, setForwardOpen] = useState(false);
     const [replyAll, setReplyAll] = useState(false);
@@ -80,13 +90,24 @@ export function ZMailMessageView({ message, onBack, onRefresh, onUpdate }) {
         } catch { toast.error('Failed to restore message'); }
     };
 
-    const handleDownload = (att) => {
-        const token = getAuthHeader().Authorization?.split(' ')[1];
-        const url = `/api/zmail/messages/${message._id}/attachments/${att._id}?token=${encodeURIComponent(token || '')}`;
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = att.originalName;
-        a.click();
+    const handleDownload = async (att) => {
+        try {
+            const headers = getAuthHeader();
+            const BACKEND_URL = import.meta.env.DEV ? '' : 'https://zeroleak-v2.onrender.com';
+            const url = `${BACKEND_URL}/api/zmail/messages/${message._id}/attachments/${att._id}`;
+            const response = await fetch(url, { headers });
+            if (!response.ok) throw new Error('Download failed');
+            const blob = await response.blob();
+            const objectUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = objectUrl;
+            a.download = att.originalName;
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(objectUrl), 10000);
+        } catch (e) {
+            // eslint-disable-next-line no-console
+            console.error('[ZMail] Download failed', e);
+        }
     };
 
     const recipientList = [
@@ -97,67 +118,69 @@ export function ZMailMessageView({ message, onBack, onRefresh, onUpdate }) {
     return (
         <div className="zmail-message-view">
             {/* Message Header */}
-            <div className="zmail-message-header">
-                <div className="zmail-message-subject-row">
-                    <button type="button" className="zmail-back-btn" onClick={onBack} aria-label="Back to list">
-                        ← Back
-                    </button>
-                    <h2 className="zmail-message-subject">{subject || '(no subject)'}</h2>
-                    <div className="zmail-message-actions">
-                        <button
-                            type="button"
-                            className={`topbar-btn ${entry.isStarred ? 'zmail-starred' : ''}`}
-                            onClick={handleStar}
-                            aria-label={entry.isStarred ? 'Unstar' : 'Star'}
-                            title={entry.isStarred ? 'Unstar' : 'Star'}
-                        >
-                            <Star size={18} fill={entry.isStarred ? 'currentColor' : 'none'} />
-                        </button>
-                        <button
-                            type="button"
-                            className={`topbar-btn ${entry.isImportant ? 'zmail-important' : ''}`}
-                            onClick={handleImportant}
-                            aria-label={entry.isImportant ? 'Mark not important' : 'Mark important'}
-                            title="Important"
-                        >
-                            <AlertCircle size={18} />
-                        </button>
-                        {entry.isTrashed ? (
-                            <button type="button" className="topbar-btn" onClick={handleRestore} aria-label="Restore from trash" title="Restore">
-                                <RotateCcw size={18} />
+            <div className="zmail-msg-header">
+                {!hideHeaderSubject && (
+                    <div className="zmail-msg-title-row">
+                        {!hideBackButton && (
+                            <button type="button" className="zmail-back-btn" onClick={onBack} aria-label="Back to list">
+                                ← Back
                             </button>
-                        ) : (
-                            <>
-                                <button type="button" className="topbar-btn" onClick={handleArchive} aria-label="Archive" title="Archive">
-                                    <Archive size={18} />
-                                </button>
-                                <button type="button" className="topbar-btn" onClick={handleTrash} aria-label="Move to trash" title="Trash">
-                                    <Trash2 size={18} />
-                                </button>
-                            </>
                         )}
-                    </div>
-                </div>
-
-                <div className="zmail-message-meta">
-                    <div className="zmail-sender-block">
-                        <span className="zmail-avatar-sm">{(senderName || 'U').slice(0, 1).toUpperCase()}</span>
-                        <div>
-                            <div className="zmail-meta-sender">
-                                <strong>{senderName}</strong>
-                                <span className="zmail-meta-address"> &lt;{senderAddress}&gt;</span>
-                            </div>
-                            <div className="zmail-meta-recipients">
-                                To: {recipientList || '(undisclosed)'}
-                            </div>
+                        <h2 className="zmail-msg-subject">{subject || '(no subject)'}</h2>
+                        <div className="zmail-msg-toolbar">
+                            <button
+                                type="button"
+                                className={`zmail-tool-btn ${entry.isStarred ? 'zmail-starred' : ''}`}
+                                onClick={handleStar}
+                                aria-label={entry.isStarred ? 'Unstar' : 'Star'}
+                                title={entry.isStarred ? 'Unstar' : 'Star'}
+                            >
+                                <Star size={18} fill={entry.isStarred ? 'currentColor' : 'none'} />
+                            </button>
+                            <button
+                                type="button"
+                                className={`zmail-tool-btn ${entry.isImportant ? 'zmail-important' : ''}`}
+                                onClick={handleImportant}
+                                aria-label={entry.isImportant ? 'Mark not important' : 'Mark important'}
+                                title="Important"
+                            >
+                                <AlertCircle size={18} />
+                            </button>
+                            {entry.isTrashed ? (
+                                <button type="button" className="zmail-tool-btn" onClick={handleRestore} aria-label="Restore from trash" title="Restore">
+                                    <RotateCcw size={18} />
+                                </button>
+                            ) : (
+                                <>
+                                    <button type="button" className="zmail-tool-btn" onClick={handleArchive} aria-label="Archive" title="Archive">
+                                        <Archive size={18} />
+                                    </button>
+                                    <button type="button" className="zmail-tool-btn" onClick={handleTrash} aria-label="Move to trash" title="Trash">
+                                        <Trash2 size={18} />
+                                    </button>
+                                </>
+                            )}
                         </div>
                     </div>
-                    <div className="zmail-meta-date">{formatDate(sentAt)}</div>
+                )}
+                
+                <div className="zmail-sender-meta" style={{ marginTop: hideHeaderSubject ? 0 : undefined }}>
+                    <div className="zmail-sender-avatar">{(senderName || 'U').slice(0, 1).toUpperCase()}</div>
+                    <div className="zmail-sender-info">
+                        <div className="zmail-sender-name-row">
+                            <span className="zmail-sender-name">{senderName}</span>
+                            <span className="zmail-sender-addr">&lt;{senderAddress}&gt;</span>
+                        </div>
+                        <div className="zmail-recipients-row">
+                            To: {recipientList || '(undisclosed)'}
+                        </div>
+                    </div>
+                    <div className="zmail-msg-date">{formatDate(sentAt)}</div>
                 </div>
             </div>
 
             {/* Message Body */}
-            <div className="zmail-message-body">
+            <div className="zmail-msg-body">
                 <pre className="zmail-body-text">{body}</pre>
             </div>
 
@@ -176,7 +199,7 @@ export function ZMailMessageView({ message, onBack, onRefresh, onUpdate }) {
                                     <span className="zmail-att-size">{(att.sizeBytes / 1024).toFixed(1)} KB</span>
                                 </div>
                                 <button
-                                    className="topbar-btn"
+                                    className="zmail-tool-btn"
                                     onClick={() => handleDownload(att)}
                                     aria-label={`Download ${att.originalName}`}
                                     title="Download"
@@ -191,9 +214,9 @@ export function ZMailMessageView({ message, onBack, onRefresh, onUpdate }) {
 
             {/* Reply / Forward actions */}
             {!entry.isTrashed && (
-                <div className="zmail-reply-actions">
+                <div className="zmail-reply-bar">
                     <button
-                        className="btn btn-secondary"
+                        className="zmail-reply-btn primary"
                         onClick={() => { setReplyAll(false); setReplyOpen(true); setForwardOpen(false); }}
                         aria-label="Reply"
                         id="zmail-reply-btn"
@@ -201,7 +224,7 @@ export function ZMailMessageView({ message, onBack, onRefresh, onUpdate }) {
                         <Reply size={16} /> Reply
                     </button>
                     <button
-                        className="btn btn-secondary"
+                        className="zmail-reply-btn"
                         onClick={() => { setReplyAll(true); setReplyOpen(true); setForwardOpen(false); }}
                         aria-label="Reply All"
                         id="zmail-reply-all-btn"
@@ -209,7 +232,7 @@ export function ZMailMessageView({ message, onBack, onRefresh, onUpdate }) {
                         <CornerUpRight size={16} /> Reply All
                     </button>
                     <button
-                        className="btn btn-secondary"
+                        className="zmail-reply-btn"
                         onClick={() => { setForwardOpen(true); setReplyOpen(false); }}
                         aria-label="Forward"
                         id="zmail-forward-btn"

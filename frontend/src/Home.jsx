@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ShieldCheck, BrainCircuit, Users, BookOpen, GraduationCap, Settings, ShieldAlert, ChevronRight, Activity, AlertCircle, Sun, Moon } from 'lucide-react';
+import { HeaderThemeToggle } from './components/HeaderThemeToggle.jsx';
 import './Home.css';
 
 const Home = () => {
@@ -84,6 +85,9 @@ const Home = () => {
           {/* Right Role Selection Section */}
           <div className="home-login-section">
             <div className="login-panel">
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
+                <HeaderThemeToggle />
+              </div>
               <div className="panel-header">
                 <h2>Choose your workspace</h2>
                 <p>Select your role to continue to the authentication gateway.</p>

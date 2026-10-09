@@ -1,62 +1,30 @@
-import React, { useState } from 'react';
-import { X, Send, Paperclip } from 'lucide-react';
-import { sendMessage } from '../../hooks/useZMail.jsx';
-import { useToast } from '../Toast.jsx';
+import React from 'react';
+import { ZMailCompose } from './ZMailCompose.jsx';
 
-export function ComposeWorkspace({ onClose }) {
-    const [to, setTo] = useState('');
-    const [subject, setSubject] = useState('');
-    const [body, setBody] = useState('');
-    const [minimized, setMinimized] = useState(false);
-    const toast = useToast();
-
-    const handleSend = async () => {
-        try {
-            await sendMessage({
-                to: to ? [to.trim()] : [],
-                subject,
-                body,
-                attachments: []
-            });
-            toast.success('Sent successfully');
-            onClose();
-        } catch { toast.error('Failed to send'); }
-    };
-
-    if (minimized) {
-        return (
-            <div className="zm-compose-workspace minimized" onClick={() => setMinimized(false)}>
-                <div className="zm-compose-header">
-                    <div className="zm-compose-title">Draft: {subject || 'New Message'}</div>
-                    <X size={16} onClick={(e) => { e.stopPropagation(); onClose(); }} />
-                </div>
-            </div>
-        );
-    }
-
+/**
+ * ComposeWorkspace — thin wrapper that opens the full ZMailCompose
+ * instead of the old barebones plain-text form.
+ *
+ * Previously this was a separate simplified compose window that was missing:
+ *   - Recipient autocomplete
+ *   - Autosave / draft support
+ *   - CC / BCC fields
+ *   - Attachment upload
+ *   - Proper input validation
+ *
+ * Now it delegates everything to ZMailCompose.
+ */
+export function ComposeWorkspace({ onClose, onSent, initialTo, initialSubject, initialBody, replyToMessageId, existingDraftId }) {
     return (
-        <div className="zm-compose-workspace">
-            <div className="zm-compose-header" onClick={() => setMinimized(true)}>
-                <div className="zm-compose-title">New message</div>
-                <X size={16} style={{cursor:'pointer'}} onClick={(e) => { e.stopPropagation(); onClose(); }} />
-            </div>
-            
-            <div className="zm-compose-body">
-                <div className="zm-compose-field">
-                    <div className="zm-compose-label">To</div>
-                    <input className="zm-compose-input" value={to} onChange={e => setTo(e.target.value)} placeholder="email@zeroleak.com" />
-                </div>
-                <div className="zm-compose-field">
-                    <div className="zm-compose-label">Subject</div>
-                    <input className="zm-compose-input" value={subject} onChange={e => setSubject(e.target.value)} placeholder="What's this about?" />
-                </div>
-                <textarea className="zm-compose-textarea" value={body} onChange={e => setBody(e.target.value)} placeholder="Write your message..." />
-            </div>
-            
-            <div className="zm-compose-footer">
-                <button className="zm-action-btn"><Paperclip size={16} /></button>
-                <button className="zm-send-btn" onClick={handleSend}>Send <Send size={14} style={{marginLeft: 8}} /></button>
-            </div>
-        </div>
+        <ZMailCompose
+            onClose={onClose}
+            onSent={onSent}
+            initialTo={initialTo}
+            initialSubject={initialSubject}
+            initialBody={initialBody}
+            replyToMessageId={replyToMessageId}
+            existingDraftId={existingDraftId}
+            minimizable={true}
+        />
     );
 }

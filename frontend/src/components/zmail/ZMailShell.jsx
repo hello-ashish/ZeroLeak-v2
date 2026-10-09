@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ZMailRail } from './ZMailRail.jsx';
-import { ZMailHeader } from './ZMailHeader.jsx';
 import { ConversationList } from './ConversationList.jsx';
 import { ConversationView } from './ConversationView.jsx';
 import { ComposeWorkspace } from './ComposeWorkspace.jsx';
-import { ZMailOverview } from './ZMailOverview.jsx';
 import { fetchFolder, searchMail, emptyTrash } from '../../hooks/useZMail.jsx';
 import { useZMail } from '../../hooks/useZMail.jsx';
 import { useToast } from '../Toast.jsx';
@@ -29,8 +27,15 @@ export function ZMailShell({ isFullScreen }) {
         setSelectedEntry(null);
     }, [folder]);
 
+    // Refresh inbox silently when a new message arrives (socket triggers unreadCount bump)
+    // We only do this if the user is already looking at the inbox folder
+    const prevUnreadRef = React.useRef(unreadCount);
     useEffect(() => {
-        if (folder === 'inbox') loadFolder('inbox', true);
+        if (prevUnreadRef.current !== unreadCount && folder === 'inbox') {
+            loadFolder('inbox', true);
+        }
+        prevUnreadRef.current = unreadCount;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [unreadCount]);
 
     const loadFolder = async (f, silent = false) => {
@@ -70,30 +75,32 @@ export function ZMailShell({ isFullScreen }) {
         <div className={`zmail-shell ${isFullScreen ? 'full-screen' : ''}`}>
             <ZMailRail folder={folder} setFolder={setFolder} onCompose={() => setShowCompose(true)} />
             
-            <div className="zm-main">
-                <ZMailHeader searchQuery={searchQuery} onSearch={handleSearch} connected={connected} />
-                
-                <div className="zm-workspace">
-                    <ConversationList 
-                        entries={entries} 
-                        loading={loading}
-                        selectedEntry={selectedEntry} 
-                        onSelect={setSelectedEntry} 
-                        folder={folder}
-                    />
-                    
-                    {selectedEntry ? (
-                        <ConversationView 
-                            entry={selectedEntry} 
-                            onBack={() => setSelectedEntry(null)} 
-                            onRefresh={() => {
-                                loadFolder(folder, true);
-                                refreshCounts();
-                            }}
-                        />
-                    ) : (
-                        <ZMailOverview account={account} unreadCount={unreadCount} entries={entries} onCompose={() => setShowCompose(true)} />
-                    )}
+            <div className="zm-main" style={{ background: 'var(--zm-bg-base)' }}>
+                <div className="zm-workspace-container">
+                    <div className="zm-workspace">
+                        {!selectedEntry ? (
+                            <ConversationList 
+                                entries={entries} 
+                                loading={loading}
+                                selectedEntry={selectedEntry} 
+                                onSelect={setSelectedEntry} 
+                                folder={folder}
+                                onRefresh={() => {
+                                    loadFolder(folder, true);
+                                    refreshCounts();
+                                }}
+                            />
+                        ) : (
+                            <ConversationView 
+                                entry={selectedEntry} 
+                                onBack={() => setSelectedEntry(null)} 
+                                onRefresh={() => {
+                                    loadFolder(folder, true);
+                                    refreshCounts();
+                                }}
+                            />
+                        )}
+                    </div>
                 </div>
             </div>
 

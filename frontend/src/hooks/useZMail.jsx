@@ -52,12 +52,14 @@ export function ZMailProvider({ children }) {
     const toastCallbackRef = useRef(null);
 
     // Fetch account and counts
+    const fetchCountsReqRef = useRef(0);
     const fetchCounts = useCallback(async () => {
+        const reqId = ++fetchCountsReqRef.current;
         const headers = getAuthHeader();
         if (!headers.Authorization) return;
         try {
             const { data } = await axios.get(`${API}/counts`, { headers });
-            if (data.success) {
+            if (reqId === fetchCountsReqRef.current && data.success) {
                 setUnreadCount(data.unread || 0);
                 setDraftCount(data.drafts || 0);
             }
@@ -137,6 +139,7 @@ export function ZMailProvider({ children }) {
         <ZMailContext.Provider value={{
             account,
             unreadCount,
+            setUnreadCount,
             draftCount,
             connected,
             fetchCounts,
@@ -218,6 +221,12 @@ export async function patchMessageWithBody(messageId, action, body) {
 export async function deleteMessage(messageId) {
     const headers = getAuthHeader();
     const { data } = await axios.delete(`${API}/messages/${messageId}`, { headers });
+    return data;
+}
+
+export async function bulkAction(messageIds, action) {
+    const headers = getAuthHeader();
+    const { data } = await axios.patch(`${API}/messages/bulk/action`, { messageIds, action }, { headers });
     return data;
 }
 

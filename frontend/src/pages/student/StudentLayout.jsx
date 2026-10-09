@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation, Link, Outlet } from 'react-router-dom'
-import { LayoutDashboard, ClipboardList, BarChart3, Target, User, Settings, Search, LogOut, ChevronDown, Bell , RefreshCw, Mail, AlertCircle, Headset, Ticket } from 'lucide-react'
+import { LayoutDashboard, ClipboardList, BarChart3, Target, User, Settings, Search, LogOut, ChevronDown, Bell, RefreshCw, Mail, AlertCircle, Headset, Ticket } from 'lucide-react'
 import { CommandPalette } from '../../components/CommandPalette.jsx'
 import { Modal } from '../../components/Modal.jsx'
 import { HeaderThemeToggle } from '../../components/HeaderThemeToggle.jsx'
@@ -352,9 +352,9 @@ export const StudentLayout = ({ children, noPadding = false }) => {
 
             <CommandPalette open={showCommand} onClose={() => setShowCommand(false)} />
 
-            <Modal 
-                open={showRestrictedModal} 
-                onClose={() => {}} // Disallow closing without logging out
+            <Modal
+                open={showRestrictedModal}
+                onClose={() => { }} // Disallow closing without logging out
                 title="Account Restricted"
                 footer={
                     <button className="btn btn-danger w-full" onClick={handleLogout}>

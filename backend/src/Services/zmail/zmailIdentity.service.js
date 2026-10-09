@@ -136,7 +136,7 @@ export async function resolveAddress(address) {
  * @returns {boolean}
  */
 export function isInternalAddress(address) {
-    return typeof address === "string" && /.+@.+\..+/.test(address.trim());
+    return typeof address === "string" && address.trim().toLowerCase().endsWith("@zeroleak.com");
 }
 
 /**

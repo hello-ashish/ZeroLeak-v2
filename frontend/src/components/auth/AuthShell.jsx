@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { ShieldCheck, BrainCircuit, Users, ArrowLeft, ShieldAlert } from 'lucide-react';
 import './Auth.css';
 
+import { HeaderThemeToggle } from '../HeaderThemeToggle.jsx';
+
 const AuthShell = ({ title, subtitle, badge, children }) => {
   return (
     <div className="auth-wrapper">
@@ -60,10 +62,13 @@ const AuthShell = ({ title, subtitle, badge, children }) => {
         {/* Right Login Section */}
         <div className="auth-form-section">
           <div className="auth-form-container">
-            <Link to="/" className="auth-back-link">
-              <ArrowLeft size={16} />
-              Back to Workspace Selection
-            </Link>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                <Link to="/" className="auth-back-link" style={{ marginBottom: 0 }}>
+                  <ArrowLeft size={16} />
+                  Back to Workspace Selection
+                </Link>
+                <HeaderThemeToggle />
+            </div>
 
             <div className="auth-form-header">
               <span className="auth-welcome">Welcome Back</span>

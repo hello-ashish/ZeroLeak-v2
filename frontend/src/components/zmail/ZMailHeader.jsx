@@ -4,27 +4,25 @@ import { Search, Wifi, WifiOff } from 'lucide-react';
 export function ZMailHeader({ searchQuery, onSearch, connected }) {
     return (
         <div className="zm-header">
-            <div className="zm-search-capsule">
-                <Search size={16} color="var(--zm-text-muted)" />
-                <input 
-                    type="text" 
-                    placeholder="Search ZMail" 
+            <div className="zm-search-box">
+                <Search size={15} color="var(--zm-text-muted)" />
+                <input
+                    type="text"
+                    placeholder="Search mail, people, subjects…"
                     value={searchQuery}
                     onChange={(e) => onSearch(e.target.value)}
+                    aria-label="Search ZMail"
                 />
-                <span className="shortcut">⌘ K</span>
+                <span className="zm-search-kbd">⌘K</span>
             </div>
-            
-            <div className="zm-header-actions">
-                {connected ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
-                        <Wifi size={14} color="var(--zm-brand-blue)" /> Connected
-                    </div>
-                ) : (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
-                        <WifiOff size={14} color="var(--zm-text-muted)" /> Offline
-                    </div>
-                )}
+
+            <div className="zm-header-right">
+                <div className={`zm-connection-status ${connected ? 'online' : ''}`}>
+                    {connected
+                        ? <><Wifi size={13} /> Live</>
+                        : <><WifiOff size={13} /> Offline</>
+                    }
+                </div>
             </div>
         </div>
     );

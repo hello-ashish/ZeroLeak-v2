@@ -297,6 +297,17 @@ export const permanentlyDeleteMessage = async (req, res) => {
     }
 };
 
+export const bulkAction = async (req, res) => {
+    try {
+        const userId = getUserId(req);
+        const { messageIds, action } = req.body;
+        const result = await zmailService.bulkAction({ userId, messageIds, action });
+        return ok(res, result);
+    } catch (e) {
+        return err(res, e.message, 400);
+    }
+};
+
 export const emptyTrash = async (req, res) => {
     try {
         const userId = getUserId(req);

@@ -81,6 +81,7 @@ router.patch("/messages/:messageId/archive",   zmailController.archiveMessage);
 router.patch("/messages/:messageId/trash",     zmailController.trashMessage);
 router.patch("/messages/:messageId/restore",   zmailController.restoreMessage);
 router.delete("/messages/:messageId",          zmailController.permanentlyDeleteMessage);
+router.patch("/messages/bulk/action",            zmailController.bulkAction);
 
 // Attachment download — auth enforced, attachment ownership verified in controller
 router.get(

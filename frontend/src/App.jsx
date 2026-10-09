@@ -6,6 +6,7 @@ import { SessionReplacedModal } from './components/SessionReplacedModal.jsx'
 import { IdleTimer } from './components/IdleTimer.jsx'
 import { Loader2 } from 'lucide-react'
 import { ZMailProvider } from './hooks/useZMail.jsx'
+import { ZMailNotifier } from './components/zmail/ZMailNotifier.jsx'
 import './index.css'
 
 // Layouts are kept static to ensure the app shell loads instantly
@@ -85,6 +86,7 @@ function App() {
   return (
     <ToastProvider>
       <ZMailProvider>
+        <ZMailNotifier />
       <BrowserRouter>
         <SessionReplacedModal />
         <IdleTimer />
