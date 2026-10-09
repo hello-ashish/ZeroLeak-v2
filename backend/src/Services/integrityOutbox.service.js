@@ -123,7 +123,9 @@ async function _processBatch() {
 
     console.info(`[OUTBOX] Worker ${WORKER_ID} claimed ${claims.length} record(s).`);
 
-    await Promise.allSettled(claims.map(record => _processRecord(record)));
+    for (const record of claims) {
+        await _processRecord(record);
+    }
 }
 
 async function _processRecord(record) {

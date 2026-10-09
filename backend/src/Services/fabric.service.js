@@ -184,16 +184,22 @@ export async function createCommitment({
     timestamp,
 }) {
     const cfg = _getFabricConfig();
+
     if (!cfg.enabled) {
         return { status: 'FABRIC_DISABLED', id };
     }
 
     await _ensureConnected();
 
+    // Prefer a timestamp persisted in the outbox so every retry
+    // uses the same value.
     const ts = timestamp || new Date().toISOString();
 
     try {
-        console.info(`[FABRIC] FABRIC_COMMITMENT_SUBMITTED id=${id} eventType=${eventType} entityId=${entityId}`);
+        console.info(
+            `[FABRIC] FABRIC_COMMITMENT_SUBMITTED id=${id} eventType=${eventType} entityId=${entityId}`
+        );
+
         const startMs = Date.now();
 
         const resultBytes = await _contract.submitTransaction(
@@ -205,26 +211,113 @@ export async function createCommitment({
             dataHash,
             previousCommitmentHash,
             String(version),
-            ts,
+            ts
         );
 
         const durationMs = Date.now() - startMs;
-        const result = JSON.parse(Buffer.from(resultBytes).toString());
 
-        console.info(
-            `[FABRIC] FABRIC_COMMITMENT_CONFIRMED id=${id} txId=${result.txId} height=${result.height} duration=${durationMs}ms`
+        const result = JSON.parse(
+            Buffer.from(resultBytes).toString('utf8')
         );
 
-        return { ...result, status: 'CONFIRMED' };
+        console.info(
+            `[FABRIC] FABRIC_COMMITMENT_CONFIRMED id=${id} txId=${result.txId ?? 'unknown'} duration=${durationMs}ms`
+        );
 
+        return {
+            ...result,
+            id,
+            status: 'CONFIRMED',
+            duplicate: false,
+        };
     } catch (err) {
-        const msg = err.message || '';
-        if (msg.includes('DUPLICATE_COMMITMENT')) {
-            console.warn(`[FABRIC] Duplicate commitment rejected for id=${id} — safe to ignore on retry.`);
-            return { status: 'DUPLICATE', id };
+        const msg = err?.message || String(err);
+
+        if (!msg.includes('DUPLICATE_COMMITMENT')) {
+            console.error(
+                `[FABRIC] FABRIC_COMMITMENT_FAILED id=${id} error=${msg}`
+            );
+
+            _categorizeAndRethrow(err, { id, eventType });
         }
-        console.error(`[FABRIC] FABRIC_COMMITMENT_FAILED id=${id} error=${msg}`);
-        _categorizeAndRethrow(err, { id, eventType });
+
+        console.warn(
+            `[FABRIC] Duplicate commitment detected id=${id}; verifying existing record`
+        );
+
+        let existing;
+
+        // Step 1: Retrieve the existing ledger record.
+        // Failure here must never be treated as successful verification.
+        try {
+            const existingBytes =
+                await _contract.evaluateTransaction(
+                    'GetCommitment',
+                    id
+                );
+
+            existing = JSON.parse(
+                Buffer.from(existingBytes).toString('utf8')
+            );
+        } catch (fetchErr) {
+            console.error(
+                `[FABRIC] DUPLICATE_VERIFICATION_FAILED id=${id}: ${fetchErr.message}`
+            );
+
+            throw Object.assign(
+                new Error(
+                    `Unable to verify existing Fabric commitment '${id}'`
+                ),
+                {
+                    code: 'DUPLICATE_VERIFICATION_FAILED',
+                    cause: fetchErr,
+                }
+            );
+        }
+
+        // Step 2: Compare immutable fields.
+        // Property names must match the actual chaincode record schema.
+        const fieldsMatch =
+            existing.id === id &&
+            existing.eventType === eventType &&
+            existing.entityType === entityType &&
+            existing.entityId === entityId &&
+            existing.dataHash === dataHash &&
+            (existing.previousCommitmentHash ?? '') ===
+                previousCommitmentHash &&
+            String(existing.version) === String(version) &&
+            (!timestamp || existing.timestamp === ts);
+
+        // Step 3: Reject conflicting commitments.
+        if (!fieldsMatch) {
+            console.error(
+                `[FABRIC] COMMITMENT_CONFLICT id=${id}: existing immutable fields differ`
+            );
+
+            throw Object.assign(
+                new Error(
+                    `Existing commitment '${id}' conflicts with the requested commitment`
+                ),
+                {
+                    code: 'COMMITMENT_CONFLICT',
+                }
+            );
+        }
+
+        // Step 4: The existing commitment has been verified.
+        // Report the same success status used for a new commitment,
+        // while recording that this was an idempotent retry.
+        console.info(
+            `[FABRIC] Existing commitment verified id=${id}; treating retry as confirmed`
+        );
+
+        return {
+            status: 'CONFIRMED',
+            duplicate: true,
+            id,
+            txId: existing.txId ?? null,
+            blockTimestamp: existing.blockTimestamp ?? null,
+        };
     }
 }
 
