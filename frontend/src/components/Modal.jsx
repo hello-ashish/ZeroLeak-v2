@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react'
+import { Loader2 } from 'lucide-react'
 
 export const Modal = ({ open, onClose, title, children, footer, size = '', }) => {
     const ref = useRef(null)
@@ -67,7 +68,7 @@ export const ConfirmDialog = ({ open, onClose, onConfirm, title, message, confir
                         onClick={onConfirm}
                         disabled={loading}
                     >
-                        {loading ? 'Processing...' : confirmLabel}
+                        {loading ? <><Loader2 size={16} className="spin" style={{ marginRight: 8, display: 'inline-block', verticalAlign: 'middle' }}/> Processing...</> : confirmLabel}
                     </button>
                 </>
             }

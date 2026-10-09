@@ -10,6 +10,8 @@ import { useToast } from '../../components/Toast.jsx'
 const ProfessorBatchesPage = () => {
     const [batches, setBatches] = useState([])
     const [loading, setLoading] = useState(true)
+    const [sortBy, setSortBy] = useState('date-desc')
+    const [groupBy, setGroupBy] = useState('none')
     const navigate = useNavigate()
     const toast = useToast()
 
@@ -60,18 +62,78 @@ const ProfessorBatchesPage = () => {
                             Manage your question pools and submit them for review.
                         </p>
                     </div>
-
+                    <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                        <select className="input" value={sortBy} onChange={e => setSortBy(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border-default)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: 14, cursor: 'pointer' }}>
+                            <option value="date-desc">Sort: Newest First</option>
+                            <option value="date-asc">Sort: Oldest First</option>
+                            <option value="questions-desc">Sort: Most Questions</option>
+                            <option value="questions-asc">Sort: Least Questions</option>
+                            <option value="status">Sort: Status</option>
+                        </select>
+                        <select className="input" value={groupBy} onChange={e => setGroupBy(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border-default)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: 14, cursor: 'pointer' }}>
+                            <option value="none">Group By: None</option>
+                            <option value="status">Group By: Status</option>
+                            <option value="subject">Group By: Subject</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
             <div style={{ display: 'grid', gap: 24 }}>
                 {useMemo(() => {
-                    return [...batches].sort((a, b) => {
-                        if (a.status === 'MarkForReview' && b.status !== 'MarkForReview') return -1;
-                        if (a.status !== 'MarkForReview' && b.status === 'MarkForReview') return 1;
-                        return new Date(b.createdAt) - new Date(a.createdAt);
-                    });
-                }, [batches]).map((batch) => (
+                    let sorted = [...batches]
+                    
+                    sorted.sort((a, b) => {
+                        if (sortBy === 'date-desc') return new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
+                        if (sortBy === 'date-asc') return new Date(a.createdAt || 0) - new Date(b.createdAt || 0)
+                        if (sortBy === 'questions-desc') return (b.questions?.length || 0) - (a.questions?.length || 0)
+                        if (sortBy === 'questions-asc') return (a.questions?.length || 0) - (b.questions?.length || 0)
+                        if (sortBy === 'status') return (a.status || '').localeCompare(b.status || '')
+                        return 0
+                    })
+
+                    if (groupBy === 'none') {
+                        return { 'All Batches': sorted }
+                    }
+
+                    const grouped = {}
+                    sorted.forEach(batch => {
+                        const key = groupBy === 'status' ? (['Accepted', 'Rejected'].includes(batch.status) ? 'Submitted' : batch.status) : batch.subject
+                        if (!grouped[key]) grouped[key] = []
+                        grouped[key].push(batch)
+                    })
+                    return grouped
+                }, [batches, sortBy, groupBy]) && Object.entries(useMemo(() => {
+                    let sorted = [...batches]
+                    
+                    sorted.sort((a, b) => {
+                        if (sortBy === 'date-desc') return new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
+                        if (sortBy === 'date-asc') return new Date(a.createdAt || 0) - new Date(b.createdAt || 0)
+                        if (sortBy === 'questions-desc') return (b.questions?.length || 0) - (a.questions?.length || 0)
+                        if (sortBy === 'questions-asc') return (a.questions?.length || 0) - (b.questions?.length || 0)
+                        if (sortBy === 'status') return (a.status || '').localeCompare(b.status || '')
+                        return 0
+                    })
+
+                    if (groupBy === 'none') {
+                        return { 'All Batches': sorted }
+                    }
+
+                    const grouped = {}
+                    sorted.forEach(batch => {
+                        const key = groupBy === 'status' ? (['Accepted', 'Rejected'].includes(batch.status) ? 'Submitted' : batch.status) : batch.subject
+                        if (!grouped[key]) grouped[key] = []
+                        grouped[key].push(batch)
+                    })
+                    return grouped
+                }, [batches, sortBy, groupBy])).map(([groupKey, groupBatches]) => (
+                    <React.Fragment key={groupKey}>
+                        {groupBy !== 'none' && groupBatches.length > 0 && (
+                            <h2 style={{ fontSize: 18, color: 'var(--text-primary)', margin: '8px 0 0 0', paddingBottom: 8, borderBottom: '1px solid var(--border-subtle)' }}>
+                                {groupKey} <span style={{ color: 'var(--text-tertiary)', fontSize: 14, fontWeight: 400 }}>({groupBatches.length})</span>
+                            </h2>
+                        )}
+                        {groupBatches.map((batch) => (
                     <div className="card" key={batch._id}>
                         <div className="card-body" style={{ padding: '24px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
@@ -139,6 +201,8 @@ const ProfessorBatchesPage = () => {
                         </div>
                     </div>
                 ))}
+                </React.Fragment>
+            ))}
 
                 {loading ? (
                     <>

@@ -5,7 +5,7 @@ import { AdminLayout } from './AdminLayout.jsx'
 import { StatusBadge } from '../../components/StatusBadge.jsx'
 import { EmptyState } from '../../components/SkeletonLoader.jsx'
 import { useToast } from '../../components/Toast.jsx'
-import { ArrowLeft, Clock, Search, Database, Trash2, Users, BarChart3, Info, Plus } from 'lucide-react'
+import { ArrowLeft, Clock, Search, Database, Trash2, Users, BarChart3, Info, Plus, Loader2 } from 'lucide-react'
 
 const API = '/api'
 const getToken = () => localStorage.getItem('adminToken')
@@ -109,7 +109,16 @@ export const AdminExamDetailPage = () => {
     }
 
     if (loading || !exam) {
-        return <AdminLayout><div style={{ padding: 40, textAlign: 'center' }}>Loading exam details...</div></AdminLayout>
+        return (
+            <AdminLayout>
+                <div style={{ height: 'calc(100vh - 80px)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+                        <Loader2 size={32} className="spin" color="var(--brand-primary)" />
+                        <span style={{ fontSize: 14, fontWeight: 500 }}>Loading exam details...</span>
+                    </div>
+                </div>
+            </AdminLayout>
+        );
     }
 
     return (

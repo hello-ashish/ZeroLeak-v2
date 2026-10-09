@@ -83,7 +83,6 @@ export function ZMailProvider({ children }) {
         const BACKEND_URL = import.meta.env.DEV ? "" : "https://zeroleak-v2.onrender.com";
         const socket = socketIO(`${BACKEND_URL}/zmail`, {
             auth: { token },
-            transports: ['websocket', 'polling'],
             reconnection: true,
             reconnectionDelay: 2000,
             reconnectionAttempts: 10,

@@ -150,6 +150,11 @@ export const getAllQuestions = async (req, res) => {
         const usageMap = {};
         usageAgg.forEach(u => { usageMap[String(u._id)] = u.usageCount; });
 
+        const formatString = (str) => {
+            if (!str) return str;
+            return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+        };
+
         // Format all questions (without decrypting sensitive content for Admins)
         const allDecrypted = questions.map((question) => {
             return {
@@ -158,8 +163,8 @@ export const getAllQuestions = async (req, res) => {
                 options: [],
                 correctAnswerIndex: null,
                 difficultyLevel: question.difficultyLevel,
-                subject: question.subject,
-                topic: question.topic,
+                subject: formatString(question.subject),
+                topic: formatString(question.topic),
                 createdBy: question.createdBy,
                 createdAt: question.createdAt,
                 health: {

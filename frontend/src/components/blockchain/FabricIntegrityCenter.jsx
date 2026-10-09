@@ -278,7 +278,7 @@ function VerificationPanel({ token, entityType, setEntityType, entityId, setEnti
                         onChange={e => setEntityType(e.target.value)}
                     >
                         <option value="result">Result</option>
-                        <option value="question">Question</option>
+                        <option value="batch">Batch</option>
                         <option value="exam">Exam</option>
                         <option value="event">Security Event</option>
                     </select>

@@ -11,7 +11,9 @@ export const createExam = async (req, res) => {
             title,
             description,
             duration,
-            questions
+            questions,
+            examinationId,
+            subject
         } = req.body;
 
         if (
@@ -23,6 +25,12 @@ export const createExam = async (req, res) => {
             return res.status(400).json({
                 message:
                     "Title, description, and at least one question are required."
+            });
+        }
+
+        if (!examinationId) {
+            return res.status(400).json({
+                message: "examinationId is required."
             });
         }
 
@@ -103,6 +111,8 @@ export const createExam = async (req, res) => {
             durationMinutes:
                 duration || 60,
             createdBy: req.admin._id,
+            examinationId,
+            subject: subject || "",
             questions,
             questionMerkleRoot
         });

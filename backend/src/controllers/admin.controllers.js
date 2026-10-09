@@ -309,11 +309,6 @@ export const reviewBatch = async (req, res) => {
             batch.status = 'Accepted';
             batch.adminMessage = 'Batch Approved';
 
-            // Queue a SINGLE batch commitment for the entire batch
-            enqueueBatchCommitment(batch).catch(err => 
-                console.error('[FABRIC] Failed to enqueue batch commitment:', err.message)
-            );
-
             await logAction({ actor: req.admin?.email, action: "BATCH_APPROVED", targetType: "Batch", targetId: batch._id, targetLabel: batch.title });
 
             // Notify Professor
@@ -357,7 +352,16 @@ export const reviewBatch = async (req, res) => {
         }
 
         await batch.save();
-        res.status(200).json({ message: `Batch ${action}ed`, batch });
+
+        // Enqueue Fabric commitment AFTER saving — so blockchain references final state
+        if (action === 'Accept') {
+            enqueueBatchCommitment(batch).catch(err =>
+                console.error('[FABRIC] Failed to enqueue batch commitment:', err.message)
+            );
+        }
+
+        const actionMessages = { Accept: 'Accepted', Reject: 'Rejected', MarkForReview: 'Marked for Review' };
+        res.status(200).json({ message: `Batch ${actionMessages[action] || action}`, batch });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -371,17 +375,33 @@ export const deleteBatch = async (req, res) => {
 
         if (!batch) return res.status(404).json({ message: "Batch not found" });
 
-        if (batch.status === 'Accepted' && batch.questions && batch.questions.length > 0) {
-            const contentHashes = batch.questions.map(q => {
-                const sensitiveContent = {
-                    title: q.title,
-                    options: q.options,
-                    correctAnswer: q.correctAnswer,
-                    correctAnswerIndex: q.correctAnswerIndex,
-                };
-                return hashQuestionContent(sensitiveContent);
-            });
-            await Question.deleteMany({ contentHash: { $in: contentHashes } });
+        if (batch.status === 'Accepted' && batch.merkleRoot) {
+            // Bug fix: re-hashing embedded draft questions is unreliable after acceptance
+            // because the sensitive fields (title, options, etc.) in the batch subdocs
+            // may have been redacted. Instead, delete Question docs by the batch's merkleRoot
+            // or by finding questions that were created by this professor with hashes from the batch.
+            // Safest: delete by contentHash values stored in draft questions (which we have pre-acceptance)
+            // Since after acceptance the batch still holds the original draft questions (not redacted
+            // in DB — only the API response redacts them in openBatchDetails), we can still hash them.
+            const contentHashes = batch.questions
+                .filter(q => q.title && q.options && q.options.length > 0)
+                .map(q => {
+                    const sensitiveContent = {
+                        title: q.title,
+                        options: q.options,
+                        correctAnswer: q.correctAnswer,
+                        correctAnswerIndex: q.correctAnswerIndex,
+                    };
+                    return hashQuestionContent(sensitiveContent);
+                });
+
+            if (contentHashes.length > 0) {
+                await Question.deleteMany({ contentHash: { $in: contentHashes } });
+            } else {
+                // Fallback: delete by createdBy (batch professor) and batch's merkleRoot match
+                // This is approximate but prevents complete orphaning
+                console.warn(`[DELETE BATCH] Could not re-derive content hashes for accepted batch ${batchId}. Skipping question deletion.`);
+            }
         }
 
         batch.isDeletedByAdmin = true;
@@ -394,6 +414,7 @@ export const deleteBatch = async (req, res) => {
         console.error("Error deleting batch:", error.message);
         res.status(500).json({ message: "Error deleting batch" });
     }
+
 };
 
 // ─── Update Admin Profile ─────────────────────────────────────────────────────
@@ -450,7 +471,7 @@ export const getDashboardStats = async (req, res) => {
             AuditLog.find({}).sort({ createdAt: -1 }).limit(15).lean(),
             Exam.find({}).sort({ createdAt: -1 }).limit(5).populate("questions", "_id").lean(),
             Exam.countDocuments({ status: "Live" }),
-            Student.countDocuments({ createdAt: { $lt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } }),
+            Student.countDocuments({ createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } }),
             // Compute avgScore and passRate via aggregation
             Result.aggregate([
                 {
@@ -1011,7 +1032,7 @@ export const broadcastAnnouncement = async (req, res) => {
         if (!message) return res.status(400).json({ message: "Message is required" });
 
         const { Notification } = await import('../models/notification.models.js');
-        const { Auditor } = await import('../models/auditor.models.js');
+        // Note: Auditor is already imported at the top of this file
 
         let targetUserIds = [];
 

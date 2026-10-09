@@ -18,10 +18,10 @@ export const createNotification = async ({ userId, userRole, title, message, typ
     }
 };
 
-// Helper function to broadcast to all Admins
+// Helper function to broadcast to all Admins (excludes support members)
 export const notifyAdmins = async ({ title, message, type = "INFO", relatedLink = null }) => {
     try {
-        const admins = await Admin.find({}).select("_id");
+        const admins = await Admin.find({ isSupport: { $ne: true } }).select("_id");
         const notifications = admins.map(admin => ({
             userId: admin._id,
             userRole: "Admin",

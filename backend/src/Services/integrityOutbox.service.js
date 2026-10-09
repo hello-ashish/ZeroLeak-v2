@@ -199,7 +199,7 @@ export async function enqueueResultCommitment(result) {
         totalQuestions: result.totalQuestions,
         status: result.status,
         isTerminated: result.isTerminated,
-        assignedQuestions: (result.assignedQuestions || []).map(q => q?.toString() || q).sort(),
+        assignedQuestions: (result.assignedQuestions || []).map(q => (q && q._id ? q._id.toString() : q?.toString() || q)).sort(),
         createdAt: result.createdAt instanceof Date ? result.createdAt.toISOString() : result.createdAt,
     };
 

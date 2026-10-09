@@ -119,7 +119,7 @@ export const getLiveStudents = async (req, res) => {
 
         res.json({
             sessions: enriched,
-            pagination: { total: enriched.length, page: parseInt(page), limit, totalPages: Math.ceil(enriched.length / limit) }
+            pagination: { total, visibleCount: enriched.length, page: parseInt(page), limit, totalPages: Math.ceil(total / limit) }
         });
     } catch(e) {
         console.error("[PROCTORING] getLiveStudents:", e.message);

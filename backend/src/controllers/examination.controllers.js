@@ -48,8 +48,9 @@ export const createExamination = async (req, res) => {
                     throw new Error(`No questions available in the question bank for subject: ${subject}`);
                 }
 
-                const questionHashes = selectedQuestions.map(q => q.contentHash);
+                // Make sure questionIds match exactly the order of selectedQuestions
                 questionIds = selectedQuestions.map(q => q._id);
+                const questionHashes = selectedQuestions.map(q => q.contentHash);
                 questionMerkleRoot = buildMerkleRoot(questionHashes);
             }
 
@@ -170,6 +171,16 @@ export const deleteExamination = async (req, res) => {
         
         const examination = await Examination.findById(id);
         if (!examination) return res.status(404).json({ message: "Examination not found" });
+
+        // Get all child exam IDs first for cascade cleanup
+        const childExams = await Exam.find({ examinationId: id }).select("_id").lean();
+        const childExamIds = childExams.map(e => e._id);
+
+        // Cascade: delete Results linked to child exams
+        if (childExamIds.length > 0) {
+            const { Result } = await import("../models/result.models.js");
+            await Result.deleteMany({ exam: { $in: childExamIds } });
+        }
 
         // Delete child exams
         await Exam.deleteMany({ examinationId: id });

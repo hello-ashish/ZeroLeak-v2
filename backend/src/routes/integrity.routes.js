@@ -17,7 +17,7 @@ import { Router } from 'express';
 import {
     getFabricStatus,
     verifyResult,
-    verifyQuestion,
+    verifyBatch,
     verifyExam,
     verifySecurityEvent,
     getCommitment,
@@ -42,7 +42,7 @@ router.get('/recent', getRecentCommitments);
 
 // Entity verification
 router.get('/result/:resultId', verifyResult);
-router.get('/question/:questionId', verifyQuestion);
+router.get('/batch/:batchId', verifyBatch);
 router.get('/exam/:examId', verifyExam);
 router.get('/event/:eventId', verifySecurityEvent);
 

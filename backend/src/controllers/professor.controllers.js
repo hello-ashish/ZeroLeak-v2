@@ -210,9 +210,23 @@ export const deleteQuestionFromBatch = async (req, res) => {
 export const submitBatch = async (req, res) => {
     try {
         const { batchId } = req.params
-        const batch = await Batch.findOneAndUpdate({ _id: batchId, createdBy: req.professor._id }, {
-            status: "Submitted" }, {returnDocument: 'after'})
-            
+
+        // Fetch first to validate before updating
+        const existingBatch = await Batch.findOne({ _id: batchId, createdBy: req.professor._id })
+        if (!existingBatch) {
+            return res.status(404).json({ message: "Batch not found." })
+        }
+        if (existingBatch.status !== 'Draft' && existingBatch.status !== 'MarkForReview') {
+            return res.status(400).json({ message: "Only Draft or Review batches can be submitted." })
+        }
+        // Bug #14: Prevent submitting empty batches
+        if (!existingBatch.questions || existingBatch.questions.length === 0) {
+            return res.status(400).json({ message: "Cannot submit an empty batch. Please add at least one question." })
+        }
+
+        existingBatch.status = "Submitted";
+        const batch = await existingBatch.save();
+
         await notifyAdmins({
             title: "New Batch Submitted",
             message: `A new batch "${batch.title}" has been submitted for review.`,

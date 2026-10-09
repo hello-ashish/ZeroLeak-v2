@@ -11,12 +11,13 @@ export default defineConfig({
       '/api': 'http://127.0.0.1:4000',
       '/proctoring': {
         target: 'http://127.0.0.1:4000',
-        ws: true
+        ws: true,
+        changeOrigin: true
       },
       '/socket.io': {
-        // '/api': 'http://localhost:4000',
         target: 'http://127.0.0.1:4000',
-        ws: true
+        ws: true,
+        changeOrigin: true
       }
     }
   },

@@ -40,39 +40,38 @@ export async function verifyResult(resultId) {
 }
 
 
-// Verify a Question
-export async function verifyQuestion(questionId) {
-    const question = await Question.findById(questionId).lean();
-    if (!question) {
-        return _notFound('Question', questionId);
+// Verify a Batch
+export async function verifyBatch(batchId) {
+    const { Batch } = await import('../models/batch.models.js');
+    const batch = await Batch.findById(batchId).lean();
+    if (!batch) {
+        return _notFound('Batch', batchId);
     }
 
-    const entityId = question._id.toString();
+    const entityId = batch._id.toString();
     const version = 1;
-    const commitmentId = fabricService.buildCommitmentId('Question', entityId, version);
+    const commitmentId = fabricService.buildCommitmentId('Batch', entityId, version);
 
-    // FIX: Dynamically decrypt and re-hash the encrypted content to ensure the DB was not tampered with
-    let computedHash;
-    try {
-        const decryptedContent = decryptQuestionContent(question.encryptedContent);
-        computedHash = hashQuestionContent(decryptedContent);
-    } catch (err) {
+    // The dataHash for a batch is its merkleRoot
+    const computedHash = batch.merkleRoot;
+
+    if (!computedHash) {
         return {
             valid: false,
             entityId,
-            entityType: 'Question',
+            entityType: 'Batch',
             commitmentId,
             computedHash: null,
             ledgerHash: null,
-            reason: 'DECRYPTION_FAILED',
-            message: `Failed to decrypt question content: ${err.message}. The database record is likely corrupted.`,
+            reason: 'NO_MERKLE_ROOT',
+            message: `Batch does not have a merkle root computed.`,
             verifiedAt: new Date().toISOString(),
         };
     }
 
     return _verifyAgainstLedger({
         entityId,
-        entityType: 'Question',
+        entityType: 'Batch',
         commitmentId,
         computedHash,
     });

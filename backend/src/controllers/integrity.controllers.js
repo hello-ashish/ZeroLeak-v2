@@ -27,17 +27,17 @@ export const verifyResult = async (req, res) => {
     }
 };
 
-export const verifyQuestion = async (req, res) => {
+export const verifyBatch = async (req, res) => {
     try {
-        const { questionId } = req.params;
-        if (!_isValidObjectId(questionId)) {
-            return res.status(400).json({ message: 'Invalid questionId format.' });
+        const { batchId } = req.params;
+        if (!_isValidObjectId(batchId)) {
+            return res.status(400).json({ message: 'Invalid batchId format.' });
         }
 
-        const result = await verificationService.verifyQuestion(questionId);
+        const result = await verificationService.verifyBatch(batchId);
         return res.status(200).json(result);
     } catch (err) {
-        console.error('[INTEGRITY] Error verifying question:', err.message);
+        console.error('[INTEGRITY] Error verifying batch:', err.message);
         return res.status(500).json({ message: 'Integrity verification failed.', error: err.message });
     }
 };
@@ -120,7 +120,7 @@ export const getRecentCommitments = async (req, res) => {
 export const getOutboxStatus = async (req, res) => {
     try {
         const { entityType, entityId } = req.params;
-        const validTypes = ['Result', 'Question', 'Exam', 'SecurityEvent'];
+        const validTypes = ['Result', 'Batch', 'Exam', 'SecurityEvent'];
         if (!validTypes.includes(entityType)) {
             return res.status(400).json({ message: `Invalid entityType. Must be one of: ${validTypes.join(', ')}` });
         }

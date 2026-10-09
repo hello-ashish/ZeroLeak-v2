@@ -46,7 +46,7 @@ const NAV = [
     }
 ]
 
-export const AuditorLayout = ({ children, openAnomaliesCount = 0 }) => {
+export const AuditorLayout = ({ children, openAnomaliesCount = 0, noPadding = false }) => {
     const [collapsed, setCollapsed] = useState(false)
     const [mobileOpen, setMobileOpen] = useState(false)
     const [showProfile, setShowProfile] = useState(false)

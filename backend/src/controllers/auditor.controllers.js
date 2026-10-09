@@ -88,7 +88,7 @@ export const logoutAuditor = async (req, res) => {
 export const updateAuditorProfile = async (req, res) => {
     try {
         const { name, password, newPassword } = req.body;
-        const auditor = await Auditor.findById(req.user._id); // req.user is set by verifyAuditorJWT
+        const auditor = await Auditor.findById(req.auditor?._id || req.user?._id); // verifyAuditorJWT sets req.auditor; verifyAnyJWT sets req.user
         if (!auditor) return res.status(404).json({ message: "Auditor not found" });
 
         if (password && newPassword) {
