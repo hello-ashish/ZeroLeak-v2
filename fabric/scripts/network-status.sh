@@ -20,7 +20,9 @@ fi
 echo ""
 
 # Check LEDGER_HEIGHT via peer CLI if fabric-samples is available
-FABRIC_SAMPLES_PATH="${FABRIC_SAMPLES_PATH:-${HOME}/fabric-samples}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ZEROLEAK_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+FABRIC_SAMPLES_PATH="${FABRIC_SAMPLES_PATH:-${ZEROLEAK_ROOT}/fabric/infrastructure}"
 PEER_BIN="${FABRIC_SAMPLES_PATH}/bin/peer"
 CHANNEL_NAME="zeroleak-channel"
 CHAINCODE_NAME="zeroleak"

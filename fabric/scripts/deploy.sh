@@ -4,7 +4,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ZEROLEAK_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 CHAINCODE_DIR="${ZEROLEAK_ROOT}/fabric/chaincode/zeroleak-integrity"
 
-FABRIC_SAMPLES_PATH="${FABRIC_SAMPLES_PATH:-/Users/helloashish/Desktop/fabric-learning/fabric-samples}"
+FABRIC_SAMPLES_PATH="${FABRIC_SAMPLES_PATH:-${ZEROLEAK_ROOT}/fabric/infrastructure}"
 TEST_NETWORK_PATH="${FABRIC_SAMPLES_PATH}/test-network"
 CHANNEL_NAME="zeroleak-channel"
 CHAINCODE_NAME="zeroleak"

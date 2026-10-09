@@ -11,10 +11,9 @@ mkdir -p "${OUTPUT_DIR}"
 OUTPUT_JSON="${OUTPUT_DIR}/block_${BLOCK_NUM}.json"
 TMP_PB="${OUTPUT_DIR}/.block_${BLOCK_NUM}.pb"
 
-FABRIC_SAMPLES_PATH="${FABRIC_SAMPLES_PATH:-${HOME}/Desktop/fabric-learning/fabric-samples}"
-if [ ! -d "${FABRIC_SAMPLES_PATH}" ]; then
-    FABRIC_SAMPLES_PATH="${HOME}/fabric-samples"
-fi
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ZEROLEAK_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+FABRIC_SAMPLES_PATH="${FABRIC_SAMPLES_PATH:-${ZEROLEAK_ROOT}/fabric/infrastructure}"
 
 if [ ! -d "${FABRIC_SAMPLES_PATH}" ]; then
     echo "❌ fabric-samples directory not found."
