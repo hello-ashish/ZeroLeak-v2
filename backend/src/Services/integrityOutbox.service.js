@@ -30,10 +30,8 @@ export async function enqueueCommitment({
     previousCommitmentHash = '',
     version = 1,
 }) {
-    const cfg = { enabled: process.env.FABRIC_ENABLED === 'true' };
-    if (!cfg.enabled) {
-        return null;
-    }
+    // Remove the early return so that records are durably queued in MongoDB 
+    // even if Fabric is disabled. This allows a controlled backfill later.
 
     try {
         const record = await IntegrityOutbox.create({
@@ -189,7 +187,6 @@ async function _processRecord(record) {
 
 // Application-level helpers
 export async function enqueueResultCommitment(result) {
-    if (process.env.FABRIC_ENABLED !== 'true') return null;
 
     const entityId = result._id.toString();
     const version = 1;
@@ -221,7 +218,6 @@ export async function enqueueResultCommitment(result) {
 }
 
 export async function enqueueQuestionCommitment(question, version = 1, previousHash = '') {
-    if (process.env.FABRIC_ENABLED !== 'true') return null;
 
     const entityId = question._id.toString();
     const commitmentId = fabricService.buildCommitmentId('Question', entityId, version);
@@ -238,7 +234,6 @@ export async function enqueueQuestionCommitment(question, version = 1, previousH
 }
 
 export async function enqueueExamCommitment(exam, version = 1, previousHash = '') {
-    if (process.env.FABRIC_ENABLED !== 'true') return null;
 
     const entityId = exam._id.toString();
     const commitmentId = fabricService.buildCommitmentId('Exam', entityId, version);

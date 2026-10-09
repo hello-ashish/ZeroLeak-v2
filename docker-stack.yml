@@ -4,8 +4,8 @@ services:
   mongodb:
     image: mongo:7
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME:-zeroleak}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-zeroleak_secret}
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
       MONGO_INITDB_DATABASE: zeroleak
     volumes:
       - mongodb_data:/data/db
@@ -18,7 +18,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
     networks:
@@ -34,8 +34,8 @@ services:
       - ./backend/.env
     environment:
       - NODE_ENV=production
-      - MONGODB_URI=mongodb://${MONGO_USERNAME:-zeroleak}:${MONGO_PASSWORD:-zeroleak_secret}@mongodb:27017/zeroleak?authSource=admin
-      - REDIS_URL=redis://redis:6379
+      - MONGODB_URI=mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@mongodb:27017/zeroleak?authSource=admin
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
     networks:
       - zeroleak-network
     deploy:

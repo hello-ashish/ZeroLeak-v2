@@ -3,6 +3,8 @@ import { IntegrityOutbox } from '../models/integrityOutbox.models.js';
 import { Result } from '../models/result.models.js';
 import { Question } from '../models/question.models.js';
 import { Exam } from '../models/exam.models.js';
+import { decryptQuestionContent, hashQuestionContent } from './crypto.service.js';
+import { buildMerkleRoot } from './merkle.service.js';
 
 // Verify a Result
 export async function verifyResult(resultId) {
@@ -49,8 +51,24 @@ export async function verifyQuestion(questionId) {
     const version = 1;
     const commitmentId = fabricService.buildCommitmentId('Question', entityId, version);
 
-    // For questions, the contentHash is already the canonical SHA-256 computed on creation
-    const computedHash = question.contentHash;
+    // FIX: Dynamically decrypt and re-hash the encrypted content to ensure the DB was not tampered with
+    let computedHash;
+    try {
+        const decryptedContent = decryptQuestionContent(question.encryptedContent);
+        computedHash = hashQuestionContent(decryptedContent);
+    } catch (err) {
+        return {
+            valid: false,
+            entityId,
+            entityType: 'Question',
+            commitmentId,
+            computedHash: null,
+            ledgerHash: null,
+            reason: 'DECRYPTION_FAILED',
+            message: `Failed to decrypt question content: ${err.message}. The database record is likely corrupted.`,
+            verifiedAt: new Date().toISOString(),
+        };
+    }
 
     return _verifyAgainstLedger({
         entityId,
@@ -63,7 +81,7 @@ export async function verifyQuestion(questionId) {
 
 // Verify an Exam
 export async function verifyExam(examId) {
-    const exam = await Exam.findById(examId).lean();
+    const exam = await Exam.findById(examId).populate('questions').lean();
     if (!exam) {
         return _notFound('Exam', examId);
     }
@@ -72,12 +90,37 @@ export async function verifyExam(examId) {
     const version = 1;
     const commitmentId = fabricService.buildCommitmentId('Exam', entityId, version);
 
+    // FIX: Recompute the Merkle root dynamically from the actually assigned questions
+    let dynamicMerkleRoot = '';
+    if (exam.mode !== 'Zeroleak') {
+        const questionHashes = [];
+        for (const question of (exam.questions || [])) {
+            try {
+                const decryptedContent = decryptQuestionContent(question.encryptedContent);
+                questionHashes.push(hashQuestionContent(decryptedContent));
+            } catch (err) {
+                return {
+                    valid: false,
+                    entityId,
+                    entityType: 'Exam',
+                    commitmentId,
+                    computedHash: null,
+                    ledgerHash: null,
+                    reason: 'DECRYPTION_FAILED',
+                    message: `Failed to decrypt an assigned question (${question._id}): ${err.message}. Exam is compromised.`,
+                    verifiedAt: new Date().toISOString(),
+                };
+            }
+        }
+        dynamicMerkleRoot = buildMerkleRoot(questionHashes);
+    }
+
     const canonical = {
         _id: entityId,
         title: exam.title,
         subject: exam.subject,
         mode: exam.mode,
-        questionMerkleRoot: exam.questionMerkleRoot || '',
+        questionMerkleRoot: dynamicMerkleRoot,
         durationMinutes: exam.durationMinutes,
         totalMarks: exam.totalMarks,
         scheduledAt: exam.scheduledAt instanceof Date ? exam.scheduledAt.toISOString() : exam.scheduledAt,

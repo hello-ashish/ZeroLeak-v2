@@ -18,9 +18,11 @@ import notificationRouter from "./notification.routes.js";
 
 const router = Router();
 
+import { loginRateLimit } from "../middlewares/rateLimit.middleware.js";
+
 // ─── Public Routes ────────────────────────────────────────────────────────────
 // Note: Auditor registration is moved to admin.routes.js
-router.route("/login").post(loginAuditor);
+router.route("/login").post(loginRateLimit(), loginAuditor);
 router.route("/logout").post(verifyAuditorJWT, logoutAuditor);
 
 // ─── Protected Routes (Read-Only & Auditor Specific) ──────────────────────────

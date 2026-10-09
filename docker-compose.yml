@@ -3,11 +3,9 @@ services:
     image: mongo:7
     container_name: zeroleak-mongodb
     restart: unless-stopped
-    ports:
-      - "27017:27017"
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME:-zeroleak}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-zeroleak_secret}
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
       MONGO_INITDB_DATABASE: zeroleak
     volumes:
       - mongodb_data:/data/db
@@ -23,15 +21,13 @@ services:
     image: redis:7-alpine
     container_name: zeroleak-redis
     restart: unless-stopped
-    ports:
-      - "6379:6379"
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
     networks:
       - zeroleak-network
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
+      test: [ "CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -48,8 +44,8 @@ services:
       - ./backend/.env
     environment:
       - NODE_ENV=development
-      # - MONGODB_URI=mongodb://${MONGO_USERNAME:-zeroleak}:${MONGO_PASSWORD:-zeroleak_secret}@mongodb:27017/zeroleak?authSource=admin
-      - REDIS_URL=redis://redis:6379
+      # - MONGODB_URI=mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@mongodb:27017/zeroleak?authSource=admin
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
     volumes:
       - ./backend:/app
       - /app/node_modules
@@ -93,8 +89,8 @@ services:
       - ./backend/.env
     environment:
       - NODE_ENV=production
-      - MONGODB_URI=mongodb://${MONGO_USERNAME:-zeroleak}:${MONGO_PASSWORD:-zeroleak_secret}@mongodb:27017/zeroleak?authSource=admin
-      - REDIS_URL=redis://redis:6379
+      - MONGODB_URI=mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@mongodb:27017/zeroleak?authSource=admin
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
     depends_on:
       mongodb:
         condition: service_healthy

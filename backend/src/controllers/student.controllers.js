@@ -562,7 +562,8 @@ export const submitExamResult = async (req, res) => {
             decryptedQuestions.push({
                 id: String(question._id),
                 correctAnswerIndex:
-                    decryptedContent.correctAnswerIndex
+                    decryptedContent.correctAnswerIndex,
+                optionsLength: decryptedContent.options ? decryptedContent.options.length : 0
             })
         }
 
@@ -586,21 +587,44 @@ export const submitExamResult = async (req, res) => {
             }
         }
 
-        // Create a lookup map for submitted answers
-        const answerMap = new Map()
+        // Create a lookup map for submitted answers with strict validation
+        const validQuestionIds = new Map();
+        for (const dq of decryptedQuestions) {
+            validQuestionIds.set(dq.id, dq.optionsLength);
+        }
+
+        const answerMap = new Map();
 
         for (const answer of answers) {
-            if (
-                !answer ||
-                !answer.questionId
-            ) {
-                continue
+            if (!answer || !answer.questionId) {
+                continue;
             }
 
-            answerMap.set(
-                String(answer.questionId),
-                answer.selectedOptionIndex
-            )
+            const qId = String(answer.questionId);
+
+            // 1. Validate that the question belongs to this exam attempt
+            if (!validQuestionIds.has(qId)) {
+                return res.status(400).json({
+                    message: `Invalid question submitted: ${qId} does not belong to this exam attempt.`
+                });
+            }
+
+            // 2. Treat absent or null values as unanswered (skip)
+            if (answer.selectedOptionIndex === null || answer.selectedOptionIndex === undefined || answer.selectedOptionIndex === '') {
+                continue;
+            }
+
+            // 3. Reject any selected answer that is not an integer within the valid option range
+            const selected = Number(answer.selectedOptionIndex);
+            const numOptions = validQuestionIds.get(qId);
+
+            if (!Number.isInteger(selected) || selected < 0 || selected >= numOptions) {
+                return res.status(400).json({
+                    message: `Invalid option index provided for question ${qId}.`
+                });
+            }
+
+            answerMap.set(qId, selected);
         }
 
         // Calculate score on the server

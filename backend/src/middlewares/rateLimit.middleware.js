@@ -50,3 +50,54 @@ export function rateLimit(keyPrefix, maxRequests, windowSeconds = 60) {
         }
     }
 }
+
+export function loginRateLimit() {
+    return async (req, res, next) => {
+        try {
+            const identifier = req.body.username || req.body.email || req.body.registrationNumber || "unknown";
+            const ip = req.ip || req.connection?.remoteAddress || "unknown";
+
+            const ipKey = `ratelimit:login:ip:${ip}`;
+            const userKey = `ratelimit:login:user:${identifier}`;
+
+            if (!redisClient.isOpen) {
+                console.warn("[RATE LIMIT] Redis not connected, skipping login rate limit check");
+                return next();
+            }
+
+            const maxIpAttempts = 20; // 20 attempts per IP per minute
+            const maxUserAttempts = 10; // 10 attempts per account per minute
+
+            const ipAttempts = await redisClient.incr(ipKey);
+            if (ipAttempts === 1) await redisClient.expire(ipKey, 60);
+
+            const userAttempts = await redisClient.incr(userKey);
+            if (userAttempts === 1) await redisClient.expire(userKey, 60);
+
+            let excess = 0;
+            if (ipAttempts > maxIpAttempts) excess = Math.max(excess, ipAttempts - maxIpAttempts);
+            if (userAttempts > maxUserAttempts) excess = Math.max(excess, userAttempts - maxUserAttempts);
+
+            if (excess > 0) {
+                // Progressive backoff: doubling every excess attempt, up to 15 minutes max
+                // so we don't permanently lock out a legitimate user.
+                const penaltyWindow = Math.min(60 * Math.pow(2, excess - 1), 900);
+
+                if (ipAttempts > maxIpAttempts) await redisClient.expire(ipKey, penaltyWindow);
+                if (userAttempts > maxUserAttempts) await redisClient.expire(userKey, penaltyWindow);
+
+                console.warn(`[RATE LIMIT] Login blocked. IP: ${ip}, User: ${identifier}, Penalty: ${penaltyWindow}s`);
+
+                return res.status(429).json({
+                    message: "Too many login attempts. Please try again later.",
+                    retryAfter: penaltyWindow,
+                });
+            }
+
+            next();
+        } catch (error) {
+            console.error("[RATE LIMIT] Error in loginRateLimit:", error.message);
+            next();
+        }
+    }
+}

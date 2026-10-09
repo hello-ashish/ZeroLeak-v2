@@ -28,8 +28,10 @@ import * as supportController from "../controllers/support.controllers.js";
 
 const router = Router();
 
+import { loginRateLimit } from "../middlewares/rateLimit.middleware.js";
+
 // ── Auth ────────────────────────────────────────────────────────────────────────
-router.post("/login", supportController.supportLogin);
+router.post("/login", loginRateLimit(), supportController.supportLogin);
 
 // ── Public constants (any authenticated user) ──────────────────────────────────
 router.get("/constants", verifyAnyJWT, supportController.getConstants);

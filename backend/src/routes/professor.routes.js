@@ -4,12 +4,14 @@ import { createBatch, getMyBatches, addQuestionToBatch, bulkAddQuestionsToBatch,
 import { verifyProfessorJWT } from "../middlewares/auth.middleware.js"
 import notificationRouter from "./notification.routes.js"
 
+import { loginRateLimit } from "../middlewares/rateLimit.middleware.js"
+
 const router = Router()
 
 router.use("/notifications", verifyProfessorJWT, notificationRouter)
 
 // route to login professor
-router.route("/login").post(loginProfessor)
+router.route("/login").post(loginRateLimit(), loginProfessor)
 router.route("/logout").post(verifyProfessorJWT, logoutProfessor)
 
 router.route("/profile").put(verifyProfessorJWT, updateProfessorProfile)

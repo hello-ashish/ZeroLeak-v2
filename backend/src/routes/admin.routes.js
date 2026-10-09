@@ -76,7 +76,9 @@ router.use("/notifications", verifyAdminJWT, notificationRouter)
  */
 router.route("/register").post(registerAdmin)
 
-router.route("/login").post(loginAdmin)
+import { loginRateLimit } from "../middlewares/rateLimit.middleware.js"
+
+router.route("/login").post(loginRateLimit(), loginAdmin)
 router.route("/logout").post(verifyAdminJWT, logoutAdmin)
 
 // ─── Protected Routes ─────────────────────────────────────────────────────────

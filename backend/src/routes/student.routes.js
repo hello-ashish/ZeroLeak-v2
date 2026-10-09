@@ -3,12 +3,14 @@ import { registerStudent, loginStudent, logoutStudent, getAvailableExams, getAll
 import { verifyStudentJWT, verifyAdminJWT } from "../middlewares/auth.middleware.js";
 import notificationRouter from "./notification.routes.js";
 
+import { loginRateLimit } from "../middlewares/rateLimit.middleware.js";
+
 const router = Router();
 
 router.use("/notifications", verifyStudentJWT, notificationRouter);
 
 // Public Routes
-router.route("/login").post(loginStudent);
+router.route("/login").post(loginRateLimit(), loginStudent);
 router.route("/logout").post(verifyStudentJWT, logoutStudent);
 
 // Admin protected route for registering students
