@@ -2,8 +2,8 @@ import mongoose from 'mongoose';
 
 const integrityOutboxSchema = new mongoose.Schema({
     commitmentId: { type: String, required: true, unique: true },
-    eventType: { type: String, enum: ['RESULT_COMMITMENT', 'QUESTION_COMMITMENT', 'EXAM_COMMITMENT', 'SECURITY_EVENT'], required: true },
-    entityType: { type: String, enum: ['Result', 'Question', 'Exam', 'SecurityEvent'], required: true },
+    eventType: { type: String, enum: ['RESULT_COMMITMENT', 'QUESTION_COMMITMENT', 'EXAM_COMMITMENT', 'SECURITY_EVENT', 'BATCH_COMMITMENT'], required: true },
+    entityType: { type: String, enum: ['Result', 'Question', 'Exam', 'SecurityEvent', 'Batch'], required: true },
     entityId: { type: String, required: true },
     dataHash: { type: String, required: true, match: /^[a-f0-9]{64}$/ },
     previousCommitmentHash: { type: String, default: '' },

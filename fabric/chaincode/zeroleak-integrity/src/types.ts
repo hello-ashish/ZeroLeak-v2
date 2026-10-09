@@ -2,13 +2,15 @@ export type EventType =
     | 'RESULT_COMMITMENT'
     | 'QUESTION_COMMITMENT'
     | 'EXAM_COMMITMENT'
-    | 'SECURITY_EVENT';
+    | 'SECURITY_EVENT'
+    | 'BATCH_COMMITMENT';
 
 export type EntityType =
     | 'Result'
     | 'Question'
     | 'Exam'
-    | 'SecurityEvent';
+    | 'SecurityEvent'
+    | 'Batch';
 
 
 export interface IntegrityCommitment {
@@ -30,6 +32,7 @@ export const VALID_EVENT_TYPES: readonly EventType[] = [
     'QUESTION_COMMITMENT',
     'EXAM_COMMITMENT',
     'SECURITY_EVENT',
+    'BATCH_COMMITMENT',
 ];
 
 export const VALID_ENTITY_TYPES: readonly EntityType[] = [
@@ -37,10 +40,11 @@ export const VALID_ENTITY_TYPES: readonly EntityType[] = [
     'Question',
     'Exam',
     'SecurityEvent',
+    'Batch',
 ];
 
 export const SHA256_PATTERN = /^[a-f0-9]{64}$/;
 
-export const COMMITMENT_ID_PATTERN = /^(result|question|exam|securityevent)_[a-f0-9]{24}_v[1-9][0-9]*$/;
+export const COMMITMENT_ID_PATTERN = /^(result|question|exam|securityevent|batch)_[a-f0-9]{24}_v[1-9][0-9]*$/;
 
 export const OBJECT_ID_PATTERN = /^[a-f0-9]{24}$/;

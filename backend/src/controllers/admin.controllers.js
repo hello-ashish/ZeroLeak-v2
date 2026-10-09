@@ -15,6 +15,7 @@ import {
     hashQuestionContent,
 } from "../Services/crypto.service.js";
 import { createNotification } from "./notification.controllers.js";
+import { enqueueBatchCommitment } from "../Services/integrityOutbox.service.js";
 
 // ─── Audit Log Helper ────────────────────────────────────────────────────────
 export const logAction = async ({ actor, actorRole = "Admin", action, targetType, targetId, targetLabel, details, status = "success" }) => {
@@ -307,6 +308,12 @@ export const reviewBatch = async (req, res) => {
             batch.merkleRoot = merkleRoot;
             batch.status = 'Accepted';
             batch.adminMessage = 'Batch Approved';
+
+            // Queue a SINGLE batch commitment for the entire batch
+            enqueueBatchCommitment(batch).catch(err => 
+                console.error('[FABRIC] Failed to enqueue batch commitment:', err.message)
+            );
+
             await logAction({ actor: req.admin?.email, action: "BATCH_APPROVED", targetType: "Batch", targetId: batch._id, targetLabel: batch.title });
 
             // Notify Professor

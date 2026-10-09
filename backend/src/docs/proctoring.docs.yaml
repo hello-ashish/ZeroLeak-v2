@@ -12,7 +12,6 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
   /api/proctoring/alerts:
     get:
       summary: GET /alerts
@@ -26,7 +25,6 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
   /api/proctoring/active-exams:
     get:
       summary: GET /active-exams
@@ -40,7 +38,6 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
   /api/proctoring/sessions:
     get:
       summary: GET /sessions
@@ -54,7 +51,6 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
   /api/proctoring/sessions/{sessionId}:
     get:
       summary: GET /sessions/:sessionId
@@ -74,7 +70,6 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
   /api/proctoring/sessions/{sessionId}/incidents:
     get:
       summary: GET /sessions/:sessionId/incidents
@@ -94,7 +89,6 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
   /api/proctoring/sessions/{sessionId}/ai-events:
     get:
       summary: GET /sessions/:sessionId/ai-events
@@ -114,7 +108,6 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
   /api/proctoring/sessions/{sessionId}/end:
     post:
       summary: POST /sessions/:sessionId/end
@@ -134,7 +127,6 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
   /api/proctoring/exams/{examId}/sessions:
     get:
       summary: GET /exams/:examId/sessions
@@ -154,7 +146,6 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
   /api/proctoring/students/{studentId}/incidents:
     get:
       summary: GET /students/:studentId/incidents
@@ -174,7 +165,6 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
   /api/proctoring/incidents:
     get:
       summary: GET /incidents
@@ -188,4 +178,3 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-

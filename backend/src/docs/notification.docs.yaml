@@ -12,7 +12,6 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
   /api/notifications/{id}/read:
     patch:
       summary: PATCH /:id/read
@@ -32,7 +31,6 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
   /api/notifications/read-all:
     patch:
       summary: PATCH /read-all
@@ -46,4 +44,3 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-

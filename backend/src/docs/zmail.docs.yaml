@@ -12,7 +12,6 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
   /api/zmail/counts:
     get:
       summary: GET /counts
@@ -26,7 +25,6 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
   /api/zmail/inbox:
     get:
       summary: GET /inbox
@@ -40,7 +38,6 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
   /api/zmail/sent:
     get:
       summary: GET /sent
@@ -54,7 +51,6 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
   /api/zmail/drafts:
     get:
       summary: GET /drafts
@@ -68,7 +64,18 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
+    post:
+      summary: POST /drafts
+      tags: [Zmail]
+      responses:
+        '200':
+          description: Successful operation
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server error
   /api/zmail/starred:
     get:
       summary: GET /starred
@@ -82,7 +89,6 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
   /api/zmail/important:
     get:
       summary: GET /important
@@ -96,7 +102,6 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
   /api/zmail/archive:
     get:
       summary: GET /archive
@@ -110,7 +115,6 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
   /api/zmail/trash:
     get:
       summary: GET /trash
@@ -124,7 +128,6 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
   /api/zmail/all:
     get:
       summary: GET /all
@@ -138,7 +141,6 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
   /api/zmail/messages:
     post:
       summary: POST /messages
@@ -152,7 +154,6 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
   /api/zmail/messages/{messageId}:
     get:
       summary: GET /messages/:messageId
@@ -172,7 +173,24 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
+    delete:
+      summary: DELETE /messages/:messageId
+      tags: [Zmail]
+      parameters:
+        - in: path
+          name: messageId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful operation
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server error
   /api/zmail/messages/{messageId}/reply:
     post:
       summary: POST /messages/:messageId/reply
@@ -192,7 +210,6 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
   /api/zmail/messages/{messageId}/forward:
     post:
       summary: POST /messages/:messageId/forward
@@ -212,7 +229,6 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
   /api/zmail/messages/{messageId}/read:
     patch:
       summary: PATCH /messages/:messageId/read
@@ -232,7 +248,6 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
   /api/zmail/messages/{messageId}/unread:
     patch:
       summary: PATCH /messages/:messageId/unread
@@ -252,7 +267,6 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
   /api/zmail/messages/{messageId}/star:
     patch:
       summary: PATCH /messages/:messageId/star
@@ -272,7 +286,6 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
   /api/zmail/messages/{messageId}/important:
     patch:
       summary: PATCH /messages/:messageId/important
@@ -292,7 +305,6 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
   /api/zmail/messages/{messageId}/archive:
     patch:
       summary: PATCH /messages/:messageId/archive
@@ -312,7 +324,6 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
   /api/zmail/messages/{messageId}/trash:
     patch:
       summary: PATCH /messages/:messageId/trash
@@ -332,7 +343,6 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
   /api/zmail/messages/{messageId}/restore:
     patch:
       summary: PATCH /messages/:messageId/restore
@@ -352,17 +362,10 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
-  /api/zmail/messages/{messageId}:
-    delete:
-      summary: DELETE /messages/:messageId
+  /api/zmail/messages/bulk/action:
+    patch:
+      summary: PATCH /messages/bulk/action
       tags: [Zmail]
-      parameters:
-        - in: path
-          name: messageId
-          required: true
-          schema:
-            type: string
       responses:
         '200':
           description: Successful operation
@@ -372,7 +375,6 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
   /api/zmail/messages/{messageId}/attachments/{attachmentId}:
     get:
       summary: GET /messages/:messageId/attachments/:attachmentId
@@ -397,7 +399,6 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
   /api/zmail/threads/{threadId}:
     get:
       summary: GET /threads/:threadId
@@ -417,7 +418,6 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
   /api/zmail/threads/{threadId}/read:
     patch:
       summary: PATCH /threads/:threadId/read
@@ -437,7 +437,6 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
   /api/zmail/trash/empty:
     delete:
       summary: DELETE /trash/empty
@@ -451,21 +450,6 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
-  /api/zmail/drafts:
-    post:
-      summary: POST /drafts
-      tags: [Zmail]
-      responses:
-        '200':
-          description: Successful operation
-        '400':
-          description: Bad request
-        '401':
-          description: Unauthorized
-        '500':
-          description: Server error
-
   /api/zmail/drafts/{draftId}:
     get:
       summary: GET /drafts/:draftId
@@ -485,8 +469,6 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
-  /api/zmail/drafts/{draftId}:
     patch:
       summary: PATCH /drafts/:draftId
       tags: [Zmail]
@@ -505,7 +487,24 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
+    delete:
+      summary: DELETE /drafts/:draftId
+      tags: [Zmail]
+      parameters:
+        - in: path
+          name: draftId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful operation
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server error
   /api/zmail/drafts/{draftId}/send:
     post:
       summary: POST /drafts/:draftId/send
@@ -525,27 +524,6 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
-  /api/zmail/drafts/{draftId}:
-    delete:
-      summary: DELETE /drafts/:draftId
-      tags: [Zmail]
-      parameters:
-        - in: path
-          name: draftId
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Successful operation
-        '400':
-          description: Bad request
-        '401':
-          description: Unauthorized
-        '500':
-          description: Server error
-
   /api/zmail/search:
     get:
       summary: GET /search
@@ -559,7 +537,6 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
   /api/zmail/users/search:
     get:
       summary: GET /users/search
@@ -573,7 +550,6 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
   /api/zmail/attachments/upload:
     post:
       summary: POST /attachments/upload
@@ -587,7 +563,6 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-
   /api/zmail/admin/backfill:
     post:
       summary: POST /admin/backfill
@@ -601,4 +576,3 @@ paths:
           description: Unauthorized
         '500':
           description: Server error
-

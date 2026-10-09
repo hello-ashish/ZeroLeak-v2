@@ -263,3 +263,19 @@ export async function enqueueExamCommitment(exam, version = 1, previousHash = ''
         version,
     });
 }
+
+export async function enqueueBatchCommitment(batch, version = 1, previousHash = '') {
+    const entityId = batch._id.toString();
+    const commitmentId = fabricService.buildCommitmentId('Batch', entityId, version);
+
+    // The dataHash for a batch is simply its Merkle Root which encapsulates all questions
+    return enqueueCommitment({
+        commitmentId,
+        eventType: 'BATCH_COMMITMENT',
+        entityType: 'Batch',
+        entityId,
+        dataHash: batch.merkleRoot,
+        previousCommitmentHash: previousHash,
+        version,
+    });
+}
