@@ -29,15 +29,15 @@ export default function BlockchainCenter({ token }) {
                     </div>
 
                     {/* Section switcher */}
-                    <div className="bc-section-tabs">
+                    <div className="bc-section-tabs" style={{ display: 'flex', gap: '8px' }}>
                         <button
-                            className={`bc-section-tab ${activeSection === 'fabric' ? 'bc-section-tab-active' : ''}`}
+                            className={`btn ${activeSection === 'fabric' ? 'btn-primary' : 'btn-secondary'}`}
                             onClick={() => setActiveSection('fabric')}
                         >
                             Fabric Integrity Center
                         </button>
                         <button
-                            className={`bc-section-tab ${activeSection === 'mock' ? 'bc-section-tab-active' : ''}`}
+                            className={`btn ${activeSection === 'mock' ? 'btn-primary' : 'btn-secondary'}`}
                             onClick={() => setActiveSection('mock')}
                         >
                             Mock Lab

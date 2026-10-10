@@ -168,3 +168,20 @@ export const getLedgerHeight = async (req, res) => {
 function _isValidObjectId(id) {
     return /^[a-f0-9]{24}$/.test(id);
 }
+
+// ─── GET /api/integrity/alerts ───────────────────────────────────────────────
+export const getIntegrityAlerts = async (req, res) => {
+    try {
+        const { Notification } = await import('../models/notification.models.js');
+        const userId = req.admin?._id || req.auditor?._id;
+        const alerts = await Notification.find({
+            userId,
+            title: '⚠️ DB TAMPERING DETECTED'
+        }).sort({ createdAt: -1 }).limit(10).lean();
+        
+        res.json({ alerts });
+    } catch (e) {
+        console.error("[INTEGRITY] Error getting alerts:", e.message);
+        res.status(500).json({ message: "Failed to fetch integrity alerts" });
+    }
+};

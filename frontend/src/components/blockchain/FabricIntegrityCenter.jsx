@@ -18,7 +18,7 @@ import {
     Activity, Database, Hash, Clock, RefreshCw,
     CheckCircle, XCircle, AlertTriangle, Loader2,
     ChevronRight, Eye, Network, Layers, Box,
-    AlertCircle, Info
+    AlertCircle, Info, BellRing
 } from 'lucide-react';
 import './FabricIntegrityCenter.css';
 
@@ -380,6 +380,32 @@ function VerificationPanel({ token, entityType, setEntityType, entityId, setEnti
 }
 
 // ---------------------------------------------------------------------------
+// Alerts Panel
+// ---------------------------------------------------------------------------
+function AlertsPanel({ alerts }) {
+    if (!alerts || alerts.length === 0) return null;
+    return (
+        <div className="fi-card fi-alerts-card" style={{ borderColor: 'var(--color-danger)', background: 'var(--bg-danger-light)', marginBottom: '24px' }}>
+            <div className="fi-card-header">
+                <div className="fi-card-title-row" style={{ color: 'var(--color-danger)' }}>
+                    <BellRing size={20} className="fi-icon-danger" />
+                    <h3>Automated Tampering Detections</h3>
+                </div>
+            </div>
+            <div className="fi-card-body">
+                {alerts.map((alert, i) => (
+                    <div key={i} className="fi-notice fi-notice-danger" style={{ marginBottom: 8, display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+                        <div style={{ fontWeight: 600 }}><AlertTriangle size={14} style={{ display: 'inline', marginRight: 6 }}/> {alert.title}</div>
+                        <div style={{ fontSize: '13px' }}>{alert.message}</div>
+                        <div style={{ fontSize: '12px', opacity: 0.8, marginTop: 4 }}>{new Date(alert.createdAt).toLocaleString()}</div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
 // Main Component
 // ---------------------------------------------------------------------------
 export default function FabricIntegrityCenter({ token }) {
@@ -433,9 +459,21 @@ export default function FabricIntegrityCenter({ token }) {
         }
     }, [token]);
 
+    const [alerts, setAlerts] = useState([]);
+    
+    const loadAlerts = useCallback(async () => {
+        try {
+            const data = await apiFetch('/alerts', token);
+            setAlerts(data.alerts || []);
+        } catch (err) {
+            console.error('[FabricIntegrityCenter] Failed to load alerts:', err.message);
+        }
+    }, [token]);
+
     useEffect(() => {
         loadStatus();
-    }, [loadStatus]);
+        loadAlerts();
+    }, [loadStatus, loadAlerts]);
 
     useEffect(() => {
         if (activeTab === 'commitments') {
@@ -476,12 +514,14 @@ export default function FabricIntegrityCenter({ token }) {
                 </div>
             </div>
 
+            <AlertsPanel alerts={alerts} />
+
             {/* Tabs */}
-            <div className="fi-tabs">
+            <div className="fi-tabs" style={{ display: 'flex', gap: '12px', marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid var(--border-default)' }}>
                 {tabs.map(tab => (
                     <button
                         key={tab.id}
-                        className={`fi-tab ${activeTab === tab.id ? 'fi-tab-active' : ''}`}
+                        className={`btn ${activeTab === tab.id ? 'btn-primary' : 'btn-secondary'}`}
                         onClick={() => setActiveTab(tab.id)}
                     >
                         {tab.icon} {tab.label}

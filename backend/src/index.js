@@ -28,6 +28,9 @@ connectDB()
         const { startIntegrityOutboxWorker } = await import("./Services/integrityOutbox.service.js");
         startIntegrityOutboxWorker();
 
+        const { startIntegrityWatcher } = await import("./Services/integrityWatcher.service.js");
+        startIntegrityWatcher();
+
         const { startExamExpirationWorker } = await import("./Services/examExpiration.service.js");
         startExamExpirationWorker();
         console.log("ZeroLeak background workers initialized.");

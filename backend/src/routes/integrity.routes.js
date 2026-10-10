@@ -26,6 +26,7 @@ import {
     getOutboxStatus,
     getPendingOutbox,
     getLedgerHeight,
+    getIntegrityAlerts,
 } from '../controllers/integrity.controllers.js';
 import { verifyAdminOrAuditorJWT } from '../middlewares/auth.middleware.js';
 
@@ -39,6 +40,7 @@ router.use(verifyAdminOrAuditorJWT);
 router.get('/fabric-status', getFabricStatus);
 router.get('/ledger-height', getLedgerHeight);
 router.get('/recent', getRecentCommitments);
+router.get('/alerts', getIntegrityAlerts);
 
 // Entity verification
 router.get('/result/:resultId', verifyResult);
