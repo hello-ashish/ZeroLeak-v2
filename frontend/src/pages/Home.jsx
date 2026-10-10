@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ShieldCheck, BrainCircuit, Users, BookOpen, GraduationCap, Settings, ShieldAlert, ChevronRight, Activity, AlertCircle, Sun, Moon } from 'lucide-react';
-import { HeaderThemeToggle } from './components/HeaderThemeToggle.jsx';
+import { HeaderThemeToggle } from '../components/HeaderThemeToggle.jsx';
 import './Home.css';
 
 const Home = () => {

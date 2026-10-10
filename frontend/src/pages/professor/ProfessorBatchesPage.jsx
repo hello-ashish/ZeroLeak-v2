@@ -71,7 +71,6 @@ const ProfessorBatchesPage = () => {
                             <option value="status">Sort: Status</option>
                         </select>
                         <select className="input" value={groupBy} onChange={e => setGroupBy(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border-default)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: 14, cursor: 'pointer' }}>
-                            <option value="none">Group By: None</option>
                             <option value="status">Group By: Status</option>
                             <option value="subject">Group By: Subject</option>
                         </select>
@@ -82,7 +81,7 @@ const ProfessorBatchesPage = () => {
             <div style={{ display: 'grid', gap: 24 }}>
                 {useMemo(() => {
                     let sorted = [...batches]
-                    
+
                     sorted.sort((a, b) => {
                         if (sortBy === 'date-desc') return new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
                         if (sortBy === 'date-asc') return new Date(a.createdAt || 0) - new Date(b.createdAt || 0)
@@ -105,7 +104,7 @@ const ProfessorBatchesPage = () => {
                     return grouped
                 }, [batches, sortBy, groupBy]) && Object.entries(useMemo(() => {
                     let sorted = [...batches]
-                    
+
                     sorted.sort((a, b) => {
                         if (sortBy === 'date-desc') return new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
                         if (sortBy === 'date-asc') return new Date(a.createdAt || 0) - new Date(b.createdAt || 0)
@@ -134,75 +133,75 @@ const ProfessorBatchesPage = () => {
                             </h2>
                         )}
                         {groupBatches.map((batch) => (
-                    <div className="card" key={batch._id}>
-                        <div className="card-body" style={{ padding: '24px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-                                <div>
-                                    <h3 style={{ margin: '0 0 4px 0', fontSize: 16, color: 'var(--text-primary)' }}>{batch.title}</h3>
-                                    <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 13 }}>Subject: {batch.subject} • {batch.questions?.length || 0} Questions</p>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                    {batch.status === 'MarkForReview' && (
-                                        <button className="btn btn-primary btn-sm" onClick={() => navigate(`/professor/batches/${batch._id}/edit`)}>
-                                            <Edit2 size={14} style={{ marginRight: 6 }} /> Edit & Resubmit
-                                        </button>
+                            <div className="card" key={batch._id}>
+                                <div className="card-body" style={{ padding: '24px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                                        <div>
+                                            <h3 style={{ margin: '0 0 4px 0', fontSize: 16, color: 'var(--text-primary)' }}>{batch.title}</h3>
+                                            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 13 }}>Subject: {batch.subject} • {batch.questions?.length || 0} Questions</p>
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                            {batch.status === 'MarkForReview' && (
+                                                <button className="btn btn-primary btn-sm" onClick={() => navigate(`/professor/batches/${batch._id}/edit`)}>
+                                                    <Edit2 size={14} style={{ marginRight: 6 }} /> Edit & Resubmit
+                                                </button>
+                                            )}
+                                            {batch.questions && batch.questions.length > 0 && (batch.status === 'Draft' || batch.status === 'MarkForReview') && (
+                                                <button className="btn btn-ghost btn-sm" onClick={() => toggleBatchExpansion(batch._id)}>
+                                                    {expandedBatches[batch._id] ? <><EyeOff size={14} style={{ marginRight: 6 }} /> Hide Questions</> : <><Eye size={14} style={{ marginRight: 6 }} /> View Questions</>}
+                                                </button>
+                                            )}
+                                            <StatusBadge status={['Accepted', 'Rejected'].includes(batch.status) ? 'Submitted' : batch.status} />
+                                        </div>
+                                    </div>
+
+                                    {batch.adminMessage && batch.status === 'MarkForReview' && (
+                                        <div style={{ background: 'var(--danger-subtle)', borderLeft: '3px solid var(--danger)', padding: 12, marginBottom: 16, borderRadius: 4 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--danger)', fontWeight: 600, marginBottom: 4, fontSize: 13 }}>
+                                                <AlertCircle size={14} /> Admin Feedback
+                                            </div>
+                                            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 13 }}>{batch.adminMessage}</p>
+                                        </div>
                                     )}
-                                    {batch.questions && batch.questions.length > 0 && (batch.status === 'Draft' || batch.status === 'MarkForReview') && (
-                                        <button className="btn btn-ghost btn-sm" onClick={() => toggleBatchExpansion(batch._id)}>
-                                            {expandedBatches[batch._id] ? <><EyeOff size={14} style={{ marginRight: 6 }} /> Hide Questions</> : <><Eye size={14} style={{ marginRight: 6 }} /> View Questions</>}
-                                        </button>
+
+                                    {expandedBatches[batch._id] && batch.questions && batch.questions.length > 0 && (batch.status === 'Draft' || batch.status === 'MarkForReview') && (
+                                        <div style={{ display: 'grid', gap: 12, marginTop: 16 }}>
+                                            {batch.questions.map((q, idx) => (
+                                                <div key={q._id} style={{ padding: 16, border: '1px solid var(--border-subtle)', borderRadius: 8, background: 'var(--bg-surface)' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                                                        <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>
+                                                            {idx + 1}. {q.title}
+                                                        </div>
+
+                                                    </div>
+                                                    <div style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                                                        {q.options && q.options.map((opt, oIdx) => (
+                                                            <div key={oIdx} style={{ padding: '4px 8px', background: oIdx === q.correctAnswerIndex ? 'var(--success-subtle)' : 'var(--bg-base)', color: oIdx === q.correctAnswerIndex ? 'var(--success)' : 'var(--text-secondary)', borderRadius: 4, border: oIdx === q.correctAnswerIndex ? '1px solid var(--success)' : '1px solid var(--border-default)' }}>
+                                                                {String.fromCharCode(65 + oIdx)}. {opt}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                    <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-tertiary)', display: 'flex', gap: 16 }}>
+                                                        <span>Topic: {q.topic}</span>
+                                                        <span style={{ textTransform: 'capitalize' }}>Difficulty: {q.difficultyLevel}</span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
                                     )}
-                                    <StatusBadge status={['Accepted', 'Rejected'].includes(batch.status) ? 'Submitted' : batch.status} />
+
+                                    {(batch.status === 'Draft' || batch.status === 'MarkForReview') && (
+                                        <div style={{ display: 'flex', gap: 8, marginTop: 24, borderTop: '1px solid var(--border-default)', paddingTop: 16, justifyContent: 'flex-end' }}>
+                                            <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/professor/batches/${batch._id}/edit`)}>
+                                                <Edit2 size={14} style={{ marginRight: 4 }} /> Edit Batch
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
-
-                            {batch.adminMessage && batch.status === 'MarkForReview' && (
-                                <div style={{ background: 'var(--danger-subtle)', borderLeft: '3px solid var(--danger)', padding: 12, marginBottom: 16, borderRadius: 4 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--danger)', fontWeight: 600, marginBottom: 4, fontSize: 13 }}>
-                                        <AlertCircle size={14} /> Admin Feedback
-                                    </div>
-                                    <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 13 }}>{batch.adminMessage}</p>
-                                </div>
-                            )}
-
-                            {expandedBatches[batch._id] && batch.questions && batch.questions.length > 0 && (batch.status === 'Draft' || batch.status === 'MarkForReview') && (
-                                <div style={{ display: 'grid', gap: 12, marginTop: 16 }}>
-                                    {batch.questions.map((q, idx) => (
-                                        <div key={q._id} style={{ padding: 16, border: '1px solid var(--border-subtle)', borderRadius: 8, background: 'var(--bg-surface)' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                                                <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>
-                                                    {idx + 1}. {q.title}
-                                                </div>
-
-                                            </div>
-                                            <div style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                                                {q.options && q.options.map((opt, oIdx) => (
-                                                    <div key={oIdx} style={{ padding: '4px 8px', background: oIdx === q.correctAnswerIndex ? 'var(--success-subtle)' : 'var(--bg-base)', color: oIdx === q.correctAnswerIndex ? 'var(--success)' : 'var(--text-secondary)', borderRadius: 4, border: oIdx === q.correctAnswerIndex ? '1px solid var(--success)' : '1px solid var(--border-default)' }}>
-                                                        {String.fromCharCode(65 + oIdx)}. {opt}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-tertiary)', display: 'flex', gap: 16 }}>
-                                                <span>Topic: {q.topic}</span>
-                                                <span style={{ textTransform: 'capitalize' }}>Difficulty: {q.difficultyLevel}</span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-
-                            {(batch.status === 'Draft' || batch.status === 'MarkForReview') && (
-                                <div style={{ display: 'flex', gap: 8, marginTop: 24, borderTop: '1px solid var(--border-default)', paddingTop: 16, justifyContent: 'flex-end' }}>
-                                    <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/professor/batches/${batch._id}/edit`)}>
-                                        <Edit2 size={14} style={{ marginRight: 4 }} /> Edit Batch
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                        ))}
+                    </React.Fragment>
                 ))}
-                </React.Fragment>
-            ))}
 
                 {loading ? (
                     <>

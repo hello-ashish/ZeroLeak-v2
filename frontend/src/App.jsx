@@ -15,16 +15,16 @@ import { StudentLayout } from './pages/student/StudentLayout.jsx'
 import { AdminLayout } from './pages/admin/AdminLayout.jsx'
 
 // Auth & Public pages
-const Home = lazy(() => import('./Home'))
-const AdminLogin = lazy(() => import('./AdminLogin'))
-const AdminProfile = lazy(() => import('./AdminProfile'))
-const ProfessorLogin = lazy(() => import('./professorLogin'))
-const ProfessorProfile = lazy(() => import('./ProfessorProfile'))
-const StudentLogin = lazy(() => import('./StudentLogin'))
-const TakeExam = lazy(() => import('./TakeExam'))
-const StudentProfile = lazy(() => import('./StudentProfile'))
-const AuditorProfile = lazy(() => import('./AuditorProfile'))
-const SupportProfile = lazy(() => import('./SupportProfile'))
+const Home = lazy(() => import('./pages/Home'))
+const AdminLogin = lazy(() => import('./pages/admin/AdminLogin'))
+const AdminProfile = lazy(() => import('./pages/admin/AdminProfile'))
+const ProfessorLogin = lazy(() => import('./pages/professor/ProfessorLogin'))
+const ProfessorProfile = lazy(() => import('./pages/professor/ProfessorProfile'))
+const StudentLogin = lazy(() => import('./pages/student/StudentLogin'))
+const TakeExam = lazy(() => import('./pages/student/TakeExam'))
+const StudentProfile = lazy(() => import('./pages/student/StudentProfile'))
+const AuditorProfile = lazy(() => import('./pages/auditor/AuditorProfile'))
+const SupportProfile = lazy(() => import('./pages/support/SupportProfile'))
 
 // Student pages
 const StudentDashboardPage = lazy(() => import('./pages/student/StudentDashboardPage.jsx'))
@@ -85,9 +85,9 @@ const PageLoader = () => (
 function App() {
   return (
     <ToastProvider>
-      <ZMailProvider>
-        <ZMailNotifier />
       <BrowserRouter>
+        <ZMailProvider>
+          <ZMailNotifier />
         <SessionReplacedModal />
         <IdleTimer />
         <Suspense fallback={<PageLoader />}>
@@ -165,8 +165,8 @@ function App() {
           </Routes>
         </Suspense>
         <GlobalThemeSlider />
+        </ZMailProvider>
       </BrowserRouter>
-      </ZMailProvider>
     </ToastProvider>
   )
 }

@@ -12,7 +12,7 @@ const supportTicketSchema = new Schema({
     ticketNumber: { type: String, required: true, unique: true },
 
     reporterUserId: { type: Schema.Types.ObjectId, required: true, index: true },
-    reporterRole: { type: String, enum: ["Student", "Professor", "Admin", "Auditor"], required: true },
+    reporterRole: { type: String, enum: ["Student", "Professor", "Admin", "Auditor", "Support"], required: true },
     reporterEmail: { type: String, required: true, lowercase: true, trim: true },
     reporterName: { type: String, required: true, trim: true },
 

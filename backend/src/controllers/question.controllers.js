@@ -6,6 +6,7 @@ import {
     decryptQuestionContent,
 } from "../Services/crypto.service.js"
 import { enqueueQuestionCommitment } from "../Services/integrityOutbox.service.js";
+import { selectQuestionsByDifficultyRatio } from "../Services/question.service.js";
 
 export const createQuestion = async (req, res) => {
     try {
@@ -136,7 +137,7 @@ export const getProfessorQuestions = async (req, res) => {
 }
 export const getAllQuestions = async (req, res) => {
     try {
-        const { page = 1, limit = 10, search = '', difficulty = '', subject = '' } = req.query;
+        const { page = 1, limit = 10, search = '', difficulty = '', subject = '', decrypt = 'false' } = req.query;
 
         // Run question fetch and usage aggregation in parallel
         const [questions, usageAgg] = await Promise.all([
@@ -155,13 +156,24 @@ export const getAllQuestions = async (req, res) => {
             return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
         };
 
-        // Format all questions (without decrypting sensitive content for Admins)
+        // Format all questions (decrypting sensitive content for Admins ONLY if explicitly requested by Simulator)
         const allDecrypted = questions.map((question) => {
+            let decryptedContent = {}
+            if (decrypt === 'true') {
+                try {
+                    if (question.encryptedContent) {
+                        decryptedContent = decryptQuestionContent(question.encryptedContent)
+                    }
+                } catch (error) {
+                    console.error("Failed to decrypt in getAllQuestions:", error.message);
+                }
+            }
+
             return {
                 _id: question._id,
-                title: question.contentHash || "[Encrypted Question Hash]",
-                options: [],
-                correctAnswerIndex: null,
+                title: decrypt === 'true' && decryptedContent.title ? decryptedContent.title : (question.contentHash || "[Encrypted Question Hash]"),
+                options: decrypt === 'true' && decryptedContent.options ? decryptedContent.options : [],
+                correctAnswerIndex: decrypt === 'true' ? decryptedContent.correctAnswerIndex : null,
                 difficultyLevel: question.difficultyLevel,
                 subject: formatString(question.subject),
                 topic: formatString(question.topic),
@@ -247,3 +259,46 @@ export const getAllQuestions = async (req, res) => {
         })
     }
 }
+
+export const simulatePaper = async (req, res) => {
+    try {
+        const { subject, numQuestions = 10 } = req.query;
+        if (!subject) return res.status(400).json({ message: "Subject is required" });
+
+        const allQuestions = await Question.find({ subject }).lean();
+        if (allQuestions.length === 0) {
+            return res.status(404).json({ message: "No questions found for this subject" });
+        }
+
+        // Use the exact same logic as real examination generation
+        const selectedQuestions = selectQuestionsByDifficultyRatio(allQuestions, Number(numQuestions));
+
+        const decryptedQuestions = selectedQuestions.map(question => {
+            let decryptedContent = {};
+            try {
+                if (question.encryptedContent) {
+                    decryptedContent = decryptQuestionContent(question.encryptedContent);
+                }
+            } catch (error) {
+                console.error("Simulation decryption failed:", error.message);
+            }
+            return {
+                _id: question._id,
+                title: decryptedContent.title || (question.contentHash || "[Encrypted Question Hash]"),
+                options: decryptedContent.options || [],
+                correctAnswerIndex: decryptedContent.correctAnswerIndex ?? null,
+                difficultyLevel: question.difficultyLevel,
+                subject: question.subject,
+                topic: question.topic
+            };
+        });
+
+        return res.status(200).json({
+            message: "Paper simulated securely",
+            questions: decryptedQuestions
+        });
+    } catch (error) {
+        console.error("Error simulating paper:", error);
+        return res.status(500).json({ message: "Failed to simulate paper" });
+    }
+};

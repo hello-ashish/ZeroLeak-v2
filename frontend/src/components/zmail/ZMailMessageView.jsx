@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import {
     Reply, CornerUpRight, Forward, Star, AlertCircle, Archive,
-    Trash2, RotateCcw, Paperclip, Download, ChevronDown, ChevronUp, X
+    Trash2, RotateCcw, Paperclip, Download, ChevronDown, ChevronUp, X, Loader2, Eye
 } from 'lucide-react';
 import { ZMailCompose } from './ZMailCompose.jsx';
 import {
@@ -40,6 +40,9 @@ export function ZMailMessageView({ message, onBack, onRefresh, onUpdate, hideHea
     const [replyOpen, setReplyOpen] = useState(false);
     const [forwardOpen, setForwardOpen] = useState(false);
     const [replyAll, setReplyAll] = useState(false);
+    const [downloadingId, setDownloadingId] = useState(null);
+    const [previewAttachment, setPreviewAttachment] = useState(null);
+    const [previewLoading, setPreviewLoading] = useState(false);
     const toast = useToast();
 
     if (!message) return null;
@@ -92,6 +95,31 @@ export function ZMailMessageView({ message, onBack, onRefresh, onUpdate, hideHea
 
     const handleDownload = async (att) => {
         try {
+            setDownloadingId(att._id);
+            if (att.storageKey?.startsWith('http')) {
+                try {
+                    const response = await fetch(att.storageKey);
+                    if (!response.ok) throw new Error('Cloudinary fetch failed');
+                    const blob = await response.blob();
+                    const objectUrl = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = objectUrl;
+                    a.download = att.originalName;
+                    document.body.appendChild(a); // Firefox requires it to be in DOM
+                    a.click();
+                    a.remove();
+                    setTimeout(() => URL.revokeObjectURL(objectUrl), 10000);
+                } catch (fetchErr) {
+                    console.warn('[ZMail] Blob download failed, falling back to new tab', fetchErr);
+                    const a = document.createElement('a');
+                    a.href = att.storageKey;
+                    a.target = '_blank';
+                    a.download = att.originalName;
+                    a.click();
+                }
+                return;
+            }
+
             const headers = getAuthHeader();
             const BACKEND_URL = import.meta.env.DEV ? '' : 'https://zeroleak-v2.onrender.com';
             const url = `${BACKEND_URL}/api/zmail/messages/${message._id}/attachments/${att._id}`;
@@ -107,6 +135,8 @@ export function ZMailMessageView({ message, onBack, onRefresh, onUpdate, hideHea
         } catch (e) {
             // eslint-disable-next-line no-console
             console.error('[ZMail] Download failed', e);
+        } finally {
+            setDownloadingId(null);
         }
     };
 
@@ -199,12 +229,29 @@ export function ZMailMessageView({ message, onBack, onRefresh, onUpdate, hideHea
                                     <span className="zmail-att-size">{(att.sizeBytes / 1024).toFixed(1)} KB</span>
                                 </div>
                                 <button
+                                    type="button"
+                                    className="zmail-tool-btn"
+                                    onClick={() => {
+                                        setPreviewAttachment(att);
+                                        if (att.storageKey?.startsWith('http') && (att.mimeType?.startsWith('image/') || att.mimeType?.includes('pdf'))) {
+                                            setPreviewLoading(true);
+                                        } else {
+                                            setPreviewLoading(false);
+                                        }
+                                    }}
+                                    aria-label={`Preview ${att.originalName}`}
+                                    title="Preview attachment"
+                                >
+                                    <Eye size={16} />
+                                </button>
+                                <button
                                     className="zmail-tool-btn"
                                     onClick={() => handleDownload(att)}
                                     aria-label={`Download ${att.originalName}`}
                                     title="Download"
+                                    disabled={downloadingId === att._id}
                                 >
-                                    <Download size={16} />
+                                    {downloadingId === att._id ? <Loader2 size={16} className="spin" style={{ animation: 'spin 2s linear infinite' }} /> : <Download size={16} />}
                                 </button>
                             </div>
                         ))}
@@ -269,6 +316,58 @@ export function ZMailMessageView({ message, onBack, onRefresh, onUpdate, hideHea
                         onClose={() => setForwardOpen(false)}
                         onSent={() => { setForwardOpen(false); onRefresh && onRefresh(); }}
                     />
+                </div>
+            )}
+
+            {/* Attachment Preview Modal */}
+            {previewAttachment && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ position: 'relative', width: '80%', height: '80%', backgroundColor: '#1e1e1e', borderRadius: '8px', padding: '40px 20px 20px', display: 'flex', flexDirection: 'column' }}>
+                        <button 
+                            type="button" 
+                            onClick={() => setPreviewAttachment(null)}
+                            style={{ position: 'absolute', top: '10px', right: '10px', background: 'transparent', border: 'none', color: 'white', cursor: 'pointer' }}
+                        >
+                            <X size={24} />
+                        </button>
+                        
+                        {previewAttachment.storageKey?.startsWith('http') ? (
+                            <div style={{ position: 'relative', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                                {previewLoading && (
+                                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#1e1e1e', zIndex: 10 }}>
+                                        <Loader2 size={48} className="spin" style={{ animation: 'spin 2s linear infinite', color: '#4a90e2' }} />
+                                    </div>
+                                )}
+                                {previewAttachment.mimeType?.startsWith('image/') ? (
+                                    <img 
+                                        src={previewAttachment.storageKey} 
+                                        alt={previewAttachment.originalName} 
+                                        style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', margin: 'auto', display: previewLoading ? 'none' : 'block' }} 
+                                        onLoad={() => setPreviewLoading(false)}
+                                        onError={() => setPreviewLoading(false)}
+                                    />
+                                ) : previewAttachment.mimeType?.includes('pdf') ? (
+                                    <iframe 
+                                        src={previewAttachment.storageKey} 
+                                        title={previewAttachment.originalName} 
+                                        style={{ width: '100%', height: '100%', border: 'none', backgroundColor: 'white', display: previewLoading ? 'none' : 'block' }} 
+                                        onLoad={() => setPreviewLoading(false)}
+                                        onError={() => setPreviewLoading(false)}
+                                    />
+                                ) : (
+                                    <div style={{ color: 'white', margin: 'auto', textAlign: 'center' }}>
+                                        <p>Preview not available for this file type.</p>
+                                        <a href={previewAttachment.storageKey} target="_blank" rel="noreferrer" style={{ color: '#4a90e2', textDecoration: 'underline', marginTop: '10px', display: 'inline-block' }}>Download File</a>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div style={{ color: 'white', margin: 'auto', textAlign: 'center' }}>
+                                <p>Preview is not available for this legacy message attachment.</p>
+                                <p style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>You can still download it securely using the download button.</p>
+                            </div>
+                        )}
+                    </div>
                 </div>
             )}
         </div>

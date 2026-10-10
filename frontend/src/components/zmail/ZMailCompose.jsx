@@ -2,7 +2,7 @@
  * ZMailCompose — Full compose window with draft autosave
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Send, Save, ChevronDown, ChevronUp, Paperclip, Minimize2 } from 'lucide-react';
+import { X, Send, Save, ChevronDown, ChevronUp, Paperclip, Minimize2, Eye, Loader2 } from 'lucide-react';
 import { ZMailRecipientInput } from './ZMailRecipientInput.jsx';
 import {
     sendMessage, createDraft, updateDraft, sendDraft, uploadAttachment,
@@ -37,6 +37,8 @@ export function ZMailCompose({
     const [draftVersion, setDraftVersion] = useState(existingDraftVersion);
     const [attachments, setAttachments] = useState([]);
     const [uploading, setUploading] = useState(false);
+    const [previewAttachment, setPreviewAttachment] = useState(null);
+    const [previewLoading, setPreviewLoading] = useState(false);
     const autosaveRef = useRef(null);
     const fileInputRef = useRef(null);
     const toast = useToast();
@@ -228,11 +230,32 @@ export function ZMailCompose({
                     {attachments.map((att, i) => (
                         <div key={i} className="zmail-compose-attachment-chip">
                             <Paperclip size={12} />
-                            <span>{att.originalName}</span>
+                            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{att.originalName}</span>
+                            
+                            {att.storageKey && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setPreviewAttachment(att);
+                                        if (att.storageKey?.startsWith('http') && (att.mimeType?.startsWith('image/') || att.mimeType?.includes('pdf'))) {
+                                            setPreviewLoading(true);
+                                        } else {
+                                            setPreviewLoading(false);
+                                        }
+                                    }}
+                                    aria-label={`Preview ${att.originalName}`}
+                                    title="Preview attachment"
+                                    style={{ marginLeft: 'auto', padding: '0 4px' }}
+                                >
+                                    <Eye size={12} />
+                                </button>
+                            )}
+                            
                             <button
                                 type="button"
                                 onClick={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))}
                                 aria-label={`Remove ${att.originalName}`}
+                                title="Remove attachment"
                             >
                                 <X size={12} />
                             </button>
@@ -260,8 +283,11 @@ export function ZMailCompose({
                     title={uploading ? 'Uploading...' : 'Attach file'}
                     style={{ cursor: uploading ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: 0, opacity: uploading ? 0.6 : 1 }}
                 >
-                    <Paperclip size={18} />
-                    {uploading && <span style={{ fontSize: 10, marginLeft: 3 }}>...</span>}
+                    {uploading ? (
+                        <Loader2 size={18} className="spin" style={{ animation: 'spin 2s linear infinite' }} />
+                    ) : (
+                        <Paperclip size={18} />
+                    )}
                     <input
                         ref={fileInputRef}
                         type="file"
@@ -284,6 +310,57 @@ export function ZMailCompose({
                     <Save size={18} />
                 </button>
             </div>
+            {/* Attachment Preview Modal */}
+            {previewAttachment && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ position: 'relative', width: '80%', height: '80%', backgroundColor: '#1e1e1e', borderRadius: '8px', padding: '40px 20px 20px', display: 'flex', flexDirection: 'column' }}>
+                        <button 
+                            type="button" 
+                            onClick={() => setPreviewAttachment(null)}
+                            style={{ position: 'absolute', top: '10px', right: '10px', background: 'transparent', border: 'none', color: 'white', cursor: 'pointer' }}
+                        >
+                            <X size={24} />
+                        </button>
+                        
+                        {previewAttachment.storageKey?.startsWith('http') ? (
+                            <div style={{ position: 'relative', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                                {previewLoading && (
+                                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#1e1e1e', zIndex: 10 }}>
+                                        <Loader2 size={48} className="spin" style={{ animation: 'spin 2s linear infinite', color: '#4a90e2' }} />
+                                    </div>
+                                )}
+                                {previewAttachment.mimeType?.startsWith('image/') ? (
+                                    <img 
+                                        src={previewAttachment.storageKey} 
+                                        alt={previewAttachment.originalName} 
+                                        style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', margin: 'auto', display: previewLoading ? 'none' : 'block' }} 
+                                        onLoad={() => setPreviewLoading(false)}
+                                        onError={() => setPreviewLoading(false)}
+                                    />
+                                ) : previewAttachment.mimeType?.includes('pdf') ? (
+                                    <iframe 
+                                        src={previewAttachment.storageKey} 
+                                        title={previewAttachment.originalName} 
+                                        style={{ width: '100%', height: '100%', border: 'none', backgroundColor: 'white', display: previewLoading ? 'none' : 'block' }} 
+                                        onLoad={() => setPreviewLoading(false)}
+                                        onError={() => setPreviewLoading(false)}
+                                    />
+                                ) : (
+                                    <div style={{ color: 'white', margin: 'auto', textAlign: 'center' }}>
+                                        <p>Preview not available for this file type.</p>
+                                        <a href={previewAttachment.storageKey} target="_blank" rel="noreferrer" style={{ color: '#4a90e2', textDecoration: 'underline', marginTop: '10px', display: 'inline-block' }}>Download File</a>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div style={{ color: 'white', margin: 'auto', textAlign: 'center' }}>
+                                <p>Preview is not available for this legacy draft attachment.</p>
+                                <p style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>It will be sent normally, but cannot be previewed here.</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

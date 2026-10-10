@@ -20,7 +20,7 @@ export default function ZMailPage() {
 
     const Wrapper = roleParam === 'support' ? SupportLayout
                    : roleParam === 'admin' ? AdminLayout
-                   : roleParam === 'prof' ? ProfessorLayout
+                   : (roleParam === 'prof' || roleParam === 'professor') ? ProfessorLayout
                    : roleParam === 'auditor' ? AuditorLayout
                    : roleParam === 'student' ? StudentLayout
                    : React.Fragment;

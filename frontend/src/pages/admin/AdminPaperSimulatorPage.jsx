@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { AdminLayout } from './AdminLayout.jsx'
 import { Beaker, RefreshCw, Lock, Unlock, ShieldCheck, Terminal, Fingerprint, Cpu, Search, BrainCircuit, Settings, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useToast } from '../../components/Toast.jsx'
 import { SkeletonCard } from '../../components/SkeletonLoader.jsx'
 import axios from 'axios'
+import { useNavigate } from 'react-router-dom'
 
 const API = '/api'
 const getToken = () => localStorage.getItem('adminToken')
@@ -130,7 +131,7 @@ const DecryptionVisualizer = ({ onComplete }) => {
 }
 
 export const AdminPaperSimulatorPage = () => {
-    const [allQuestions, setAllQuestions] = useState([])
+    const navigate = useNavigate()
     const [subjects, setSubjects] = useState([])
     const [selectedSubject, setSelectedSubject] = useState('')
     const [numQuestions, setNumQuestions] = useState(10)
@@ -143,17 +144,21 @@ export const AdminPaperSimulatorPage = () => {
 
     useEffect(() => {
         setLoading(true)
-        axios.get(`${API}/questions`, { headers: { Authorization: `Bearer ${getToken()}` } })
+        axios.get(`${API}/questions?limit=1`, { headers: { Authorization: `Bearer ${getToken()}` } })
             .then(res => {
-                const q = res.data.questions || []
-                setAllQuestions(q)
-                const uniqueSubjects = [...new Set(q.map(i => i.subject))].filter(Boolean)
+                const uniqueSubjects = res.data.subjects || []
                 setSubjects(uniqueSubjects)
                 if (uniqueSubjects.length > 0) setSelectedSubject(uniqueSubjects[0])
             })
             .catch(err => {
                 console.error(err)
-                toast.error("Failed to load questions from bank")
+                if (err.response?.status === 401) {
+                    toast.error("Session expired. Please log in again.")
+                    localStorage.removeItem('adminToken')
+                    navigate('/admin/login')
+                } else {
+                    toast.error("Failed to load questions from bank")
+                }
             })
             .finally(() => setLoading(false))
     }, [])
@@ -161,11 +166,6 @@ export const AdminPaperSimulatorPage = () => {
     const handleGenerate = () => {
         if (!selectedSubject) return toast.error("Please select a subject")
         if (numQuestions <= 0) return toast.error("Number of questions must be greater than 0")
-
-        const subjectQuestions = allQuestions.filter(q => q.subject === selectedSubject)
-        if (subjectQuestions.length === 0) {
-            return toast.error("No questions found for this subject")
-        }
 
         setGeneratedPaper(null)
         setIsDecrypting(true)
@@ -180,49 +180,24 @@ export const AdminPaperSimulatorPage = () => {
         }
     }
 
-    const onDecryptionComplete = () => {
-        const subjectQuestions = allQuestions.filter(q => q.subject === selectedSubject)
-        
-        const numEasy = Math.round(numQuestions * 0.4);
-        const numMedium = Math.round(numQuestions * 0.3);
-        const numHard = numQuestions - numEasy - numMedium;
-        
-        const easyPool = subjectQuestions.filter(q => (q.difficultyLevel || "").toLowerCase() === 'easy');
-        const mediumPool = subjectQuestions.filter(q => (q.difficultyLevel || "").toLowerCase() === 'medium');
-        const hardPool = subjectQuestions.filter(q => (q.difficultyLevel || "").toLowerCase() === 'hard');
-        
-        const selected = [];
-        const pickRandom = (pool, count, fallbacks) => {
-            let picked = 0;
-            while(picked < count && pool.length > 0) {
-                const idx = Math.floor(Math.random() * pool.length);
-                selected.push(pool[idx]);
-                pool.splice(idx, 1);
-                picked++;
-            }
-            let remain = count - picked;
-            if(remain > 0) {
-                for(const fb of fallbacks) {
-                    while(remain > 0 && fb.length > 0) {
-                        const idx = Math.floor(Math.random() * fb.length);
-                        selected.push(fb[idx]);
-                        fb.splice(idx, 1);
-                        remain--;
-                    }
-                }
-            }
-        };
-        
-        pickRandom([...easyPool], numEasy, [[...mediumPool], [...hardPool]]);
-        pickRandom([...mediumPool], numMedium, [[...easyPool], [...hardPool]]);
-        pickRandom([...hardPool], numHard, [[...mediumPool], [...easyPool]]);
-        
-        selected.sort(() => 0.5 - Math.random());
-        
-        setGeneratedPaper(selected)
-        setIsDecrypting(false)
-        toast.success(`Securely generated random paper with ${selected.length} questions`)
-    }
+    const onDecryptionComplete = useCallback(async () => {
+        console.log("onDecryptionComplete triggered!");
+        try {
+            console.log(`Sending request to ${API}/questions/simulate?subject=${selectedSubject}&numQuestions=${numQuestions}`);
+            const res = await axios.get(`${API}/questions/simulate?subject=${encodeURIComponent(selectedSubject)}&numQuestions=${numQuestions}`, {
+                headers: { Authorization: `Bearer ${getToken()}` }
+            })
+            console.log("Request succeeded, received:", res.data.questions?.length, "questions");
+            setGeneratedPaper(res.data.questions)
+            toast.success(`Securely generated random paper with ${res.data.questions.length} questions`)
+        } catch (err) {
+            console.error("Simulation request failed:", err)
+            toast.error(err.response?.data?.message || "Failed to generate paper")
+        } finally {
+            console.log("Setting isDecrypting to false");
+            setIsDecrypting(false)
+        }
+    }, [selectedSubject, numQuestions]);
 
     return (
         <AdminLayout>

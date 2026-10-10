@@ -8,9 +8,9 @@ import {
     PanelRightClose, PanelRightOpen, X, Activity, LayoutDashboard,
     ShieldAlert, AlertTriangle, Lock
 } from 'lucide-react';
-import { useAntiCheating } from './utils/useAntiCheating';
-import { useProctoring } from './hooks/useProctoring';
-import { ProctoringStatusPanel } from './components/ProctoringStatusPanel';
+import { useAntiCheating } from '../../utils/useAntiCheating';
+import { useProctoring } from '../../hooks/useProctoring';
+import { ProctoringStatusPanel } from '../../components/ProctoringStatusPanel';
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 const MAX_WARNINGS = 5;
 

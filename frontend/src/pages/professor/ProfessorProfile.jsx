@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import axios from "axios"
 import { Eye, EyeOff, ShieldCheck, CheckCircle2, User, Phone, MapPin, Mail, KeyRound, Calendar, Hash, Activity } from 'lucide-react'
-import { useToast } from './components/Toast.jsx'
+import { useToast } from '../../components/Toast.jsx'
 
 const ProfessorProfile = () => {
     const [formData, setFormData] = useState({ name: '', email: '', contact: '', address: '', password: '', confirmPassword: '' })

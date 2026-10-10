@@ -23,6 +23,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import axios from "axios";
 import { io } from "socket.io-client";
+import { useNavigate } from "react-router-dom";
 import { AdminLayout } from "./AdminLayout.jsx";
 import {
     Activity, Video, Mic, MicOff, MonitorPlay, AlertTriangle,
@@ -537,6 +538,7 @@ const MonitorModal = React.memo(({ session, streams, aiEvents, incidents, onClos
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export const AdminProctoringPage = () => {
+    const navigate = useNavigate();
     // ── State ─────────────────────────────────────────────────────────────────
     const sessionsMapRef = useRef(new Map());  // sessionId → session metadata
     const alertsMapRef   = useRef(new Map());  // sessionId → alert entry
@@ -559,6 +561,7 @@ export const AdminProctoringPage = () => {
     const [searchQuery,     setSearchQuery]     = useState("");
     const [isLoadingModal,  setIsLoadingModal]  = useState(false);
     const [isPageLoading,   setIsPageLoading]   = useState(true);
+    const [isDemoMode,      setIsDemoMode]      = useState(false);
 
     // ── Derived ───────────────────────────────────────────────────────────────
     const sessions       = useMemo(() => [...sessionsMapRef.current.values()], []); // refreshed by tick()
@@ -592,13 +595,13 @@ export const AdminProctoringPage = () => {
         setIsLoadingModal(true);
 
         // Request WebRTC stream
-        if (mode === 'live' && socketRef.current) {
+        if (mode === 'live' && socketRef.current && !isDemoMode) {
             socketRef.current.emit("proctoring:request-stream", { sessionId });
         }
 
         // Fetch AI events + incidents for the modal
         const token = localStorage.getItem("adminToken");
-        if (token) {
+        if (token && !isDemoMode) {
             try {
                 const [aiRes, incRes] = await Promise.all([
                     axios.get(`${API}/admin/proctoring/sessions/${sessionId}/ai-events?limit=20`, { headers: { Authorization: `Bearer ${token}` } }),
@@ -610,6 +613,60 @@ export const AdminProctoringPage = () => {
         }
         setIsLoadingModal(false);
     }, [monitorSessionId]);
+
+    const handleSimulateDemo = useCallback(() => {
+        setIsDemoMode(true);
+        sessionsMapRef.current.clear();
+        alertsMapRef.current.clear();
+        
+        const demoSessions = [
+            {
+                _id: "demo-sess-1", sessionId: "demo-sess-1",
+                studentId: { name: "Alice Johnson", studentId: "S-1001", _id: "stu1", email: "alice@example.com" },
+                examId: { title: "CS101 Midterm" }, status: "ONLINE",
+                joinedAt: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
+                lastPingAt: new Date().toISOString(), aiSuspicion: { score: 10, level: 'NORMAL' }
+            },
+            {
+                _id: "demo-sess-2", sessionId: "demo-sess-2",
+                studentId: { name: "Bob Smith", studentId: "S-1002", _id: "stu2", email: "bob@example.com" },
+                examId: { title: "Physics Final" }, status: "ONLINE",
+                joinedAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
+                lastPingAt: new Date().toISOString(), aiSuspicion: { score: 92, level: 'HIGH' }
+            },
+            {
+                _id: "demo-sess-3", sessionId: "demo-sess-3",
+                studentId: { name: "Charlie Brown", studentId: "S-1003", _id: "stu3", email: "charlie@example.com" },
+                examId: { title: "Biology 101" }, status: "UNSTABLE",
+                joinedAt: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
+                lastPingAt: new Date(Date.now() - 1000 * 60 * 2).toISOString(), aiSuspicion: { score: 25, level: 'NORMAL' }
+            },
+            {
+                _id: "demo-sess-4", sessionId: "demo-sess-4",
+                studentId: { name: "David Wilson", studentId: "S-1004", _id: "stu4", email: "david@example.com" },
+                examId: { title: "Calculus I" }, status: "ONLINE",
+                joinedAt: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
+                lastPingAt: new Date().toISOString(), aiSuspicion: { score: 65, level: 'SUSPICIOUS' }
+            }
+        ];
+    
+        const demoAlerts = [
+            {
+                sessionId: "demo-sess-2", studentId: { name: "Bob Smith", studentId: "S-1002" }, examId: { title: "Physics Final" },
+                level: "HIGH", score: 92, type: "MULTIPLE_PERSONS", message: "Multiple faces detected in frame consistently for 30s.",
+                timestamp: new Date().toISOString()
+            },
+            {
+                sessionId: "demo-sess-4", studentId: { name: "David Wilson", studentId: "S-1004" }, examId: { title: "Calculus I" },
+                level: "SUSPICIOUS", score: 65, type: "LOOKING_AWAY", message: "Student repeatedly looking off-screen.",
+                timestamp: new Date().toISOString()
+            }
+        ];
+    
+        demoSessions.forEach(s => sessionsMapRef.current.set(s.sessionId, s));
+        demoAlerts.forEach(a => alertsMapRef.current.set(a.sessionId, a));
+        tick();
+    }, [tick]);
 
     const closeMonitor = useCallback((sessionId) => {
         if (!sessionId) return;
@@ -939,15 +996,15 @@ export const AdminProctoringPage = () => {
             <div className="proctor-page">
 
                 {/* Page header */}
-                <div className="page-header" style={{ marginBottom: 24 }}>
+                <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
                     <div>
                         <h1 className="page-title">
                             <ShieldAlert size={22} style={{ marginRight: 10, color: "var(--brand-primary)" }} />
-                            Live Proctoring
+                            {isDemoMode ? "Demo Live Proctoring" : "Live Proctoring"}
                         </h1>
                         <p className="page-subtitle">AI-assisted monitoring · {sessionsList.length} student{sessionsList.length !== 1 ? "s" : ""} live</p>
                     </div>
-                    <div style={{ display: "flex", gap: 12 }}>
+                    <div style={{ display: "flex", gap: 12, alignItems: 'center' }}>
                         <div className="search-box">
                             <Filter size={14} />
                             <select value={selectedExam} onChange={e => setSelectedExam(e.target.value)}
@@ -958,6 +1015,19 @@ export const AdminProctoringPage = () => {
                                 ))}
                             </select>
                         </div>
+                        {isDemoMode ? (
+                            <button onClick={() => {
+                                setIsDemoMode(false);
+                                fetchState(selectedExam);
+                                fetchAlerts(selectedExam);
+                            }} className="btn btn-secondary">
+                                Back to Live Proctoring
+                            </button>
+                        ) : (
+                            <button onClick={handleSimulateDemo} className="btn btn-primary">
+                                Simulate Demo
+                            </button>
+                        )}
                     </div>
                 </div>
 

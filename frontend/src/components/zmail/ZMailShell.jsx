@@ -38,15 +38,32 @@ export function ZMailShell({ isFullScreen }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [unreadCount]);
 
+    const getCacheKey = (f) => `zmail_cache_${account?.zmailAddress || 'default'}_${f}`;
+
     const loadFolder = async (f, silent = false) => {
-        if (!silent) setLoading(true);
+        const cacheKey = getCacheKey(f);
+        const cachedData = localStorage.getItem(cacheKey);
+        
+        let isSilent = silent;
+        if (cachedData && !searchMode) {
+            try {
+                const parsed = JSON.parse(cachedData);
+                setEntries(parsed);
+                isSilent = true; // Cached data exists, so load fresh data silently
+            } catch (e) {
+                // Ignore parse errors
+            }
+        }
+        
+        if (!isSilent) setLoading(true);
         try {
             const data = await fetchFolder(f, 1);
             setEntries(data.entries || []);
+            localStorage.setItem(cacheKey, JSON.stringify(data.entries || []));
         } catch {
-            toast.error('Failed to load messages.');
+            if (!cachedData) toast.error('Failed to load messages.');
         }
-        if (!silent) setLoading(false);
+        if (!isSilent) setLoading(false);
     };
 
     const handleSearch = (q) => {

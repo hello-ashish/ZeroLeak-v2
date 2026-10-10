@@ -344,8 +344,16 @@ export const getSessionAIEvents = async (req, res) => {
 // ─── GET /api/admin/proctoring/active-exams ──────────────────────────────────
 export const getActiveExams = async (req, res) => {
     try {
+        const threshold = new Date(Date.now() - 30_000);
         const examCounts = await ProctoringSession.aggregate([
-            { $match: { status: { $in: ["INITIALIZING", "ACTIVE", "PAUSED"] } } },
+            { $match: { 
+                status: { $in: ["INITIALIZING", "ACTIVE", "PAUSED"] },
+                $or: [
+                    { lastHeartbeat: { $gte: threshold } },
+                    { lastHeartbeat: { $exists: false } },
+                    { lastHeartbeat: null }
+                ]
+            } },
             { $group: { _id: "$examId", count: { $sum: 1 } } }
         ]);
 

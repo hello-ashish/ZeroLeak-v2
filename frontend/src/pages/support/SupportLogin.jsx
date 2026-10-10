@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, Loader2, AlertTriangle } from 'lucide-react';
 import axios from 'axios';
 import AuthShell from '../../components/auth/AuthShell';
-import '../../Login.css'; // Make sure styles are loaded if AuthShell doesn't import them
+import '../Login.css'; // Make sure styles are loaded if AuthShell doesn't import them
 
 export default function SupportLogin() {
     const [email, setEmail] = useState('');

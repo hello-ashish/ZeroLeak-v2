@@ -10,20 +10,28 @@
  */
 
 import { useState, useEffect, useCallback, useRef, createContext, useContext } from 'react';
+import { useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { io as socketIO } from 'socket.io-client';
 
 const ZMailContext = createContext(null);
 
-function getAuthToken() {
-    const params = new URLSearchParams(window.location.search);
+function getAuthToken(locationObj = window.location) {
+    const params = new URLSearchParams(locationObj.search);
     const role = params.get('role');
 
     if (role === 'support') return localStorage.getItem('supportToken');
     if (role === 'admin') return localStorage.getItem('adminToken');
     if (role === 'student') return localStorage.getItem('studentToken');
-    if (role === 'professor') return localStorage.getItem('profToken');
+    if (role === 'professor' || role === 'prof') return localStorage.getItem('profToken');
     if (role === 'auditor') return localStorage.getItem('auditorToken');
+
+    const path = locationObj.pathname;
+    if (path.startsWith('/support')) return localStorage.getItem('supportToken');
+    if (path.startsWith('/admin')) return localStorage.getItem('adminToken');
+    if (path.startsWith('/student')) return localStorage.getItem('studentToken');
+    if (path.startsWith('/professor') || path.startsWith('/prof')) return localStorage.getItem('profToken');
+    if (path.startsWith('/auditor')) return localStorage.getItem('auditorToken');
 
     return (
         localStorage.getItem('adminToken') ||
@@ -44,6 +52,9 @@ const BACKEND_URL = import.meta.env.DEV ? "" : "https://zeroleak-v2.onrender.com
 const API = `${BACKEND_URL}/api/zmail`;
 
 export function ZMailProvider({ children }) {
+    const location = useLocation();
+    const token = getAuthToken(location);
+
     const [account, setAccount] = useState(null);
     const [unreadCount, setUnreadCount] = useState(0);
     const [draftCount, setDraftCount] = useState(0);
@@ -72,12 +83,13 @@ export function ZMailProvider({ children }) {
         try {
             const { data } = await axios.get(`${API}/account`, { headers });
             if (data.success) setAccount(data.account);
-        } catch { /* non-fatal */ }
+        } catch (e) {
+            console.error('[ZMail] fetchAccount failed:', e);
+        }
     }, []);
 
     // Socket.IO connection
     useEffect(() => {
-        const token = getAuthToken();
         if (!token) return;
 
         const BACKEND_URL = import.meta.env.DEV ? "" : "https://zeroleak-v2.onrender.com";
@@ -116,17 +128,20 @@ export function ZMailProvider({ children }) {
         return () => {
             socket.disconnect();
         };
-    }, [fetchCounts]);
+    }, [token, fetchCounts]);
 
     // Bootstrap
     useEffect(() => {
-        const token = getAuthToken();
-        if (!token) return;
+        if (!token) {
+            setAccount(null);
+            setUnreadCount(0);
+            return;
+        }
         fetchAccount();
         fetchCounts();
         const interval = setInterval(fetchCounts, 60000);
         return () => clearInterval(interval);
-    }, [fetchAccount, fetchCounts]);
+    }, [token, fetchAccount, fetchCounts]);
 
     const registerToastCallback = useCallback((cb) => {
         toastCallbackRef.current = cb;
@@ -278,28 +293,40 @@ export async function deleteDraft(draftId) {
 }
 
 export async function uploadAttachment(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = async (ev) => {
-            try {
-                const base64data = ev.target.result.split(',')[1];
-                const headers = getAuthHeader();
-                const { data } = await axios.post(
-                    `${API}/attachments/upload`,
-                    {
-                        filename: file.name,
-                        mimeType: file.type || 'application/octet-stream',
-                        base64data,
-                    },
-                    { headers }
-                );
-                if (!data.success) throw new Error(data.error || 'Upload failed');
-                resolve(data.attachment);
-            } catch (err) {
-                reject(err);
+    return new Promise(async (resolve, reject) => {
+        try {
+            const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+            const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+
+            if (!cloudName || !uploadPreset) {
+                throw new Error("Cloudinary credentials missing in .env");
             }
-        };
-        reader.onerror = () => reject(new Error('Failed to read file'));
-        reader.readAsDataURL(file);
+
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("upload_preset", uploadPreset);
+
+            const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, {
+                method: "POST",
+                body: formData,
+            });
+
+            const data = await res.json();
+            
+            if (!res.ok) {
+                throw new Error(data.error?.message || 'Cloudinary upload failed');
+            }
+
+            resolve({
+                originalName: file.name,
+                storageName: file.name,
+                storageKey: data.secure_url,
+                mimeType: file.type || data.format,
+                sizeBytes: data.bytes,
+                uploadedAt: new Date()
+            });
+        } catch (err) {
+            reject(err);
+        }
     });
 }

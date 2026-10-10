@@ -13,27 +13,42 @@ export const IdleTimer = () => {
 
         const handleIdle = async () => {
             try {
+                // Send backend logout requests for all active tokens
+                const logoutPromises = [];
+                
                 if (localStorage.getItem('studentToken')) {
-                    await axios.post('/api/students/logout', {}, { headers: { Authorization: `Bearer ${localStorage.getItem('studentToken')}` } });
-                    localStorage.removeItem('studentToken');
-                    localStorage.removeItem('studentData');
-                    navigate('/student/login');
-                } else if (localStorage.getItem('profToken')) {
-                    await axios.post('/api/professor/logout', {}, { headers: { Authorization: `Bearer ${localStorage.getItem('profToken')}` } });
-                    localStorage.removeItem('profToken');
-                    localStorage.removeItem('profData');
-                    navigate('/professor/login');
-                } else if (localStorage.getItem('adminToken')) {
-                    await axios.post('/api/admin/logout', {}, { headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` } });
-                    localStorage.removeItem('adminToken');
-                    localStorage.removeItem('adminData');
-                    navigate('/admin/login');
-                } else if (localStorage.getItem('auditorToken')) {
-                    await axios.post('/api/auditor/logout', {}, { headers: { Authorization: `Bearer ${localStorage.getItem('auditorToken')}` } });
-                    localStorage.removeItem('auditorToken');
-                    localStorage.removeItem('auditorData');
-                    navigate('/auditor/login');
+                    logoutPromises.push(axios.post('/api/students/logout', {}, { headers: { Authorization: `Bearer ${localStorage.getItem('studentToken')}` } }).catch(() => {}));
                 }
+                if (localStorage.getItem('profToken')) {
+                    logoutPromises.push(axios.post('/api/professor/logout', {}, { headers: { Authorization: `Bearer ${localStorage.getItem('profToken')}` } }).catch(() => {}));
+                }
+                if (localStorage.getItem('adminToken')) {
+                    logoutPromises.push(axios.post('/api/admin/logout', {}, { headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` } }).catch(() => {}));
+                }
+                if (localStorage.getItem('auditorToken')) {
+                    logoutPromises.push(axios.post('/api/auditor/logout', {}, { headers: { Authorization: `Bearer ${localStorage.getItem('auditorToken')}` } }).catch(() => {}));
+                }
+                if (localStorage.getItem('supportToken')) {
+                    logoutPromises.push(axios.post('/api/support/logout', {}, { headers: { Authorization: `Bearer ${localStorage.getItem('supportToken')}` } }).catch(() => {}));
+                }
+
+                await Promise.all(logoutPromises);
+
+                // Clear all frontend storage
+                ['student', 'prof', 'admin', 'auditor', 'support'].forEach(role => {
+                    localStorage.removeItem(`${role}Token`);
+                    localStorage.removeItem(`${role}Data`);
+                });
+
+                // Navigate based on current path if possible, or fallback to home
+                const path = location.pathname;
+                if (path.startsWith('/student')) navigate('/student/login');
+                else if (path.startsWith('/professor')) navigate('/professor/login');
+                else if (path.startsWith('/admin')) navigate('/admin/login');
+                else if (path.startsWith('/auditor')) navigate('/auditor/login');
+                else if (path.startsWith('/support')) navigate('/support/login');
+                else navigate('/');
+
             } catch (err) {
                 console.error("Logout error", err);
             }

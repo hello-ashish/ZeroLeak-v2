@@ -2,7 +2,7 @@ import React, { useState } from "react"
 import axios from "axios"
 import { useNavigate } from "react-router-dom"
 import { Mail, Lock, Eye, EyeOff, LogIn, Loader2, AlertTriangle } from 'lucide-react';
-import AuthShell from './components/auth/AuthShell';
+import AuthShell from '../../components/auth/AuthShell';
 
 const ProfessorLogin = () => {
     const [email, setEmail] = useState('');
