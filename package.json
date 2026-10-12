@@ -15,10 +15,7 @@
   "type": "commonjs",
   "main": "index.js",
   "scripts": {
-    "install:all": "npm install && npm install --prefix backend && npm install --prefix frontend && npm install --prefix fabric/chaincode/zeroleak-integrity",
-    "start:backend": "npm run dev --prefix backend",
-    "start:frontend": "npm run dev --prefix frontend",
-    "dev": "concurrently \"npm run start:backend\" \"npm run start:frontend\" --names \"backend,frontend\" --prefix-colors \"bgRed.bold,bgBlue.bold\"",
+    "install:all": "npm install --prefix backend && npm install --prefix frontend && npm install --prefix fabric/chaincode/zeroleak-integrity",
     "docker:up": "docker compose up",
     "docker:down": "docker compose down",
     "docker:build": "docker compose build",
@@ -30,8 +27,5 @@
     "fabric:status": "bash fabric/scripts/network-status.sh",
     "fabric:block": "bash fabric/scripts/inspect-block.sh",
     "fabric:test": "npm run test --prefix backend"
-  },
-  "devDependencies": {
-    "concurrently": "^9.2.1"
   }
 }
