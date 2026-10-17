@@ -86,7 +86,7 @@ export const AuditorLayout = ({ children, openAnomaliesCount = 0, noPadding = fa
     const handleLogout = () => {
         localStorage.removeItem('auditorToken')
         localStorage.removeItem('auditorData')
-        navigate('/')
+        navigate('/portal')
     }
 
     const handleSidebarDrag = (e) => {

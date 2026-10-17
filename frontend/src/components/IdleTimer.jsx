@@ -47,7 +47,7 @@ export const IdleTimer = () => {
                 else if (path.startsWith('/admin')) navigate('/admin/login');
                 else if (path.startsWith('/auditor')) navigate('/auditor/login');
                 else if (path.startsWith('/support')) navigate('/support/login');
-                else navigate('/');
+                else navigate('/portal');
 
             } catch (err) {
                 console.error("Logout error", err);

@@ -68,7 +68,7 @@ export const StudentLayout = ({ children, noPadding = false }) => {
     const handleLogout = () => {
         localStorage.removeItem('studentToken')
         localStorage.removeItem('studentData')
-        navigate('/')
+        navigate('/portal')
     }
 
     const handleRefresh = () => {

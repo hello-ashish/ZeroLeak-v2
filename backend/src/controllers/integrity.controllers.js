@@ -1,6 +1,8 @@
 import * as verificationService from '../Services/integrityVerification.service.js';
 import * as fabricService from '../Services/fabric.service.js';
 import { IntegrityOutbox } from '../models/integrityOutbox.models.js';
+import { Notification } from '../models/notification.models.js';
+import { AuditLog } from '../models/auditlog.models.js';
 
 export const getFabricStatus = async (req, res) => {
     try {
@@ -165,6 +167,20 @@ export const getLedgerHeight = async (req, res) => {
     }
 };
 
+export const getFabricBlocks = async (req, res) => {
+    try {
+        const limit = Math.min(parseInt(req.query.limit || '100', 10), 100);
+        const data = await fabricService.getFabricBlocks(limit);
+        return res.status(200).json(data);
+    } catch (err) {
+        if (err.code === 'FABRIC_DISABLED') {
+            return res.status(200).json({ blocks: [], height: 0, fabricEnabled: false });
+        }
+        console.error('[INTEGRITY] Error fetching fabric blocks:', err.message);
+        return res.status(500).json({ message: 'Failed to fetch fabric blocks.', error: err.message });
+    }
+};
+
 function _isValidObjectId(id) {
     return /^[a-f0-9]{24}$/.test(id);
 }
@@ -172,16 +188,166 @@ function _isValidObjectId(id) {
 // ─── GET /api/integrity/alerts ───────────────────────────────────────────────
 export const getIntegrityAlerts = async (req, res) => {
     try {
-        const { Notification } = await import('../models/notification.models.js');
         const userId = req.admin?._id || req.auditor?._id;
+        const userRole = req.admin ? 'Admin' : 'Auditor';
+
+        // Query for tampering notifications matching this user, role, or title
         const alerts = await Notification.find({
-            userId,
-            title: '⚠️ DB TAMPERING DETECTED'
-        }).sort({ createdAt: -1 }).limit(10).lean();
+            $or: [
+                { userId, title: '⚠️ DB TAMPERING DETECTED' },
+                { userRole, title: '⚠️ DB TAMPERING DETECTED' },
+                { title: '⚠️ DB TAMPERING DETECTED' }
+            ]
+        }).sort({ createdAt: -1 }).limit(25).lean();
+
+        // Deduplicate by message & incident time bucket (10s) so broadcast alerts appear once
+        const seen = new Set();
+        const uniqueAlerts = [];
+        for (const a of alerts) {
+            const timeBucket = Math.floor(new Date(a.createdAt).getTime() / 10000);
+            const key = `${a.message}-${timeBucket}`;
+            if (!seen.has(key)) {
+                seen.add(key);
+                uniqueAlerts.push(a);
+            }
+        }
         
-        res.json({ alerts });
+        res.json({ alerts: uniqueAlerts });
     } catch (e) {
         console.error("[INTEGRITY] Error getting alerts:", e.message);
         res.status(500).json({ message: "Failed to fetch integrity alerts" });
+    }
+};
+
+// ─── POST /api/integrity/verify-ledger ───────────────────────────────────────
+// Bulk verification: fetches all CONFIRMED outbox records and re-verifies each
+// entity's recomputed MongoDB hash against the immutable Fabric commitment.
+export const verifyAllCommitments = async (req, res) => {
+    try {
+        const fabricEnabled = process.env.FABRIC_ENABLED === 'true';
+        if (!fabricEnabled) {
+            return res.status(200).json({
+                fabricEnabled: false,
+                summary: { total: 0, verified: 0, tampered: 0, skipped: 0 },
+                results: [],
+                verifiedAt: new Date().toISOString(),
+                message: 'Fabric is disabled. Enable FABRIC_ENABLED=true to run ledger verification.',
+            });
+        }
+
+        // Fetch all confirmed commitments from the outbox (strictly excluding legacy mock transactions)
+        const confirmedRecords = await IntegrityOutbox.find({
+            status: 'CONFIRMED',
+            privateTransactionId: { $exists: false },
+            commitmentId: { $exists: true, $ne: null }
+        })
+            .sort({ createdAt: -1 })
+            .limit(200)
+            .lean();
+
+        // When multiple versions exist for the same entity, verify the latest version against live data
+        const latestByEntity = new Map();
+        for (const record of confirmedRecords) {
+            const key = `${record.entityType}:${record.entityId}`;
+            const existing = latestByEntity.get(key);
+            if (!existing || (record.version || 1) > (existing.version || 1)) {
+                latestByEntity.set(key, record);
+            }
+        }
+        const activeRecords = Array.from(latestByEntity.values());
+
+        const results = [];
+        let verified = 0;
+        let tampered = 0;
+        let skipped = 0;
+
+        for (const record of activeRecords) {
+            const { entityType, entityId, commitmentId, version } = record;
+            let verResult = null;
+
+            try {
+                if (entityType === 'Result') {
+                    verResult = await verificationService.verifyResult(entityId, version);
+                } else if (entityType === 'Exam') {
+                    verResult = await verificationService.verifyExam(entityId, version);
+                } else if (entityType === 'Batch') {
+                    verResult = await verificationService.verifyBatch(entityId, version);
+                } else if (entityType === 'SecurityEvent') {
+                    verResult = await verificationService.verifySecurityEvent(entityId);
+                } else {
+                    skipped++;
+                    results.push({
+                        commitmentId,
+                        entityType,
+                        entityId,
+                        status: 'SKIPPED',
+                        reason: 'UNSUPPORTED_ENTITY_TYPE',
+                        message: `Verification not supported for entity type: ${entityType}`,
+                    });
+                    continue;
+                }
+
+                const isTampered = verResult?.valid === false && verResult?.reason === 'HASH_MISMATCH';
+                const isVerified = verResult?.valid === true;
+
+                if (isVerified) verified++;
+                else if (isTampered) {
+                    tampered++;
+                    try {
+                        await AuditLog.create({
+                            actor: req.admin?.email || req.auditor?.email || "System",
+                            actorRole: req.admin ? "Admin" : req.auditor ? "Auditor" : "System",
+                            action: "LEDGER_TAMPERING_DETECTED",
+                            targetType: entityType,
+                            targetId: String(entityId),
+                            targetLabel: commitmentId,
+                            details: `Ledger verification failed: hash mismatch on ${entityType} (${entityId}). Live hash: ${verResult?.computedHash}, Ledger: ${verResult?.ledgerHash}`,
+                            status: "failure"
+                        });
+                    } catch (logErr) {
+                        console.error("[INTEGRITY] Failed to write AuditLog for tampering:", logErr.message);
+                    }
+                } else skipped++;
+
+                results.push({
+                    commitmentId,
+                    entityType,
+                    entityId,
+                    fabricTxId: record.fabricTxId,
+                    fabricBlockTimestamp: record.fabricBlockTimestamp,
+                    status: isVerified ? 'VERIFIED' : isTampered ? 'TAMPERED' : 'UNVERIFIABLE',
+                    reason: verResult?.reason,
+                    computedHash: verResult?.computedHash,
+                    ledgerHash: verResult?.ledgerHash,
+                    message: verResult?.message,
+                    verifiedAt: verResult?.verifiedAt,
+                });
+            } catch (err) {
+                skipped++;
+                results.push({
+                    commitmentId,
+                    entityType,
+                    entityId,
+                    status: 'ERROR',
+                    reason: 'VERIFICATION_EXCEPTION',
+                    message: err.message,
+                });
+            }
+        }
+
+        return res.status(200).json({
+            fabricEnabled: true,
+            summary: {
+                total: activeRecords.length,
+                verified,
+                tampered,
+                skipped,
+            },
+            results,
+            verifiedAt: new Date().toISOString(),
+        });
+    } catch (e) {
+        console.error('[INTEGRITY] Error running bulk ledger verification:', e.message);
+        return res.status(500).json({ message: 'Bulk ledger verification failed.', error: e.message });
     }
 };

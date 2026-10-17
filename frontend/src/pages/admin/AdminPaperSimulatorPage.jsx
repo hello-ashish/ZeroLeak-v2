@@ -2,9 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { AdminLayout } from './AdminLayout.jsx'
 import { Beaker, RefreshCw, Lock, Unlock, ShieldCheck, Terminal, Fingerprint, Cpu, Search, BrainCircuit, Settings, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useToast } from '../../components/Toast.jsx'
-import { SkeletonCard } from '../../components/SkeletonLoader.jsx'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
+import { EmptyState, Skeleton, SkeletonCard, SkeletonRow, SkeletonTable } from '../../components/SkeletonLoader.jsx'
 
 const API = '/api'
 const getToken = () => localStorage.getItem('adminToken')
@@ -172,7 +172,7 @@ export const AdminPaperSimulatorPage = () => {
     }
 
     const getDifficultyColor = (level) => {
-        switch((level || '').toLowerCase()) {
+        switch ((level || '').toLowerCase()) {
             case 'easy': return { color: 'var(--success)', bg: 'var(--success-subtle)' };
             case 'hard': return { color: 'var(--danger)', bg: 'var(--danger-subtle)' };
             case 'medium':
@@ -212,8 +212,6 @@ export const AdminPaperSimulatorPage = () => {
 
                     {/* Configuration Card */}
                     {loading ? (<>
-                        <SkeletonCard />
-                        <br />
                         <SkeletonCard />
                     </>
                     ) : !isDecrypting && !generatedPaper && (
@@ -356,13 +354,13 @@ export const AdminPaperSimulatorPage = () => {
                                             <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                                 Question {idx + 1} of {generatedPaper.length}
                                             </span>
-                                            <span style={{ 
-                                                fontSize: 13, 
-                                                color: getDifficultyColor(q.difficultyLevel).color, 
-                                                fontWeight: 600, 
-                                                background: getDifficultyColor(q.difficultyLevel).bg, 
-                                                padding: '4px 12px', 
-                                                borderRadius: 20 
+                                            <span style={{
+                                                fontSize: 13,
+                                                color: getDifficultyColor(q.difficultyLevel).color,
+                                                fontWeight: 600,
+                                                background: getDifficultyColor(q.difficultyLevel).bg,
+                                                padding: '4px 12px',
+                                                borderRadius: 20
                                             }}>
                                                 {q.difficultyLevel || 'Medium'}
                                             </span>

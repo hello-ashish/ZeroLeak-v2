@@ -7,6 +7,7 @@ import {
 } from "../Services/crypto.service.js"
 import { enqueueQuestionCommitment } from "../Services/integrityOutbox.service.js";
 import { selectQuestionsByDifficultyRatio } from "../Services/question.service.js";
+import { AuditLog } from "../models/auditlog.models.js";
 
 export const createQuestion = async (req, res) => {
     try {
@@ -63,6 +64,22 @@ export const createQuestion = async (req, res) => {
         enqueueQuestionCommitment(question, 1, '').catch(err =>
             console.error('[FABRIC] Failed to enqueue question commitment:', err.message)
         );
+        // Audit Log
+        try {
+            await AuditLog.create({
+                actor: req.professor?.email || "Professor",
+                actorRole: "Professor",
+                action: "QUESTION_CREATED",
+                targetType: "Question",
+                targetId: String(question._id),
+                targetLabel: `${subject} - ${topic}`,
+                details: `Created ${difficultyLevel} question for ${subject}/${topic}.`,
+                status: "success"
+            });
+        } catch (auditErr) {
+            console.error("[QUESTION] AuditLog error:", auditErr.message);
+        }
+
         return res.status(201).json({
             message: "Question created successfully",
             question,

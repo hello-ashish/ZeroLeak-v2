@@ -65,6 +65,22 @@ export const loginStudent = async (req, res) => {
         const token = student.generateAccessToken();
         const loggedInStudent = student.toObject();
         delete loggedInStudent.password;
+
+        // Audit Log
+        try {
+            await AuditLog.create({
+                actor: student.email,
+                actorRole: "Student",
+                action: "STUDENT_LOGIN",
+                targetType: "Student",
+                targetId: String(student._id),
+                targetLabel: student.name,
+                status: "success"
+            });
+        } catch (auditErr) {
+            console.error("[STUDENT] AuditLog error:", auditErr.message);
+        }
+
         return res.status(200).json({ message: "Login successful", token, student: loggedInStudent });
     } catch (error) {
         return res.status(500).json({ message: "Error logging in", error: error.message });
@@ -665,6 +681,22 @@ export const submitExamResult = async (req, res) => {
             returnedResult.score = null;
         }
         // -----------------------------------------------
+
+        // Audit Log
+        try {
+            await AuditLog.create({
+                actor: req.student?.email || "Student",
+                actorRole: "Student",
+                action: "EXAM_SUBMITTED",
+                targetType: "Exam",
+                targetId: String(exam._id),
+                targetLabel: exam.title,
+                details: `Score: ${score}/${totalQuestions}`,
+                status: "success"
+            });
+        } catch (auditErr) {
+            console.error("[STUDENT] AuditLog error:", auditErr.message);
+        }
 
         return res.status(201).json({
             message:

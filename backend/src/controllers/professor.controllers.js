@@ -1,6 +1,7 @@
 import { Professor } from "../models/professor.models.js";
-import { Batch } from "../models/batch.models.js"
+import { Batch } from "../models/batch.models.js";
 import { notifyAdmins } from "./notification.controllers.js";
+import { AuditLog } from "../models/auditlog.models.js";
 
 export const loginProfessor = async (req, res) => {
 
@@ -53,6 +54,21 @@ export const loginProfessor = async (req, res) => {
         delete loggedInProfessor.password;
 
         // JWT for future
+
+        // Audit Log
+        try {
+            await AuditLog.create({
+                actor: professor.email,
+                actorRole: "Professor",
+                action: "PROFESSOR_LOGIN",
+                targetType: "Professor",
+                targetId: String(professor._id),
+                targetLabel: professor.name || professor.email,
+                status: "success"
+            });
+        } catch (auditErr) {
+            console.error("[PROFESSOR] AuditLog error:", auditErr.message);
+        }
 
         return res.status(200).json({
             message: "Professor logged in successfully",
@@ -234,6 +250,22 @@ export const submitBatch = async (req, res) => {
             relatedLink: "/admin/batches"
         });
 
+        // Audit Log
+        try {
+            await AuditLog.create({
+                actor: req.professor?.email || "Professor",
+                actorRole: "Professor",
+                action: "BATCH_SUBMITTED",
+                targetType: "Batch",
+                targetId: String(batch._id),
+                targetLabel: batch.title,
+                details: `Submitted batch with ${batch.questions?.length || 0} questions for review.`,
+                status: "success"
+            });
+        } catch (auditErr) {
+            console.error("[PROFESSOR] AuditLog error:", auditErr.message);
+        }
+
         res.status(200).json({ message: "Batch submitted to Admin", batch })
     } catch (error) {
         res.status(500).json({ message: error.message })
@@ -267,6 +299,21 @@ export const deleteBatch = async (req, res) => {
 
         batch.isDeletedByProfessor = true;
         await batch.save();
+
+        // Audit Log
+        try {
+            await AuditLog.create({
+                actor: req.professor?.email || "Professor",
+                actorRole: "Professor",
+                action: "BATCH_DELETED",
+                targetType: "Batch",
+                targetId: String(batch._id),
+                targetLabel: batch.title,
+                status: "success"
+            });
+        } catch (auditErr) {
+            console.error("[PROFESSOR] AuditLog error:", auditErr.message);
+        }
 
         res.status(200).json({ message: "Batch deleted successfully" });
     } catch (error) {

@@ -16,6 +16,14 @@ export const SkeletonCard = () => (
     </div>
 )
 
+export const SkeletonCardSimulator = () => (
+    <div className="card" style={{ padding: '20px' }}>
+        <Skeleton height={12} width="60%" style={{ marginBottom: 12 }} />
+        <Skeleton height={28} width="80%" style={{ marginBottom: 8 }} />
+        <Skeleton height={12} width="40%" />
+    </div>
+)
+
 export const SkeletonRow = () => (
     <tr>
         {[...Array(5)].map((_, i) => (

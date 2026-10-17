@@ -13,6 +13,7 @@ import { getZMailNamespace } from "../sockets/zmail.socket.js";
 import jwt from "jsonwebtoken";
 import { SUPPORT_SYSTEM_ID } from "../Services/support/supportIdentity.service.js";
 import { Admin } from "../models/admin.models.js";
+import { AuditLog } from "../models/auditlog.models.js";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -423,6 +424,21 @@ export const supportLogin = async (req, res) => {
                     process.env.ACCESS_TOKEN_SECRET,
                     { expiresIn: "1d" }
                 );
+                // Audit Log
+                try {
+                    await AuditLog.create({
+                        actor: admin.email,
+                        actorRole: "Support",
+                        action: "SUPPORT_LOGIN",
+                        targetType: "Admin",
+                        targetId: String(admin._id),
+                        targetLabel: admin.name || admin.email,
+                        status: "success"
+                    });
+                } catch (auditErr) {
+                    console.error("[SUPPORT] AuditLog error:", auditErr.message);
+                }
+
                 return res.status(200).json({ success: true, token, user: { name: admin.name, email: admin.email } });
             }
         }

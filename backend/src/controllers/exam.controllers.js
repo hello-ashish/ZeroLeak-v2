@@ -3,6 +3,7 @@ import { Result } from "../models/result.models.js";
 import { Question } from "../models/question.models.js";
 import { buildMerkleRoot } from "../Services/merkle.service.js";
 import { enqueueExamCommitment } from "../Services/integrityOutbox.service.js";
+import { AuditLog } from "../models/auditlog.models.js";
 
 
 export const createExam = async (req, res) => {
@@ -121,6 +122,21 @@ export const createExam = async (req, res) => {
             console.error('[FABRIC] Failed to enqueue exam commitment:', err.message)
         );
 
+        // Audit Log
+        try {
+            await AuditLog.create({
+                actor: req.admin?.email || "Admin",
+                actorRole: "Admin",
+                action: "EXAM_CREATED",
+                targetType: "Exam",
+                targetId: String(exam._id),
+                targetLabel: exam.title,
+                status: "success"
+            });
+        } catch (auditErr) {
+            console.error("[EXAM] AuditLog error:", auditErr.message);
+        }
+
         return res.status(201).json({
             message:
                 "Exam created successfully",
@@ -211,6 +227,21 @@ export const bulkDeleteResults = async (req, res) => {
         }
 
         await Result.deleteMany({ _id: { $in: resultIds } });
+
+        // Audit Log
+        try {
+            await AuditLog.create({
+                actor: req.admin?.email || "Admin",
+                actorRole: "Admin",
+                action: "RESULTS_BULK_DELETED",
+                targetType: "Result",
+                targetLabel: `${resultIds.length} result(s) deleted`,
+                details: `Deleted ${resultIds.length} exam result records.`,
+                status: "success"
+            });
+        } catch (auditErr) {
+            console.error("[EXAM] AuditLog error:", auditErr.message);
+        }
 
         return res.status(200).json({
             message: "Results deleted successfully"

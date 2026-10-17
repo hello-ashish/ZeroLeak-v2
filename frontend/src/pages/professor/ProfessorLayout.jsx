@@ -98,7 +98,7 @@ export const ProfessorLayout = ({ children, noPadding = false }) => {
     const handleLogout = () => {
         localStorage.removeItem('profToken')
         localStorage.removeItem('profData')
-        navigate('/')
+        navigate('/portal')
     }
 
     const handleSidebarDrag = (e) => {

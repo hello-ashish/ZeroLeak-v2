@@ -2,11 +2,11 @@ import React, { useEffect, useRef } from 'react';
 import { ScrollText } from 'lucide-react';
 
 export default function MockSimulationLog({ logs }) {
-    const endRef = useRef(null);
+    const terminalRef = useRef(null);
 
     useEffect(() => {
-        if (endRef.current) {
-            endRef.current.scrollIntoView({ behavior: 'smooth' });
+        if (terminalRef.current) {
+            terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
         }
     }, [logs]);
 
@@ -16,7 +16,7 @@ export default function MockSimulationLog({ logs }) {
                 <ScrollText size={16} style={{ color: 'var(--text-tertiary)' }}/>
                 <h3 className="card-title" style={{ fontSize: '0.9rem' }}>SIMULATION LOG</h3>
             </div>
-            <div className="card-body terminal-body">
+            <div className="card-body terminal-body" ref={terminalRef}>
                 {logs.map((log, i) => (
                     <div key={i} className="log-entry">
                         <span className="log-time">[{log.time}]</span>
@@ -25,7 +25,6 @@ export default function MockSimulationLog({ logs }) {
                         </span>
                     </div>
                 ))}
-                <div ref={endRef} />
             </div>
         </div>
     );

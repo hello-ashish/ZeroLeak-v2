@@ -5,25 +5,25 @@ import { applyThemeProgress } from '../utils/themeEngine.js';
 export const HeaderThemeToggle = () => {
     const [isDark, setIsDark] = useState(() => {
         const savedProgress = localStorage.getItem('themeProgress');
-        // If progress is >= 50, consider it dark mode, otherwise light.
+        // Progress <= 50 is dark mode, > 50 is light mode
         if (savedProgress !== null) {
-            return parseInt(savedProgress, 10) >= 50;
+            return parseInt(savedProgress, 10) <= 50;
         }
-        // Default to dark mode based on typical app defaults or system preference
         return true; 
     });
 
-    useEffect(() => {
-        // Map boolean to 0 (Light) or 100 (Dark) progress
-        const targetProgress = isDark ? 100 : 0;
+    const toggleTheme = () => {
+        const nextDark = !isDark;
+        setIsDark(nextDark);
+        const targetProgress = nextDark ? 0 : 100;
         applyThemeProgress(targetProgress);
         localStorage.setItem('themeProgress', targetProgress);
-    }, [isDark]);
+    };
 
     return (
         <button
             className="topbar-btn"
-            onClick={() => setIsDark(!isDark)}
+            onClick={toggleTheme}
             aria-label={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
             title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}

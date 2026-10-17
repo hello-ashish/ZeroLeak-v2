@@ -17,6 +17,11 @@ import MockBlockchainDashboard from './MockBlockchainDashboard';
 export default function BlockchainCenter({ token }) {
     const [activeSection, setActiveSection] = useState('fabric');
 
+    const handleSwitchSection = (section) => {
+        setActiveSection(section);
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    };
+
     return (
         <div className="blockchain-center">
             <div className="page-header">
@@ -31,14 +36,16 @@ export default function BlockchainCenter({ token }) {
                     {/* Section switcher */}
                     <div className="bc-section-tabs" style={{ display: 'flex', gap: '8px' }}>
                         <button
+                            type="button"
                             className={`btn ${activeSection === 'fabric' ? 'btn-primary' : 'btn-secondary'}`}
-                            onClick={() => setActiveSection('fabric')}
+                            onClick={() => handleSwitchSection('fabric')}
                         >
                             Fabric Integrity Center
                         </button>
                         <button
+                            type="button"
                             className={`btn ${activeSection === 'mock' ? 'btn-primary' : 'btn-secondary'}`}
-                            onClick={() => setActiveSection('mock')}
+                            onClick={() => handleSwitchSection('mock')}
                         >
                             Mock Lab
                             <span className="bc-sim-badge">SIMULATION</span>

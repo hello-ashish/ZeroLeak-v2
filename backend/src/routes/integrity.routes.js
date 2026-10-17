@@ -26,7 +26,9 @@ import {
     getOutboxStatus,
     getPendingOutbox,
     getLedgerHeight,
+    getFabricBlocks,
     getIntegrityAlerts,
+    verifyAllCommitments,
 } from '../controllers/integrity.controllers.js';
 import { verifyAdminOrAuditorJWT } from '../middlewares/auth.middleware.js';
 
@@ -40,7 +42,11 @@ router.use(verifyAdminOrAuditorJWT);
 router.get('/fabric-status', getFabricStatus);
 router.get('/ledger-height', getLedgerHeight);
 router.get('/recent', getRecentCommitments);
+router.get('/blocks', getFabricBlocks);
 router.get('/alerts', getIntegrityAlerts);
+
+// Bulk ledger verification (verifies all CONFIRMED commitments against MongoDB)
+router.post('/verify-ledger', verifyAllCommitments);
 
 // Entity verification
 router.get('/result/:resultId', verifyResult);

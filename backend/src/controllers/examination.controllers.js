@@ -7,6 +7,7 @@ import mongoose from "mongoose";
 import crypto from "crypto";
 import { selectQuestionsByDifficultyRatio } from "../Services/question.service.js";
 import { enqueueExamCommitment } from "../Services/integrityOutbox.service.js";
+import { AuditLog } from "../models/auditlog.models.js";
 
 export const createExamination = async (req, res) => {
     const session = await mongoose.startSession();
@@ -86,6 +87,22 @@ export const createExamination = async (req, res) => {
             );
         });
 
+        // Audit Log for examination creation
+        try {
+            await AuditLog.create({
+                actor: req.admin?.email || req.user?.email || "Admin",
+                actorRole: "Admin",
+                action: "EXAMINATION_CREATED",
+                targetType: "Examination",
+                targetId: String(examination._id),
+                targetLabel: examination.title,
+                details: `Created examination with ${createdExams.length} subject exam(s).`,
+                status: "success"
+            });
+        } catch (auditErr) {
+            console.error("[EXAMINATION] AuditLog error:", auditErr.message);
+        }
+
         return res.status(201).json({
             message: "Examination created successfully",
             examination,
@@ -143,6 +160,22 @@ export const updateExaminationStatus = async (req, res) => {
         // Update child exams to match the new status
         await Exam.updateMany({ examinationId: id }, { status });
 
+        // Audit Log for examination status change
+        try {
+            await AuditLog.create({
+                actor: req.admin?.email || req.user?.email || "Admin",
+                actorRole: "Admin",
+                action: `EXAMINATION_${status.toUpperCase()}`,
+                targetType: "Examination",
+                targetId: String(examination._id),
+                targetLabel: examination.title,
+                details: `Examination status updated to ${status}.`,
+                status: "success"
+            });
+        } catch (auditErr) {
+            console.error("[EXAMINATION] AuditLog error:", auditErr.message);
+        }
+
         return res.status(200).json({ message: "Status updated successfully", examination });
     } catch (error) {
         console.error("Error updating examination status:", error);
@@ -157,6 +190,21 @@ export const toggleExaminationResults = async (req, res) => {
         
         const examination = await Examination.findByIdAndUpdate(id, { isResultReleased }, { returnDocument: 'after' });
         if (!examination) return res.status(404).json({ message: "Examination not found" });
+
+        // Audit Log for results release toggle
+        try {
+            await AuditLog.create({
+                actor: req.admin?.email || req.user?.email || "Admin",
+                actorRole: "Admin",
+                action: `EXAMINATION_RESULTS_${isResultReleased ? 'RELEASED' : 'HIDDEN'}`,
+                targetType: "Examination",
+                targetId: String(examination._id),
+                targetLabel: examination.title,
+                status: "success"
+            });
+        } catch (auditErr) {
+            console.error("[EXAMINATION] AuditLog error:", auditErr.message);
+        }
 
         return res.status(200).json({ message: "Results release toggled", examination });
     } catch (error) {
@@ -187,6 +235,22 @@ export const deleteExamination = async (req, res) => {
         
         // Delete examination
         await Examination.findByIdAndDelete(id);
+
+        // Audit Log for examination deletion
+        try {
+            await AuditLog.create({
+                actor: req.admin?.email || req.user?.email || "Admin",
+                actorRole: "Admin",
+                action: "EXAMINATION_DELETED",
+                targetType: "Examination",
+                targetId: String(examination._id),
+                targetLabel: examination.title,
+                details: `Deleted examination and cascaded ${childExamIds.length} child exam(s).`,
+                status: "success"
+            });
+        } catch (auditErr) {
+            console.error("[EXAMINATION] AuditLog error:", auditErr.message);
+        }
 
         return res.status(200).json({ message: "Examination deleted successfully" });
     } catch (error) {

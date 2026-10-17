@@ -130,6 +130,7 @@ export default function MockBlockchainDashboard() {
             <div className="mock-bottom-tabs">
                 <div className="tabs-header" style={{ display: 'flex', gap: '16px', borderBottom: '1px solid var(--border-default)', marginBottom: '24px' }}>
                     <button
+                        type="button"
                         className={`tab-btn ${activeTab === 'inspector' ? 'active' : ''}`}
                         onClick={() => setActiveTab('inspector')}
                         style={{ padding: '8px 16px', background: 'none', border: 'none', borderBottom: activeTab === 'inspector' ? '2px solid var(--brand-primary)' : '2px solid transparent', color: activeTab === 'inspector' ? 'var(--brand-primary)' : 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600 }}
@@ -137,16 +138,28 @@ export default function MockBlockchainDashboard() {
                         Block Inspector
                     </button>
                     <button
+                        type="button"
                         className={`tab-btn ${activeTab === 'log' ? 'active' : ''}`}
                         onClick={() => setActiveTab('log')}
                         style={{ padding: '8px 16px', background: 'none', border: 'none', borderBottom: activeTab === 'log' ? '2px solid var(--brand-primary)' : '2px solid transparent', color: activeTab === 'log' ? 'var(--brand-primary)' : 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600 }}
                     >
                         Simulation Log
                     </button>
-                    <div>
-                        <MockSimulationLog logs={simulationLog} />
-                    </div>
-                    )
+                </div>
+
+                <div className="tab-content">
+                    {activeTab === 'inspector' && (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
+                            <MockInspector block={selectedBlock} />
+                            <MockMerkleTreeLab block={selectedBlock} />
+                        </div>
+                    )}
+
+                    {activeTab === 'log' && (
+                        <div>
+                            <MockSimulationLog logs={simulationLog} />
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

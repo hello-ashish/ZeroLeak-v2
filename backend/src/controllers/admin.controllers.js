@@ -15,7 +15,8 @@ import {
     hashQuestionContent,
 } from "../Services/crypto.service.js";
 import { createNotification } from "./notification.controllers.js";
-import { enqueueBatchCommitment } from "../Services/integrityOutbox.service.js";
+import { enqueueBatchCommitment, enqueueExamCommitment } from "../Services/integrityOutbox.service.js";
+import { IntegrityOutbox } from "../models/integrityOutbox.models.js";
 
 // ─── Audit Log Helper ────────────────────────────────────────────────────────
 export const logAction = async ({ actor, actorRole = "Admin", action, targetType, targetId, targetLabel, details, status = "success" }) => {
@@ -686,6 +687,19 @@ export const updateExamStatus = async (req, res) => {
 
         const exam = await Exam.findByIdAndUpdate(id, updateData, { returnDocument: 'after' });
         await logAction({ actor: req.admin?.email, action: `EXAM_${status.toUpperCase()}`, targetType: "Exam", targetId: exam._id, targetLabel: exam.title });
+
+        // Auto-enqueue next version commitment on Fabric so ledger reflects scheduled/updated state
+        try {
+            const latestOutbox = await IntegrityOutbox.findOne({ entityType: 'Exam', entityId: exam._id.toString(), status: 'CONFIRMED' })
+                .sort({ version: -1 })
+                .lean();
+            const nextVersion = (latestOutbox?.version || 1) + 1;
+            const prevHash = latestOutbox?.dataHash || '';
+            await enqueueExamCommitment(exam, nextVersion, prevHash);
+        } catch (enqueueErr) {
+            console.error('[FABRIC] Failed to enqueue exam update commitment:', enqueueErr.message);
+        }
+
         return res.status(200).json({ message: "Exam status updated", exam });
     } catch (error) {
         return res.status(500).json({ message: "Error updating exam status" });

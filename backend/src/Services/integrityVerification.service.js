@@ -7,14 +7,22 @@ import { decryptQuestionContent, hashQuestionContent } from './crypto.service.js
 import { buildMerkleRoot } from './merkle.service.js';
 
 // Verify a Result
-export async function verifyResult(resultId) {
+export async function verifyResult(resultId, targetVersion = null) {
     const result = await Result.findById(resultId).lean();
     if (!result) {
         return _notFound('Result', resultId);
     }
 
     const entityId = result._id.toString();
-    const version = 1;
+    let version = targetVersion;
+    if (!version) {
+        const latestOutbox = await IntegrityOutbox.findOne({
+            entityType: 'Result',
+            entityId,
+            status: 'CONFIRMED'
+        }).sort({ version: -1 }).lean();
+        version = latestOutbox ? latestOutbox.version : 1;
+    }
     const commitmentId = fabricService.buildCommitmentId('Result', entityId, version);
 
     const canonical = {
@@ -41,7 +49,7 @@ export async function verifyResult(resultId) {
 
 
 // Verify a Batch
-export async function verifyBatch(batchId) {
+export async function verifyBatch(batchId, targetVersion = null) {
     const { Batch } = await import('../models/batch.models.js');
     const batch = await Batch.findById(batchId).lean();
     if (!batch) {
@@ -49,7 +57,15 @@ export async function verifyBatch(batchId) {
     }
 
     const entityId = batch._id.toString();
-    const version = 1;
+    let version = targetVersion;
+    if (!version) {
+        const latestOutbox = await IntegrityOutbox.findOne({
+            entityType: 'Batch',
+            entityId,
+            status: 'CONFIRMED'
+        }).sort({ version: -1 }).lean();
+        version = latestOutbox ? latestOutbox.version : 1;
+    }
     const commitmentId = fabricService.buildCommitmentId('Batch', entityId, version);
 
     // The dataHash for a batch is its merkleRoot
@@ -79,14 +95,22 @@ export async function verifyBatch(batchId) {
 
 
 // Verify an Exam
-export async function verifyExam(examId) {
+export async function verifyExam(examId, targetVersion = null) {
     const exam = await Exam.findById(examId).populate('questions').lean();
     if (!exam) {
         return _notFound('Exam', examId);
     }
 
     const entityId = exam._id.toString();
-    const version = 1;
+    let version = targetVersion;
+    if (!version) {
+        const latestOutbox = await IntegrityOutbox.findOne({
+            entityType: 'Exam',
+            entityId,
+            status: 'CONFIRMED'
+        }).sort({ version: -1 }).lean();
+        version = latestOutbox ? latestOutbox.version : 1;
+    }
     const commitmentId = fabricService.buildCommitmentId('Exam', entityId, version);
 
     // FIX: Recompute the Merkle root dynamically from the actually assigned questions

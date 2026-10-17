@@ -15,6 +15,7 @@ import { StudentLayout } from './pages/student/StudentLayout.jsx'
 import { AdminLayout } from './pages/admin/AdminLayout.jsx'
 
 // Auth & Public pages
+const LandingPage = lazy(() => import('./pages/LandingPage'))
 const Home = lazy(() => import('./pages/Home'))
 const AdminLogin = lazy(() => import('./pages/admin/AdminLogin'))
 const AdminProfile = lazy(() => import('./pages/admin/AdminProfile'))
@@ -92,7 +93,8 @@ function App() {
         <IdleTimer />
         <Suspense fallback={<PageLoader />}>
           <Routes>
-            <Route path="/" element={<Home />} />
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/portal" element={<Home />} />
 
             {/* ── Admin Routes ── */}
             <Route path="/admin/login" element={<AdminLogin />} />

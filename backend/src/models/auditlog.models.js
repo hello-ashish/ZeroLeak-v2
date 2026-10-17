@@ -2,7 +2,7 @@ import mongoose from "mongoose"
 
 const auditLogSchema = new mongoose.Schema({
     actor: { type: String, required: true },
-    actorRole: { type: String, enum: ["Admin", "Professor", "System", "Student"], default: "Admin" },
+    actorRole: { type: String, enum: ["Admin", "Professor", "System", "Student", "Auditor", "Support"], default: "Admin" },
     action: { type: String, required: true },
     targetType: { type: String },
     targetId: { type: String },

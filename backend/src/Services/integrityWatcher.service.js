@@ -4,6 +4,7 @@ import { Batch } from '../models/batch.models.js';
 import { Admin } from '../models/admin.models.js';
 import { Auditor } from '../models/auditor.models.js';
 import { Notification } from '../models/notification.models.js';
+import { AuditLog } from '../models/auditlog.models.js';
 import { IntegrityOutbox } from '../models/integrityOutbox.models.js';
 import { verifyResult, verifyExam, verifyBatch } from './integrityVerification.service.js';
 
@@ -117,5 +118,20 @@ async function alertAdmins(type, id, verificationResult) {
     
     if (notifications.length > 0) {
         await Notification.insertMany(notifications);
+    }
+
+    try {
+        await AuditLog.create({
+            actor: "System",
+            actorRole: "System",
+            action: "LEDGER_TAMPERING_DETECTED",
+            targetType: type,
+            targetId: String(id),
+            targetLabel: `${type} ${id}`,
+            details: `Unauthorized database modification caught by change stream. Live hash differs from ledger commitment.`,
+            status: "failure"
+        });
+    } catch (auditErr) {
+        console.error("[WATCHER] Failed to write AuditLog for tampering:", auditErr.message);
     }
 }

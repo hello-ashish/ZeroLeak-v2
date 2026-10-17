@@ -877,9 +877,7 @@ const TakeExam = () => {
                 {/* Left: Branding & Focus Toggle */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <div style={{ width: 24, height: 24, borderRadius: 4, background: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <img src="/logo.png" alt="ZL" style={{ width: 14, height: 14, objectFit: 'cover', filter: 'invert(1)' }} />
-                        </div>
+                        <img src="/logo.png" alt="ZeroLeak Logo" style={{ width: 24, height: 24, borderRadius: 6, objectFit: 'cover' }} />
                         <h1 style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', letterSpacing: '0.02em' }}>{exam.title}</h1>
                     </div>
 

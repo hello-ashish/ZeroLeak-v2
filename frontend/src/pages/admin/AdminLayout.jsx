@@ -183,7 +183,7 @@ export const AdminLayout = ({ children, pendingBatchCount = 0, noPadding = false
     const handleLogout = () => {
         localStorage.removeItem('adminToken')
         localStorage.removeItem('adminData')
-        navigate('/')
+        navigate('/portal')
     }
 
     const initials = (adminData.email || 'A')

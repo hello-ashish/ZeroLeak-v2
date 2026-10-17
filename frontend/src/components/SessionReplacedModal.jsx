@@ -33,7 +33,7 @@ export const SessionReplacedModal = () => {
         localStorage.removeItem('auditorData');
         
         setIsOpen(false);
-        navigate('/');
+        navigate('/portal');
     };
 
     return (

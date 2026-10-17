@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ShieldCheck, BrainCircuit, Users, ArrowLeft, ShieldAlert } from 'lucide-react';
+import { ShieldCheck, BrainCircuit, Users, ArrowLeft } from 'lucide-react';
 import './Auth.css';
 
 import { HeaderThemeToggle } from '../HeaderThemeToggle.jsx';
@@ -8,7 +8,7 @@ import { HeaderThemeToggle } from '../HeaderThemeToggle.jsx';
 const AuthShell = ({ title, subtitle, badge, children }) => {
   return (
     <div className="auth-wrapper">
-      <div className="auth-container">
+      <div className="auth-container auth-slomo-panel">
         {/* Left Information Section */}
         <div className="auth-info-section">
           <div className="auth-brand-header">
@@ -79,7 +79,9 @@ const AuthShell = ({ title, subtitle, badge, children }) => {
               <p className="auth-role-subtitle">{subtitle}</p>
             </div>
 
-            {children}
+            <div className="auth-form-content">
+              {children}
+            </div>
           </div>
         </div>
       </div>

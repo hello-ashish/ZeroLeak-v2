@@ -375,7 +375,9 @@
 }
 
 @keyframes spin {
-  100% { transform: rotate(360deg); }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* Responsive */
@@ -383,9 +385,11 @@
   .auth-info-section {
     padding: 3rem;
   }
+
   .auth-form-section {
     padding: 3rem;
   }
+
   .auth-statement {
     font-size: 2rem;
   }
@@ -395,6 +399,7 @@
   .auth-wrapper {
     align-items: flex-start;
   }
+
   .auth-container {
     flex-direction: column;
     margin: 0;
@@ -402,25 +407,50 @@
     min-height: 100vh;
     border: none;
   }
+
   .auth-info-section {
     border-right: none;
     border-bottom: 1px solid var(--border-default);
     padding: 2rem;
   }
+
   .auth-statement {
     font-size: 1.75rem;
     margin-bottom: 2rem;
   }
+
   .auth-brand-header {
     margin-bottom: 2rem;
   }
+
   .auth-feature-list {
     margin-bottom: 2rem;
   }
+
   .auth-form-section {
     padding: 2rem;
   }
+
   .auth-form-container {
     padding: 0;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Smooth & Responsive Panel Entrance (0.45s)
+   ═══════════════════════════════════════════════════════════ */
+
+.auth-container.auth-slomo-panel {
+  animation: slomoFadeIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes slomoFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
