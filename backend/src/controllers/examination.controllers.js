@@ -81,11 +81,13 @@ export const createExamination = async (req, res) => {
         session.endSession();
 
         // Enqueue Fabric commitments for each newly created exam
-        createdExams.forEach(exam => {
-            enqueueExamCommitment(exam, 1, '').catch(err =>
-                console.error('[FABRIC] Failed to enqueue exam commitment:', err.message)
-            );
-        });
+        for (const exam of createdExams) {
+            try {
+                await enqueueExamCommitment(exam, 1, '');
+            } catch (err) {
+                console.error('[FABRIC] Failed to enqueue exam commitment (reconciler will retry):', err.message);
+            }
+        }
 
         // Audit Log for examination creation
         try {

@@ -351,3 +351,21 @@ export const verifyAllCommitments = async (req, res) => {
         return res.status(500).json({ message: 'Bulk ledger verification failed.', error: e.message });
     }
 };
+
+// ─── POST /api/integrity/reconcile ───────────────────────────────────────────
+// Manually triggers a self-healing reconciliation cycle to discover and enqueue
+// any uncommitted or missing database records into the IntegrityOutbox.
+export const triggerReconciliation = async (req, res) => {
+    try {
+        const { reconcileUncommittedEntities } = await import('../Services/integrityOutbox.service.js');
+        const stats = await reconcileUncommittedEntities();
+        return res.status(200).json({
+            message: 'Integrity outbox reconciliation completed successfully.',
+            stats,
+            reconciledAt: new Date().toISOString(),
+        });
+    } catch (err) {
+        console.error('[INTEGRITY] Error triggering reconciliation:', err.message);
+        return res.status(500).json({ message: 'Failed to run reconciliation.', error: err.message });
+    }
+};

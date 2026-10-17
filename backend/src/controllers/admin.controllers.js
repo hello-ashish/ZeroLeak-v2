@@ -221,7 +221,29 @@ export const getBatches = async (req, res) => {
         const { status } = req.query;
         const query = status ? { status, isDeletedByAdmin: { $ne: true } } : { isDeletedByAdmin: { $ne: true } };
         const batches = await Batch.find(query).sort({ createdAt: -1 }).populate('createdBy', 'name email').lean();
-        res.status(200).json({ batches });
+
+        const sanitizedBatches = batches.map(batch => {
+            if (batch.status === 'Accepted' && Array.isArray(batch.questions)) {
+                return {
+                    ...batch,
+                    questions: batch.questions.map(q => ({
+                        _id: q._id,
+                        title: q.contentHash || (q.title && /^[a-f0-9]{64}$/i.test(q.title) ? q.title : "[Encrypted Question Hash]"),
+                        options: [],
+                        difficultyLevel: q.difficultyLevel,
+                        subject: q.subject,
+                        topic: q.topic,
+                        contentHash: q.contentHash,
+                        questionId: q.questionId,
+                        createdAt: q.createdAt,
+                        updatedAt: q.updatedAt
+                    }))
+                };
+            }
+            return batch;
+        });
+
+        res.status(200).json({ batches: sanitizedBatches });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -236,19 +258,35 @@ export const openBatchDetails = async (req, res) => {
             { returnDocument: 'after' }
         ).populate('createdBy', 'name email').lean();
 
-        if (batch && batch.status === 'Accepted') {
+        if (batch && batch.status === 'Accepted' && Array.isArray(batch.questions)) {
             batch.questions = batch.questions.map(q => {
-                const sensitiveContent = {
-                    title: q.title,
-                    options: q.options,
-                    correctAnswer: q.correctAnswer,
-                    correctAnswerIndex: q.correctAnswerIndex,
-                };
-                const contentHash = hashQuestionContent(sensitiveContent);
+                let contentHash = q.contentHash;
+                if (!contentHash) {
+                    if (q.title && /^[a-f0-9]{64}$/i.test(q.title)) {
+                        contentHash = q.title;
+                    } else if (q.title) {
+                        contentHash = hashQuestionContent({
+                            title: q.title,
+                            options: q.options || [],
+                            correctAnswer: q.correctAnswer,
+                            correctAnswerIndex: q.correctAnswerIndex,
+                            subject: q.subject,
+                            topic: q.topic,
+                            difficultyLevel: q.difficultyLevel,
+                        });
+                    }
+                }
                 return {
-                    ...q,
-                    title: contentHash,
-                    options: []
+                    _id: q._id,
+                    title: contentHash || "[Encrypted Question Hash]",
+                    options: [],
+                    difficultyLevel: q.difficultyLevel,
+                    subject: q.subject,
+                    topic: q.topic,
+                    contentHash,
+                    questionId: q.questionId,
+                    createdAt: q.createdAt,
+                    updatedAt: q.updatedAt
                 };
             });
         }
@@ -284,6 +322,9 @@ export const reviewBatch = async (req, res) => {
                     options: q.options,
                     correctAnswer: q.correctAnswer,
                     correctAnswerIndex: q.correctAnswerIndex,
+                    subject: q.subject,
+                    topic: q.topic,
+                    difficultyLevel: q.difficultyLevel,
                 };
 
                 const contentHash =
@@ -305,6 +346,26 @@ export const reviewBatch = async (req, res) => {
             const insertedQuestions = await Question.insertMany(questionsToInsert);
             const questionHashes = insertedQuestions.map((question) => question.contentHash);
             const merkleRoot = buildMerkleRoot(questionHashes);
+
+            // Redact plaintext content from draft questions upon acceptance
+            // Keep contentHash, difficulty, subject, topic so question stats & hash verification remain intact.
+            // Scrub title (set to contentHash), empty options, and remove correctAnswer & correctAnswerIndex.
+            batch.questions = batch.questions.map((q, idx) => {
+                const contentHash = questionHashes[idx];
+                const insertedQ = insertedQuestions[idx];
+                return {
+                    _id: q._id,
+                    title: contentHash,
+                    options: [],
+                    difficultyLevel: q.difficultyLevel,
+                    subject: q.subject,
+                    topic: q.topic,
+                    contentHash: contentHash,
+                    questionId: insertedQ?._id,
+                    createdAt: q.createdAt,
+                    updatedAt: q.updatedAt
+                };
+            });
 
             batch.merkleRoot = merkleRoot;
             batch.status = 'Accepted';
@@ -356,9 +417,11 @@ export const reviewBatch = async (req, res) => {
 
         // Enqueue Fabric commitment AFTER saving — so blockchain references final state
         if (action === 'Accept') {
-            enqueueBatchCommitment(batch).catch(err =>
-                console.error('[FABRIC] Failed to enqueue batch commitment:', err.message)
-            );
+            try {
+                await enqueueBatchCommitment(batch);
+            } catch (err) {
+                console.error('[FABRIC] Failed to enqueue batch commitment (reconciler will retry):', err.message);
+            }
         }
 
         const actionMessages = { Accept: 'Accepted', Reject: 'Rejected', MarkForReview: 'Marked for Review' };
@@ -377,31 +440,35 @@ export const deleteBatch = async (req, res) => {
         if (!batch) return res.status(404).json({ message: "Batch not found" });
 
         if (batch.status === 'Accepted' && batch.merkleRoot) {
-            // Bug fix: re-hashing embedded draft questions is unreliable after acceptance
-            // because the sensitive fields (title, options, etc.) in the batch subdocs
-            // may have been redacted. Instead, delete Question docs by the batch's merkleRoot
-            // or by finding questions that were created by this professor with hashes from the batch.
-            // Safest: delete by contentHash values stored in draft questions (which we have pre-acceptance)
-            // Since after acceptance the batch still holds the original draft questions (not redacted
-            // in DB — only the API response redacts them in openBatchDetails), we can still hash them.
-            const contentHashes = batch.questions
-                .filter(q => q.title && q.options && q.options.length > 0)
-                .map(q => {
-                    const sensitiveContent = {
-                        title: q.title,
-                        options: q.options,
-                        correctAnswer: q.correctAnswer,
-                        correctAnswerIndex: q.correctAnswerIndex,
-                    };
-                    return hashQuestionContent(sensitiveContent);
-                });
+            const questionIds = (batch.questions || [])
+                .map(q => q.questionId)
+                .filter(Boolean);
 
-            if (contentHashes.length > 0) {
+            const contentHashes = (batch.questions || [])
+                .map(q => {
+                    if (q.contentHash) return q.contentHash;
+                    if (q.title && /^[a-f0-9]{64}$/i.test(q.title)) return q.title;
+                    if (q.title && q.options && q.options.length > 0) {
+                        return hashQuestionContent({
+                            title: q.title,
+                            options: q.options,
+                            correctAnswer: q.correctAnswer,
+                            correctAnswerIndex: q.correctAnswerIndex,
+                            subject: q.subject,
+                            topic: q.topic,
+                            difficultyLevel: q.difficultyLevel,
+                        });
+                    }
+                    return null;
+                })
+                .filter(Boolean);
+
+            if (questionIds.length > 0) {
+                await Question.deleteMany({ _id: { $in: questionIds } });
+            } else if (contentHashes.length > 0) {
                 await Question.deleteMany({ contentHash: { $in: contentHashes } });
             } else {
-                // Fallback: delete by createdBy (batch professor) and batch's merkleRoot match
-                // This is approximate but prevents complete orphaning
-                console.warn(`[DELETE BATCH] Could not re-derive content hashes for accepted batch ${batchId}. Skipping question deletion.`);
+                console.warn(`[DELETE BATCH] Could not re-derive content hashes or question IDs for accepted batch ${batchId}. Skipping question deletion.`);
             }
         }
 

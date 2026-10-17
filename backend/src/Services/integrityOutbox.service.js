@@ -279,3 +279,161 @@ export async function enqueueBatchCommitment(batch, version = 1, previousHash = 
         version,
     });
 }
+
+// ─── Reconciliation Sweeper (Option 2: Self-Healing Outbox) ─────────────────
+let _reconcilerInterval = null;
+const RECONCILE_INTERVAL_MS = 30 * 60 * 1000; // Run every 30 minutes
+
+/**
+ * Scans MongoDB for any committed/finalized entities that are missing an outbox
+ * entry or need re-anchoring, guaranteeing At-Least-Once Delivery.
+ */
+export async function reconcileUncommittedEntities() {
+    console.info('[RECONCILER] Starting integrity outbox reconciliation cycle...');
+    const stats = {
+        batchesReconciled: 0,
+        resultsReconciled: 0,
+        examsReconciled: 0,
+        questionsReconciled: 0,
+        stuckProcessingReset: 0,
+        permanentlyFailed: 0,
+    };
+
+    try {
+        // 1. Reset any stale PROCESSING records whose lease expired
+        const now = new Date();
+        const resetResult = await IntegrityOutbox.updateMany(
+            {
+                status: 'PROCESSING',
+                leaseExpiresAt: { $lt: now },
+            },
+            {
+                $set: {
+                    status: 'PENDING',
+                    processingWorker: null,
+                    leaseExpiresAt: null,
+                },
+            }
+        );
+        stats.stuckProcessingReset = resetResult.modifiedCount || 0;
+
+        // 2. Count permanently failed records
+        stats.permanentlyFailed = await IntegrityOutbox.countDocuments({ status: 'FAILED' });
+
+        // 3. Reconcile Accepted Batches
+        const { Batch } = await import('../models/batch.models.js');
+        const acceptedBatches = await Batch.find({
+            status: 'Accept',
+            merkleRoot: { $exists: true, $ne: '' },
+        }).select('_id merkleRoot title').lean();
+
+        const existingBatchCommitments = new Set(
+            (await IntegrityOutbox.find({ entityType: 'Batch' }).select('commitmentId').lean())
+                .map(r => r.commitmentId)
+        );
+
+        for (const batch of acceptedBatches) {
+            const commitmentId = fabricService.buildCommitmentId('Batch', batch._id.toString(), 1);
+            if (!existingBatchCommitments.has(commitmentId)) {
+                console.info(`[RECONCILER] Re-enqueuing missing batch commitment: ${batch._id} ("${batch.title}")`);
+                await enqueueBatchCommitment(batch);
+                existingBatchCommitments.add(commitmentId);
+                stats.batchesReconciled++;
+            }
+        }
+
+        // 4. Reconcile Completed Results
+        const { Result } = await import('../models/result.models.js');
+        const completedResults = await Result.find({ status: 'Completed' })
+            .select('_id student exam score totalQuestions status isTerminated assignedQuestions createdAt')
+            .lean();
+
+        const existingResultCommitments = new Set(
+            (await IntegrityOutbox.find({ entityType: 'Result' }).select('commitmentId').lean())
+                .map(r => r.commitmentId)
+        );
+
+        for (const res of completedResults) {
+            const commitmentId = fabricService.buildCommitmentId('Result', res._id.toString(), 1);
+            if (!existingResultCommitments.has(commitmentId)) {
+                console.info(`[RECONCILER] Re-enqueuing missing result commitment: ${res._id}`);
+                await enqueueResultCommitment(res);
+                existingResultCommitments.add(commitmentId);
+                stats.resultsReconciled++;
+            }
+        }
+
+        // 5. Reconcile Exams
+        const { Exam } = await import('../models/exam.models.js');
+        const exams = await Exam.find({})
+            .select('_id title subject mode questionMerkleRoot durationMinutes totalMarks scheduledAt createdAt questions')
+            .lean();
+
+        const existingExamCommitments = new Set(
+            (await IntegrityOutbox.find({ entityType: 'Exam' }).select('commitmentId').lean())
+                .map(r => r.commitmentId)
+        );
+
+        for (const exam of exams) {
+            const commitmentId = fabricService.buildCommitmentId('Exam', exam._id.toString(), 1);
+            if (!existingExamCommitments.has(commitmentId)) {
+                console.info(`[RECONCILER] Re-enqueuing missing exam commitment: ${exam._id} ("${exam.title}")`);
+                await enqueueExamCommitment(exam, 1, '');
+                existingExamCommitments.add(commitmentId);
+                stats.examsReconciled++;
+            }
+        }
+
+        // 6. Reconcile Questions (limit to recent questions so cycles remain sub-second)
+        const { Question } = await import('../models/question.models.js');
+        const questions = await Question.find({ contentHash: { $exists: true, $ne: '' } })
+            .sort({ createdAt: -1 })
+            .limit(100)
+            .select('_id contentHash')
+            .lean();
+
+        const existingQuestionCommitments = new Set(
+            (await IntegrityOutbox.find({ entityType: 'Question' }).select('commitmentId').lean())
+                .map(r => r.commitmentId)
+        );
+
+        for (const q of questions) {
+            const commitmentId = fabricService.buildCommitmentId('Question', q._id.toString(), 1);
+            if (!existingQuestionCommitments.has(commitmentId)) {
+                await enqueueQuestionCommitment(q, 1, '');
+                existingQuestionCommitments.add(commitmentId);
+                stats.questionsReconciled++;
+            }
+        }
+
+        console.info(`[RECONCILER] Cycle completed: batches=${stats.batchesReconciled}, results=${stats.resultsReconciled}, exams=${stats.examsReconciled}, questions=${stats.questionsReconciled}, resetStuck=${stats.stuckProcessingReset}, failed=${stats.permanentlyFailed}`);
+    } catch (err) {
+        console.error('[RECONCILER] Error during reconciliation:', err.message);
+    }
+
+    return stats;
+}
+
+/**
+ * Starts the periodic reconciler background timer.
+ */
+export function startIntegrityReconciler() {
+    if (_reconcilerInterval) return;
+
+    console.info(`[RECONCILER] Initializing background reconciler (interval=${RECONCILE_INTERVAL_MS / 60000}m)`);
+
+    // Run first reconciliation 5 seconds after startup
+    setTimeout(() => {
+        reconcileUncommittedEntities().catch(err =>
+            console.error('[RECONCILER] Initial run error:', err.message)
+        );
+    }, 5000);
+
+    _reconcilerInterval = setInterval(async () => {
+        try {
+            await reconcileUncommittedEntities();
+        } catch (err) {
+            console.error('[RECONCILER] Interval error:', err.message);
+        }
+    }, RECONCILE_INTERVAL_MS);
+}

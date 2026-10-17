@@ -68,10 +68,182 @@ export async function verifyBatch(batchId, targetVersion = null) {
     }
     const commitmentId = fabricService.buildCommitmentId('Batch', entityId, version);
 
-    // The dataHash for a batch is its merkleRoot
-    const computedHash = batch.merkleRoot;
+    if (batch.status !== 'Accepted') {
+        return {
+            valid: false,
+            entityId,
+            entityType: 'Batch',
+            commitmentId,
+            computedHash: null,
+            ledgerHash: null,
+            reason: 'NOT_ACCEPTED',
+            message: `Batch status is "${batch.status}". Only Accepted batches have blockchain commitments.`,
+            verifiedAt: new Date().toISOString(),
+        };
+    }
 
-    if (!computedHash) {
+    if (!batch.questions || batch.questions.length === 0) {
+        return {
+            valid: false,
+            entityId,
+            entityType: 'Batch',
+            commitmentId,
+            computedHash: null,
+            ledgerHash: null,
+            reason: 'EMPTY_BATCH',
+            message: `Batch has no questions to verify.`,
+            verifiedAt: new Date().toISOString(),
+        };
+    }
+
+    // Dynamic Merkle Root Reconstruction:
+    // Reconstruct the Merkle root from current question documents in the Question Bank,
+    // verifying that decrypted content and metadata (subject, topic, difficultyLevel) match.
+    const questionIds = (batch.questions || []).map(q => q.questionId).filter(Boolean);
+    const contentHashesFromBatch = (batch.questions || []).map(q => q.contentHash).filter(Boolean);
+
+    const questionDocs = await Question.find({
+        $or: [
+            ...(questionIds.length > 0 ? [{ _id: { $in: questionIds } }] : []),
+            ...(contentHashesFromBatch.length > 0 ? [{ contentHash: { $in: contentHashesFromBatch } }] : []),
+        ]
+    }).lean();
+
+    const idToDocMap = new Map();
+    const hashToDocMap = new Map();
+    for (const doc of questionDocs) {
+        idToDocMap.set(doc._id.toString(), doc);
+        if (doc.contentHash) hashToDocMap.set(doc.contentHash, doc);
+    }
+
+    const reconstructedQuestionHashes = [];
+
+    for (let i = 0; i < batch.questions.length; i++) {
+        const qRef = batch.questions[i];
+        const questionDoc = (qRef.questionId && idToDocMap.get(qRef.questionId.toString()))
+            || (qRef.contentHash && hashToDocMap.get(qRef.contentHash));
+
+        if (!questionDoc) {
+            return {
+                valid: false,
+                entityId,
+                entityType: 'Batch',
+                commitmentId,
+                computedHash: null,
+                ledgerHash: null,
+                reason: 'QUESTION_MISSING',
+                message: `Question #${i + 1} from batch (id: ${qRef.questionId || qRef._id}) was not found in the Question Bank. Underlying data has been deleted or corrupted.`,
+                verifiedAt: new Date().toISOString(),
+            };
+        }
+
+        // Verify metadata between batch subdoc and Question doc
+        if (qRef.subject && questionDoc.subject && qRef.subject !== questionDoc.subject) {
+            return {
+                valid: false,
+                entityId,
+                entityType: 'Batch',
+                commitmentId,
+                computedHash: null,
+                ledgerHash: null,
+                reason: 'METADATA_MISMATCH',
+                message: `Question #${i + 1} subject mismatch: batch has "${qRef.subject}" but Question Bank has "${questionDoc.subject}". Data was altered.`,
+                verifiedAt: new Date().toISOString(),
+            };
+        }
+
+        if (qRef.difficultyLevel && questionDoc.difficultyLevel && qRef.difficultyLevel !== questionDoc.difficultyLevel) {
+            return {
+                valid: false,
+                entityId,
+                entityType: 'Batch',
+                commitmentId,
+                computedHash: null,
+                ledgerHash: null,
+                reason: 'METADATA_MISMATCH',
+                message: `Question #${i + 1} difficulty mismatch: batch has "${qRef.difficultyLevel}" but Question Bank has "${questionDoc.difficultyLevel}". Data was altered.`,
+                verifiedAt: new Date().toISOString(),
+            };
+        }
+
+        if (qRef.topic && questionDoc.topic && qRef.topic !== questionDoc.topic) {
+            return {
+                valid: false,
+                entityId,
+                entityType: 'Batch',
+                commitmentId,
+                computedHash: null,
+                ledgerHash: null,
+                reason: 'METADATA_MISMATCH',
+                message: `Question #${i + 1} topic mismatch: batch has "${qRef.topic}" but Question Bank has "${questionDoc.topic}". Data was altered.`,
+                verifiedAt: new Date().toISOString(),
+            };
+        }
+
+        // Decrypt question content
+        let decrypted;
+        try {
+            decrypted = decryptQuestionContent(questionDoc.encryptedContent);
+        } catch (decErr) {
+            return {
+                valid: false,
+                entityId,
+                entityType: 'Batch',
+                commitmentId,
+                computedHash: null,
+                ledgerHash: null,
+                reason: 'DECRYPTION_FAILED',
+                message: `Failed to decrypt question #${i + 1} (${questionDoc._id}): ${decErr.message}. Ciphertext or authTag has been tampered with.`,
+                verifiedAt: new Date().toISOString(),
+            };
+        }
+
+        // Recompute content hash using decrypted content AND metadata (subject, topic, difficultyLevel)
+        const sensitiveWithMeta = {
+            title: decrypted.title,
+            options: decrypted.options,
+            correctAnswer: decrypted.correctAnswer,
+            correctAnswerIndex: decrypted.correctAnswerIndex,
+            subject: questionDoc.subject || qRef.subject || decrypted.subject,
+            topic: questionDoc.topic || qRef.topic || decrypted.topic,
+            difficultyLevel: questionDoc.difficultyLevel || qRef.difficultyLevel || decrypted.difficultyLevel,
+        };
+
+        let calculatedQHash = hashQuestionContent(sensitiveWithMeta);
+
+        // Support both metadata-inclusive hash and legacy format
+        if (calculatedQHash !== questionDoc.contentHash) {
+            const legacyHash = hashQuestionContent({
+                title: decrypted.title,
+                options: decrypted.options,
+                correctAnswer: decrypted.correctAnswer,
+                correctAnswerIndex: decrypted.correctAnswerIndex,
+            });
+
+            if (legacyHash === questionDoc.contentHash) {
+                calculatedQHash = legacyHash;
+            } else {
+                return {
+                    valid: false,
+                    entityId,
+                    entityType: 'Batch',
+                    commitmentId,
+                    computedHash: null,
+                    ledgerHash: null,
+                    reason: 'QUESTION_TAMPERED',
+                    message: `Question #${i + 1} (${questionDoc._id}) content hash does not match decrypted content and metadata. Question data has been tampered with.`,
+                    verifiedAt: new Date().toISOString(),
+                };
+            }
+        }
+
+        reconstructedQuestionHashes.push(calculatedQHash);
+    }
+
+    // Reconstruct Merkle root from freshly verified question hashes
+    const reconstructedMerkleRoot = buildMerkleRoot(reconstructedQuestionHashes);
+
+    if (!reconstructedMerkleRoot) {
         return {
             valid: false,
             entityId,
@@ -80,10 +252,27 @@ export async function verifyBatch(batchId, targetVersion = null) {
             computedHash: null,
             ledgerHash: null,
             reason: 'NO_MERKLE_ROOT',
-            message: `Batch does not have a merkle root computed.`,
+            message: `Could not build Merkle root from question hashes.`,
             verifiedAt: new Date().toISOString(),
         };
     }
+
+    // Verify reconstructed root matches saved batch root
+    if (batch.merkleRoot && batch.merkleRoot !== reconstructedMerkleRoot) {
+        return {
+            valid: false,
+            entityId,
+            entityType: 'Batch',
+            commitmentId,
+            computedHash: reconstructedMerkleRoot,
+            ledgerHash: batch.merkleRoot,
+            reason: 'MERKLE_ROOT_MISMATCH',
+            message: `Reconstructed Merkle root from current questions (${reconstructedMerkleRoot}) does not match saved batch Merkle root (${batch.merkleRoot}). Underlying question data or root has been modified.`,
+            verifiedAt: new Date().toISOString(),
+        };
+    }
+
+    const computedHash = reconstructedMerkleRoot;
 
     return _verifyAgainstLedger({
         entityId,
@@ -113,14 +302,30 @@ export async function verifyExam(examId, targetVersion = null) {
     }
     const commitmentId = fabricService.buildCommitmentId('Exam', entityId, version);
 
-    // FIX: Recompute the Merkle root dynamically from the actually assigned questions
+    // FIX: Recompute the Merkle root dynamically from the actually assigned questions and metadata
     let dynamicMerkleRoot = '';
     if (exam.mode !== 'Zeroleak') {
         const questionHashes = [];
         for (const question of (exam.questions || [])) {
             try {
                 const decryptedContent = decryptQuestionContent(question.encryptedContent);
-                questionHashes.push(hashQuestionContent(decryptedContent));
+                const sensitiveWithMeta = {
+                    title: decryptedContent.title,
+                    options: decryptedContent.options,
+                    correctAnswer: decryptedContent.correctAnswer,
+                    correctAnswerIndex: decryptedContent.correctAnswerIndex,
+                    subject: question.subject || decryptedContent.subject,
+                    topic: question.topic || decryptedContent.topic,
+                    difficultyLevel: question.difficultyLevel || decryptedContent.difficultyLevel,
+                };
+                let qHash = hashQuestionContent(sensitiveWithMeta);
+                if (qHash !== question.contentHash) {
+                    const legacyHash = hashQuestionContent(decryptedContent);
+                    if (legacyHash === question.contentHash) {
+                        qHash = legacyHash;
+                    }
+                }
+                questionHashes.push(qHash);
             } catch (err) {
                 return {
                     valid: false,

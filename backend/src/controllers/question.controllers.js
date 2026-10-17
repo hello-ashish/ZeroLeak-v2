@@ -35,12 +35,15 @@ export const createQuestion = async (req, res) => {
             })
         }
 
-        // Sensitive question data
+        // Sensitive question data including subject, topic, and difficulty metadata
         const sensitiveContent = {
             title,
             options,
             correctAnswer,
             correctAnswerIndex,
+            subject,
+            topic,
+            difficultyLevel,
         }
 
         // Create SHA-256 integrity fingerprint
@@ -61,9 +64,11 @@ export const createQuestion = async (req, res) => {
             createdBy: req.professor._id,
         })
 
-        enqueueQuestionCommitment(question, 1, '').catch(err =>
-            console.error('[FABRIC] Failed to enqueue question commitment:', err.message)
-        );
+        try {
+            await enqueueQuestionCommitment(question, 1, '');
+        } catch (err) {
+            console.error('[FABRIC] Failed to enqueue question commitment (reconciler will retry):', err.message);
+        }
         // Audit Log
         try {
             await AuditLog.create({

@@ -46,6 +46,31 @@ const ProfessorBatchesPage = () => {
 
 
 
+    const groupedBatches = useMemo(() => {
+        let sorted = [...batches]
+
+        sorted.sort((a, b) => {
+            if (sortBy === 'date-desc') return new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
+            if (sortBy === 'date-asc') return new Date(a.createdAt || 0) - new Date(b.createdAt || 0)
+            if (sortBy === 'questions-desc') return (b.questions?.length || 0) - (a.questions?.length || 0)
+            if (sortBy === 'questions-asc') return (a.questions?.length || 0) - (b.questions?.length || 0)
+            if (sortBy === 'status') return (a.status || '').localeCompare(b.status || '')
+            return 0
+        })
+
+        if (groupBy === 'none') {
+            return { 'All Batches': sorted }
+        }
+
+        const grouped = {}
+        sorted.forEach(batch => {
+            const key = groupBy === 'status' ? (['Accepted', 'Rejected'].includes(batch.status) ? 'Submitted' : batch.status) : batch.subject
+            if (!grouped[key]) grouped[key] = []
+            grouped[key].push(batch)
+        })
+        return grouped
+    }, [batches, sortBy, groupBy])
+
     return (
         <>
 
@@ -79,53 +104,7 @@ const ProfessorBatchesPage = () => {
             </div>
 
             <div style={{ display: 'grid', gap: 24 }}>
-                {useMemo(() => {
-                    let sorted = [...batches]
-
-                    sorted.sort((a, b) => {
-                        if (sortBy === 'date-desc') return new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
-                        if (sortBy === 'date-asc') return new Date(a.createdAt || 0) - new Date(b.createdAt || 0)
-                        if (sortBy === 'questions-desc') return (b.questions?.length || 0) - (a.questions?.length || 0)
-                        if (sortBy === 'questions-asc') return (a.questions?.length || 0) - (b.questions?.length || 0)
-                        if (sortBy === 'status') return (a.status || '').localeCompare(b.status || '')
-                        return 0
-                    })
-
-                    if (groupBy === 'none') {
-                        return { 'All Batches': sorted }
-                    }
-
-                    const grouped = {}
-                    sorted.forEach(batch => {
-                        const key = groupBy === 'status' ? (['Accepted', 'Rejected'].includes(batch.status) ? 'Submitted' : batch.status) : batch.subject
-                        if (!grouped[key]) grouped[key] = []
-                        grouped[key].push(batch)
-                    })
-                    return grouped
-                }, [batches, sortBy, groupBy]) && Object.entries(useMemo(() => {
-                    let sorted = [...batches]
-
-                    sorted.sort((a, b) => {
-                        if (sortBy === 'date-desc') return new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
-                        if (sortBy === 'date-asc') return new Date(a.createdAt || 0) - new Date(b.createdAt || 0)
-                        if (sortBy === 'questions-desc') return (b.questions?.length || 0) - (a.questions?.length || 0)
-                        if (sortBy === 'questions-asc') return (a.questions?.length || 0) - (b.questions?.length || 0)
-                        if (sortBy === 'status') return (a.status || '').localeCompare(b.status || '')
-                        return 0
-                    })
-
-                    if (groupBy === 'none') {
-                        return { 'All Batches': sorted }
-                    }
-
-                    const grouped = {}
-                    sorted.forEach(batch => {
-                        const key = groupBy === 'status' ? (['Accepted', 'Rejected'].includes(batch.status) ? 'Submitted' : batch.status) : batch.subject
-                        if (!grouped[key]) grouped[key] = []
-                        grouped[key].push(batch)
-                    })
-                    return grouped
-                }, [batches, sortBy, groupBy])).map(([groupKey, groupBatches]) => (
+                {Object.entries(groupedBatches).map(([groupKey, groupBatches]) => (
                     <React.Fragment key={groupKey}>
                         {groupBy !== 'none' && groupBatches.length > 0 && (
                             <h2 style={{ fontSize: 18, color: 'var(--text-primary)', margin: '8px 0 0 0', paddingBottom: 8, borderBottom: '1px solid var(--border-subtle)' }}>

@@ -29,6 +29,7 @@ import {
     getFabricBlocks,
     getIntegrityAlerts,
     verifyAllCommitments,
+    triggerReconciliation,
 } from '../controllers/integrity.controllers.js';
 import { verifyAdminOrAuditorJWT } from '../middlewares/auth.middleware.js';
 
@@ -45,7 +46,8 @@ router.get('/recent', getRecentCommitments);
 router.get('/blocks', getFabricBlocks);
 router.get('/alerts', getIntegrityAlerts);
 
-// Bulk ledger verification (verifies all CONFIRMED commitments against MongoDB)
+// Outbox reconciliation & bulk ledger verification
+router.post('/reconcile', triggerReconciliation);
 router.post('/verify-ledger', verifyAllCommitments);
 
 // Entity verification

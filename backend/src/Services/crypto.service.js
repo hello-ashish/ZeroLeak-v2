@@ -101,7 +101,15 @@ function canonicalize(value) {
 }
 
 export function hashQuestionContent(content) {
-    const plaintext = JSON.stringify(canonicalize(content));
+    if (!content || typeof content !== "object") return "";
+
+    const normalized = { ...content };
+    if (normalized.difficulty && !normalized.difficultyLevel) {
+        normalized.difficultyLevel = normalized.difficulty;
+        delete normalized.difficulty;
+    }
+
+    const plaintext = JSON.stringify(canonicalize(normalized));
 
     return crypto
         .createHash("sha256")
@@ -111,21 +119,40 @@ export function hashQuestionContent(content) {
 
 export function verifyQuestionIntegrity(
     encryptedContent,
-    expectedHash
+    expectedHash,
+    metadata = {}
 ) {
     try {
         const decryptedContent =
             decryptQuestionContent(encryptedContent);
 
+        // Verify with metadata (subject, topic, difficultyLevel)
+        const fullContent = {
+            ...decryptedContent,
+            ...(metadata.subject ? { subject: metadata.subject } : {}),
+            ...(metadata.topic ? { topic: metadata.topic } : {}),
+            ...(metadata.difficultyLevel || metadata.difficulty
+                ? { difficultyLevel: metadata.difficultyLevel || metadata.difficulty }
+                : {}),
+        };
+
         const calculatedHash =
+            hashQuestionContent(fullContent);
+
+        if (calculatedHash === expectedHash) return true;
+
+        // Legacy format: without metadata
+        const legacyHash =
             hashQuestionContent(decryptedContent);
+
+        if (legacyHash === expectedHash) return true;
 
         // Backwards compatibility for older questions that were hashed without canonicalization
         const oldHash = crypto.createHash("sha256")
             .update(JSON.stringify(decryptedContent), "utf8")
             .digest("hex");
 
-        return calculatedHash === expectedHash || oldHash === expectedHash;
+        return oldHash === expectedHash;
     } catch (error) {
         console.error(
             "Question integrity verification failed:",

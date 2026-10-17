@@ -3,12 +3,14 @@ import mongoose, { Schema } from "mongoose"
 
 const draftQuestionSchema = new Schema({
     title: { type: String, required: true },
-    options: { type: [String], required: true },
-    correctAnswer: { type: String, required: true },
+    options: { type: [String], default: [] },
+    correctAnswer: { type: String },
     difficultyLevel: { type: String, enum: ["easy", "medium", "hard"], required: true },
     subject: { type: String, required: true },
     topic: { type: String, required: true },
-    correctAnswerIndex: { type: Number, required: true }
+    correctAnswerIndex: { type: Number },
+    contentHash: { type: String },
+    questionId: { type: mongoose.Schema.Types.ObjectId, ref: "Question" }
 }, { timestamps: true})
 
 const batchSchema = new Schema({

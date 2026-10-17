@@ -240,6 +240,13 @@ export const submitBatch = async (req, res) => {
             return res.status(400).json({ message: "Cannot submit an empty batch. Please add at least one question." })
         }
 
+        const invalidQuestion = existingBatch.questions.find((q) => {
+            return !q.title || !q.options || q.options.length < 2 || (q.correctAnswerIndex === undefined && !q.correctAnswer);
+        });
+        if (invalidQuestion) {
+            return res.status(400).json({ message: "All questions must have a title, at least 2 options, and a correct answer before submission." });
+        }
+
         existingBatch.status = "Submitted";
         const batch = await existingBatch.save();
 
@@ -277,9 +284,32 @@ export const getMyBatches = async (req, res) => {
     try {
         const batches = await Batch.find({ createdBy: req.professor._id, isDeletedByProfessor: { $ne: true } })
             .sort({ createdAt: -1 })
-        res.status(200).json({batches})
+            .lean();
+
+        const sanitizedBatches = batches.map(batch => {
+            if (batch.status === 'Accepted' && Array.isArray(batch.questions)) {
+                return {
+                    ...batch,
+                    questions: batch.questions.map(q => ({
+                        _id: q._id,
+                        title: q.contentHash || (q.title && /^[a-f0-9]{64}$/i.test(q.title) ? q.title : "[Encrypted Question Hash]"),
+                        options: [],
+                        difficultyLevel: q.difficultyLevel,
+                        subject: q.subject,
+                        topic: q.topic,
+                        contentHash: q.contentHash,
+                        questionId: q.questionId,
+                        createdAt: q.createdAt,
+                        updatedAt: q.updatedAt
+                    }))
+                };
+            }
+            return batch;
+        });
+
+        res.status(200).json({ batches: sanitizedBatches });
     } catch (error) {
-        res.status(500).json({ message: error.message })
+        res.status(500).json({ message: error.message });
     }
 }
 

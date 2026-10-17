@@ -110,6 +110,11 @@ const ProfessorCreateBatchPage = () => {
             const batches = response.data.batches
             const currentBatch = batches.find(b => b._id === id)
             if (currentBatch) {
+                if (currentBatch.status !== 'Draft' && currentBatch.status !== 'MarkForReview') {
+                    toast.error(`Cannot edit batch with status "${currentBatch.status}".`);
+                    navigate('/professor/batches');
+                    return;
+                }
                 setBatch(currentBatch)
                 setBatchTitle(currentBatch.title)
                 setBatchSubject(currentBatch.subject)

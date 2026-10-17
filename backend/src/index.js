@@ -24,9 +24,10 @@ connectDB()
         const { initFabricGateway, closeFabricGateway } = await import("./Services/fabric.service.js");
         await initFabricGateway();
 
-        // Start IntegrityOutbox worker (submits pending commitments to Fabric)
-        const { startIntegrityOutboxWorker } = await import("./Services/integrityOutbox.service.js");
+        // Start IntegrityOutbox worker and self-healing reconciler
+        const { startIntegrityOutboxWorker, startIntegrityReconciler } = await import("./Services/integrityOutbox.service.js");
         startIntegrityOutboxWorker();
+        startIntegrityReconciler();
 
         const { startIntegrityWatcher } = await import("./Services/integrityWatcher.service.js");
         startIntegrityWatcher();

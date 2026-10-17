@@ -667,9 +667,11 @@ export const submitExamResult = async (req, res) => {
         existingResult.status = "Completed";
         const result = await existingResult.save();
 
-        enqueueResultCommitment(result).catch(err =>
-            console.error('[FABRIC] Failed to enqueue result commitment:', err.message)
-        );
+        try {
+            await enqueueResultCommitment(result);
+        } catch (err) {
+            console.error('[FABRIC] Failed to enqueue result commitment (reconciler will retry):', err.message);
+        }
 
         // --- ENFORCE RESULT-RELEASE POLICY ON RETURN ---
         const isReleased = exam.examinationId

@@ -120,10 +120,12 @@ const finalizeResult = async (exam, existingResult) => {
         existingResult.status = "Completed";
         const result = await existingResult.save();
 
-        // --- FABRIC INTEGRITY COMMITMENT (non-blocking) ---
-        enqueueResultCommitment(result).catch(err =>
-            console.error('[FABRIC] Failed to enqueue auto-finalized result commitment:', err.message)
-        );
+        // --- FABRIC INTEGRITY COMMITMENT ---
+        try {
+            await enqueueResultCommitment(result);
+        } catch (err) {
+            console.error('[FABRIC] Failed to enqueue auto-finalized result commitment (reconciler will retry):', err.message);
+        }
         console.log(`[ExamExpiration] Result ${result._id} auto-finalized`);
     } catch (err) {
         console.error(`[ExamExpiration] Error finalizing result ${existingResult._id}:`, err);

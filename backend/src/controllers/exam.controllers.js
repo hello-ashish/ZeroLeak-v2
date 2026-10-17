@@ -118,9 +118,11 @@ export const createExam = async (req, res) => {
             questionMerkleRoot
         });
 
-        enqueueExamCommitment(exam, 1, '').catch(err =>
-            console.error('[FABRIC] Failed to enqueue exam commitment:', err.message)
-        );
+        try {
+            await enqueueExamCommitment(exam, 1, '');
+        } catch (err) {
+            console.error('[FABRIC] Failed to enqueue exam commitment (reconciler will retry):', err.message);
+        }
 
         // Audit Log
         try {

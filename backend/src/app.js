@@ -25,6 +25,11 @@ app.use(cors({
     credentials: true
 }))
 
+// Container Healthcheck probes
+app.get(["/health", "/api/health"], (req, res) => {
+    res.status(200).json({ status: "healthy", timestamp: new Date().toISOString(), uptime: process.uptime() });
+});
+
 // we need this to parse json data coming from requests (like req.body)
 app.use((req, res, next) => {
     if (req.path.includes("/zmail/attachments") || req.path.includes("/ai") || req.path.includes("/questions/bulk") || req.path.includes("/question/bulk")) {
