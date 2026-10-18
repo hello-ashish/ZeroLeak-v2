@@ -10,6 +10,7 @@ import axios from 'axios'
 import { Modal } from '../../components/Modal.jsx'
 import { ZMailUnreadBadge } from '../../components/zmail/ZMailUnreadBadge.jsx'
 import { ReportProblemModal } from '../../components/support/ReportProblemModal.jsx'
+import { useRefresh } from '../../context/RefreshContext.jsx'
 import '../../components/support/support.css'
 
 const NAV = [
@@ -74,8 +75,7 @@ export const AdminLayout = ({ children, pendingBatchCount = 0, noPadding = false
     const [showProfile, setShowProfile] = useState(false)
     const [showCreate, setShowCreate] = useState(false)
     const [showNotifications, setShowNotifications] = useState(false)
-    const [isRefreshing, setIsRefreshing] = useState(false)
-    const [refreshKey, setRefreshKey] = useState(0)
+    const { isRefreshing, triggerRefresh } = useRefresh()
     const [showReportModal, setShowReportModal] = useState(false)
 
     // Broadcast State
@@ -120,10 +120,8 @@ export const AdminLayout = ({ children, pendingBatchCount = 0, noPadding = false
     const adminData = JSON.parse(localStorage.getItem('adminData') || '{}')
 
     const handleRefresh = () => {
-        setIsRefreshing(true);
         if (typeof fetchNotifications === 'function') fetchNotifications();
-        setRefreshKey(prev => prev + 1);
-        setTimeout(() => setIsRefreshing(false), 800);
+        triggerRefresh();
     };
 
     const handleBroadcast = async (e) => {
@@ -298,10 +296,11 @@ export const AdminLayout = ({ children, pendingBatchCount = 0, noPadding = false
                         <button
                             className="topbar-btn"
                             onClick={handleRefresh}
+                            disabled={isRefreshing}
                             title="Refresh Page"
                             aria-label="Refresh Page"
                         >
-                            <RefreshCw size={18} />
+                            <RefreshCw size={18} className={isRefreshing ? 'spin' : ''} />
                         </button>
 
 
@@ -394,9 +393,7 @@ export const AdminLayout = ({ children, pendingBatchCount = 0, noPadding = false
                             </div>
                         </div>
                     ) : (
-                        <React.Fragment key={refreshKey}>
-                            {children}
-                        </React.Fragment>
+                        <>{children}</>
                     )}
                 </main>
             </div>

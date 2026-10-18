@@ -9,6 +9,7 @@ import { SkeletonCard, Skeleton, SkeletonTable } from '../../components/Skeleton
 import { useNotifications } from '../../hooks/useNotifications.jsx'
 import { ZMailUnreadBadge } from '../../components/zmail/ZMailUnreadBadge.jsx'
 import { ReportProblemModal } from '../../components/support/ReportProblemModal.jsx'
+import { useRefresh } from '../../context/RefreshContext.jsx'
 import '../../components/support/support.css'
 
 import axios from 'axios';
@@ -53,8 +54,7 @@ export const StudentLayout = ({ children, noPadding = false }) => {
     const [showCommand, setShowCommand] = useState(false)
     const [showProfile, setShowProfile] = useState(false)
     const [showNotifications, setShowNotifications] = useState(false)
-    const [isRefreshing, setIsRefreshing] = useState(false)
-    const [refreshKey, setRefreshKey] = useState(0)
+    const { isRefreshing, triggerRefresh } = useRefresh()
     const [showReportModal, setShowReportModal] = useState(false)
     const notifRef = useRef(null)
     const profileRef = useRef(null)
@@ -72,10 +72,8 @@ export const StudentLayout = ({ children, noPadding = false }) => {
     }
 
     const handleRefresh = () => {
-        setIsRefreshing(true);
         if (typeof fetchNotifications === 'function') fetchNotifications();
-        setRefreshKey(prev => prev + 1);
-        setTimeout(() => setIsRefreshing(false), 800);
+        triggerRefresh();
     };
 
     // Global Axios Interceptor for Blocking
@@ -255,10 +253,11 @@ export const StudentLayout = ({ children, noPadding = false }) => {
                         <button
                             className="topbar-btn"
                             onClick={handleRefresh}
+                            disabled={isRefreshing}
                             title="Refresh Page"
                             aria-label="Refresh Page"
-                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, borderRadius: '50%', background: 'transparent', border: '1px solid var(--border-default)', cursor: 'pointer', transition: 'all 0.2s', color: 'var(--text-secondary)' }}
-                            onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--text-primary)' }}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, borderRadius: '50%', background: 'transparent', border: '1px solid var(--border-default)', cursor: isRefreshing ? 'not-allowed' : 'pointer', transition: 'all 0.2s', color: 'var(--text-secondary)' }}
+                            onMouseEnter={e => { if (!isRefreshing) { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--text-primary)' } }}
                             onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
                         >
                             <RefreshCw size={16} className={isRefreshing ? 'spin' : ''} />
@@ -345,7 +344,7 @@ export const StudentLayout = ({ children, noPadding = false }) => {
                             </div>
                         </div>
                     ) : (
-                        children || <Outlet key={refreshKey} />
+                        children || <Outlet />
                     )}
                 </main>
             </div>

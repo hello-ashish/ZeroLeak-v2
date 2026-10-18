@@ -354,9 +354,36 @@ export async function batchRepairImportedQuestions(rows, subject, professorId) {
 export async function adminReviewBatch(batchData, adminId) {
     try {
         const { ADMIN_BATCH_REVIEW_PROMPT } = await import('./ai.prompts.js');
+
+        // Sanitize and distill batchData to stay well within LLM context/token limits
+        const questions = Array.isArray(batchData?.questions) ? batchData.questions : [];
+        const difficultyCounts = {};
+        const topicCounts = {};
+        for (const q of questions) {
+            const diff = (q.difficultyLevel || 'unspecified').toLowerCase();
+            difficultyCounts[diff] = (difficultyCounts[diff] || 0) + 1;
+            const topic = q.topic || 'General';
+            topicCounts[topic] = (topicCounts[topic] || 0) + 1;
+        }
+
+        const sanitizedPayload = {
+            title: batchData?.title || 'Untitled Batch',
+            subject: batchData?.subject || 'General',
+            description: batchData?.description || '',
+            totalQuestions: questions.length,
+            difficultyDistribution: difficultyCounts,
+            topicsCovered: topicCounts,
+            sampleQuestions: questions.slice(0, 15).map((q, idx) => ({
+                index: idx + 1,
+                topic: q.topic || 'General',
+                difficulty: q.difficultyLevel || 'medium',
+                title: q.title && !/^[a-f0-9]{64}$/i.test(q.title) ? q.title : undefined,
+            })),
+        };
+
         const raw = await callLLM(
             ADMIN_BATCH_REVIEW_PROMPT.system,
-            ADMIN_BATCH_REVIEW_PROMPT.user(batchData),
+            ADMIN_BATCH_REVIEW_PROMPT.user(sanitizedPayload),
             {
                 name: "admin_batch_review",
                 strict: true,
@@ -378,7 +405,7 @@ export async function adminReviewBatch(batchData, adminId) {
             actorRole: "Admin",
             action: "AI_ADMIN_REVIEW_BATCH",
             promptVersion: "1.0",
-            requestData: { batchData },
+            requestData: { batchData: sanitizedPayload },
             responseData: raw,
             status: "SUCCESS"
         });

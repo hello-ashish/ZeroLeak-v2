@@ -7,6 +7,7 @@ import { SkeletonCard, Skeleton, SkeletonTable } from '../../components/Skeleton
 import { useNotifications } from '../../hooks/useNotifications.jsx'
 import { ZMailUnreadBadge } from '../../components/zmail/ZMailUnreadBadge.jsx'
 import { ReportProblemModal } from '../../components/support/ReportProblemModal.jsx'
+import { useRefresh } from '../../context/RefreshContext.jsx'
 import '../../components/support/support.css'
 
 const NAV = [
@@ -51,8 +52,7 @@ export const AuditorLayout = ({ children, openAnomaliesCount = 0, noPadding = fa
     const [mobileOpen, setMobileOpen] = useState(false)
     const [showProfile, setShowProfile] = useState(false)
     const [showNotifications, setShowNotifications] = useState(false)
-    const [isRefreshing, setIsRefreshing] = useState(false)
-    const [refreshKey, setRefreshKey] = useState(0)
+    const { isRefreshing, triggerRefresh } = useRefresh()
     const [showReportModal, setShowReportModal] = useState(false)
     const notifRef = useRef(null)
     const profileRef = useRef(null)
@@ -63,10 +63,8 @@ export const AuditorLayout = ({ children, openAnomaliesCount = 0, noPadding = fa
     const auditorData = JSON.parse(localStorage.getItem('auditorData') || '{}')
 
     const handleRefresh = () => {
-        setIsRefreshing(true);
         if (typeof fetchNotifications === 'function') fetchNotifications();
-        setRefreshKey(prev => prev + 1);
-        setTimeout(() => setIsRefreshing(false), 800);
+        triggerRefresh();
     };
 
     // Close dropdowns on click outside
@@ -216,10 +214,11 @@ export const AuditorLayout = ({ children, openAnomaliesCount = 0, noPadding = fa
                         <button
                             className="topbar-btn"
                             onClick={handleRefresh}
+                            disabled={isRefreshing}
                             title="Refresh Page"
                             aria-label="Refresh Page"
                         >
-                            <RefreshCw size={18} />
+                            <RefreshCw size={18} className={isRefreshing ? 'spin' : ''} />
                         </button>
 
                         {/* Notifications Dropdown */}
@@ -283,9 +282,7 @@ export const AuditorLayout = ({ children, openAnomaliesCount = 0, noPadding = fa
                             </div>
                         </div>
                     ) : (
-                        <React.Fragment key={refreshKey}>
-                            {children}
-                        </React.Fragment>
+                        <>{children}</>
                     )}
                 </main>
             </div>

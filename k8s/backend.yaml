@@ -76,3 +76,33 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 2
+          volumeMounts:
+            - name: fabric-crypto-certs
+              mountPath: /app/fabric-crypto/certs
+              readOnly: true
+            - name: fabric-crypto-keys
+              mountPath: /app/fabric-crypto/keys
+              readOnly: true
+            - name: fabric-crypto-tls
+              mountPath: /app/fabric-crypto/tls
+              readOnly: true
+      volumes:
+        - name: fabric-crypto-certs
+          secret:
+            secretName: fabric-crypto
+            items:
+              - key: cert.pem
+                path: cert.pem
+        - name: fabric-crypto-keys
+          secret:
+            secretName: fabric-crypto
+            items:
+              - key: key.pem
+                path: key_sk
+        - name: fabric-crypto-tls
+          secret:
+            secretName: fabric-crypto
+            items:
+              - key: ca.crt
+                path: ca.crt
+

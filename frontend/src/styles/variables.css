@@ -1,5 +1,7 @@
 /* ─── Design Tokens (V2 Premium Academic Operations) ──────── */
 :root {
+  color-scheme: dark;
+
   /* Brand */
   --brand-primary: #3b82f6;
   /* A trusted, academic blue */
@@ -7,9 +9,9 @@
   --brand-primary-subtle: rgba(59, 130, 246, 0.1);
   --brand-primary-border: rgba(59, 130, 246, 0.3);
   --brand-accent: #8b5cf6;
-  /* For special insights / highlights */
+  --brand-secondary: #8b5cf6;
 
-  /* Base Dark Colors (Default state, JS engine will override) */
+  /* Base Dark Colors (Default state, JS engine will interpolate if needed) */
   --bg-app: #09090b;
   --bg-surface: #121214;
   --bg-elevated: #1a1a1d;
@@ -18,6 +20,8 @@
   --bg-hover: rgba(255, 255, 255, 0.035);
   --bg-active: rgba(255, 255, 255, 0.06);
   --bg-input: #121214;
+  --bg-base: #09090b;
+  --bg-body: #121214;
   --border-subtle: rgba(255, 255, 255, 0.04);
   --border-default: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.15);
@@ -45,6 +49,9 @@
 
   --info: #3b82f6;
   --info-subtle: rgba(59, 130, 246, 0.1);
+
+  --neutral: #71717a;
+  --neutral-subtle: rgba(113, 113, 122, 0.15);
 
   /* Exam Status (Refined) */
   --status-draft: #71717a;
@@ -98,10 +105,50 @@
   --z-toast: 500;
 }
 
-/* Light Mode (Shadow adjustments when progress > 50%) */
+/* ─── Light Mode Palette & Token Overrides ──────── */
 [data-theme="light"] {
+  color-scheme: light;
+
+  --bg-app: #f4f4f5;
+  --bg-surface: #ffffff;
+  --bg-elevated: #fafafa;
+  --bg-card: #ffffff;
+  --bg-overlay: #ffffff;
+  --bg-hover: rgba(0, 0, 0, 0.04);
+  --bg-active: rgba(0, 0, 0, 0.08);
+  --bg-input: #ffffff;
+  --bg-base: #f4f4f5;
+  --bg-body: #ffffff;
+
+  --border-subtle: rgba(0, 0, 0, 0.05);
+  --border-default: rgba(0, 0, 0, 0.1);
+  --border-strong: rgba(0, 0, 0, 0.18);
+
+  --text-primary: #09090b;
+  --text-secondary: #52525b;
+  --text-tertiary: #71717a;
+  --text-disabled: #a1a1aa;
+  --text-inverse: #ffffff;
+
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
   --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.1), 0 4px 8px rgba(0, 0, 0, 0.04);
   --shadow-float: 0 20px 40px rgba(0, 0, 0, 0.15), 0 8px 16px rgba(0, 0, 0, 0.05);
+}
+
+/* ─── Explicit Dark Mode (when set explicitly on root) ──── */
+[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+/* ─── Smooth theme transitions (activated temporarily when user toggles) ─── */
+html.theme-transitioning,
+html.theme-transitioning *,
+html.theme-transitioning *::before,
+html.theme-transitioning *::after {
+  transition: background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              color 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+              fill 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+              stroke 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }

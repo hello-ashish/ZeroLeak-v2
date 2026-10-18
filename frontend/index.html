@@ -8,6 +8,26 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ZeroLeak</title>
+    <script>
+      (function() {
+        try {
+          var savedProgress = localStorage.getItem('themeProgress');
+          var savedTheme = localStorage.getItem('zl-theme');
+          var isLight = false;
+          if (savedProgress !== null) {
+            isLight = parseInt(savedProgress, 10) > 50;
+          } else if (savedTheme) {
+            isLight = savedTheme === 'light';
+          } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+            isLight = true;
+          }
+          var theme = isLight ? 'light' : 'dark';
+          document.documentElement.setAttribute('data-theme', theme);
+          document.documentElement.style.colorScheme = theme;
+          document.documentElement.style.setProperty('--theme-progress', isLight ? '100' : '0');
+        } catch(e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -35,13 +35,14 @@ import { verifyAdminOrAuditorJWT } from '../middlewares/auth.middleware.js';
 
 const router = Router();
 
-// All integrity routes require Admin OR Auditor JWT
+// Public read-only network health status & ledger metrics
+router.get('/fabric-status', getFabricStatus);
+router.get('/ledger-height', getLedgerHeight);
+
+// Protected integrity routes require Admin OR Auditor JWT
 // Support accounts are blocked by verifyAdminOrAuditorJWT (Admin.isSupport check)
 router.use(verifyAdminOrAuditorJWT);
 
-// Network status
-router.get('/fabric-status', getFabricStatus);
-router.get('/ledger-height', getLedgerHeight);
 router.get('/recent', getRecentCommitments);
 router.get('/blocks', getFabricBlocks);
 router.get('/alerts', getIntegrityAlerts);

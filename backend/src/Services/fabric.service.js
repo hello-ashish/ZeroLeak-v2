@@ -168,7 +168,9 @@ export function computeDataHash(entity) {
 
 // Commitment ID helpers
 export function buildCommitmentId(entityType, entityId, version) {
-    const typeKey = entityType.toLowerCase().replace(/[^a-z]/g, '');
+    const valid = ['Batch', 'Result', 'Exam', 'SecurityEvent'];
+    const match = valid.find(v => v.toLowerCase() === String(entityType).toLowerCase());
+    const typeKey = match ? match.toLowerCase() : String(entityType).toLowerCase().replace(/[^a-z]/g, '');
     return `${typeKey}_${entityId}_v${version}`;
 }
 
@@ -391,8 +393,14 @@ export async function getLedgerHeight() {
 
     await _ensureConnected();
 
-    const resultBytes = await _contract.evaluateTransaction('GetLedgerHeight');
-    return JSON.parse(Buffer.from(resultBytes).toString());
+    try {
+        const resultBytes = await _contract.evaluateTransaction('GetLedgerHeight');
+        return JSON.parse(Buffer.from(resultBytes).toString());
+    } catch (err) {
+        _connected = false;
+        closeFabricGateway();
+        _categorizeAndRethrow(err, { operation: 'GetLedgerHeight' });
+    }
 }
 
 export async function getRecentCommitments(limit = 20) {
@@ -403,8 +411,18 @@ export async function getRecentCommitments(limit = 20) {
 
     await _ensureConnected();
 
-    const resultBytes = await _contract.evaluateTransaction('GetRecentCommitments', String(limit));
-    return JSON.parse(Buffer.from(resultBytes).toString());
+    try {
+        const fetchLimit = Math.max(limit * 3, 100);
+        const resultBytes = await _contract.evaluateTransaction('GetRecentCommitments', String(fetchLimit));
+        const all = JSON.parse(Buffer.from(resultBytes).toString());
+        const ALLOWED_ENTITIES = new Set(['Batch', 'Result', 'Exam', 'SecurityEvent']);
+        const filtered = all.filter(c => ALLOWED_ENTITIES.has(c.entityType));
+        return filtered.slice(0, limit);
+    } catch (err) {
+        _connected = false;
+        closeFabricGateway();
+        _categorizeAndRethrow(err, { operation: 'GetRecentCommitments' });
+    }
 }
 
 export async function getFabricBlocks(limit = 100) {
@@ -538,7 +556,7 @@ export async function commitmentExists(id) {
     return JSON.parse(Buffer.from(resultBytes).toString()) === true;
 }
 
-export function getFabricStatus() {
+export async function getFabricStatus() {
     const cfg = _getFabricConfig();
     if (!cfg.enabled) {
         return {
@@ -548,6 +566,26 @@ export function getFabricStatus() {
             chaincode: cfg.chaincodeName,
             mspId: cfg.mspId,
             reason: 'FABRIC_DISABLED',
+        };
+    }
+
+    // Actively verify connection health
+    try {
+        await _ensureConnected();
+        if (_contract) {
+            await Promise.race([
+                _contract.evaluateTransaction('GetLedgerHeight'),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('PEER_PING_TIMEOUT: Peer did not respond within 2000ms')), 2000))
+            ]);
+            _connected = true;
+        }
+    } catch (err) {
+        _connected = false;
+        closeFabricGateway();
+        _connectError = {
+            message: err.message || 'Fabric peer unreachable',
+            category: 'CONNECTION_ERROR',
+            at: new Date().toISOString()
         };
     }
 

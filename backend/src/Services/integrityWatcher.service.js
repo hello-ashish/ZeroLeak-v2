@@ -121,7 +121,7 @@ async function alertAdmins(type, id, verificationResult) {
     }
 
     try {
-        await AuditLog.create({
+        const log = await AuditLog.create({
             actor: "System",
             actorRole: "System",
             action: "LEDGER_TAMPERING_DETECTED",
@@ -131,6 +131,12 @@ async function alertAdmins(type, id, verificationResult) {
             details: `Unauthorized database modification caught by change stream. Live hash differs from ledger commitment.`,
             status: "failure"
         });
+        try {
+            const { enqueueSecurityEventCommitment } = await import('./integrityOutbox.service.js');
+            await enqueueSecurityEventCommitment(log);
+        } catch (secErr) {
+            console.error('[WATCHER] Failed to enqueue security event commitment:', secErr.message);
+        }
     } catch (auditErr) {
         console.error("[WATCHER] Failed to write AuditLog for tampering:", auditErr.message);
     }

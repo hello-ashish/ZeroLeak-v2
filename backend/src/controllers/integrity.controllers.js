@@ -6,7 +6,7 @@ import { AuditLog } from '../models/auditlog.models.js';
 
 export const getFabricStatus = async (req, res) => {
     try {
-        const status = fabricService.getFabricStatus();
+        const status = await fabricService.getFabricStatus();
         return res.status(200).json(status);
     } catch (err) {
         console.error('[INTEGRITY] Error fetching Fabric status:', err.message);

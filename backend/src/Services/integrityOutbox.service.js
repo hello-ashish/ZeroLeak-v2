@@ -14,8 +14,8 @@ let _workerInterval = null;
 /**
  * @param {Object} opts
  * @param {string} opts.commitmentId  - Deterministic Fabric commitment ID
- * @param {string} opts.eventType     - RESULT_COMMITMENT | QUESTION_COMMITMENT | EXAM_COMMITMENT | SECURITY_EVENT
- * @param {string} opts.entityType    - Result | Question | Exam | SecurityEvent
+ * @param {string} opts.eventType     - RESULT_COMMITMENT | EXAM_COMMITMENT | SECURITY_EVENT | BATCH_COMMITMENT
+ * @param {string} opts.entityType    - Result | Exam | SecurityEvent | Batch
  * @param {string} opts.entityId      - MongoDB ObjectId hex string
  * @param {string} opts.dataHash      - SHA-256 hex
  * @param {string} [opts.previousCommitmentHash] - SHA-256 or ''
@@ -88,30 +88,51 @@ async function _processBatch() {
 
     const claims = [];
     for (let i = 0; i < BATCH_SIZE; i++) {
-        const claimed = await IntegrityOutbox.findOneAndUpdate(
-            {
-                $or: [
-                    { status: 'PENDING' },
-                    {
-                        status: 'PROCESSING',
-                        leaseExpiresAt: { $lt: now }, // Lease expired — safe to reclaim
-                    },
-                ],
-                $expr: { $lt: ['$attemptCount', '$maxAttempts'] },
-            },
-            {
-                $set: {
+        const baseFilter = {
+            $or: [
+                { status: 'PENDING' },
+                {
                     status: 'PROCESSING',
-                    processingWorker: WORKER_ID,
-                    leaseExpiresAt: leaseExpiry,
+                    leaseExpiresAt: { $lt: now }, // Lease expired — safe to reclaim
                 },
-                $inc: { attemptCount: 1 },
+            ],
+            $expr: { $lt: ['$attemptCount', '$maxAttempts'] },
+            entityType: { $ne: 'Question' },
+        };
+
+        const updateDoc = {
+            $set: {
+                status: 'PROCESSING',
+                processingWorker: WORKER_ID,
+                leaseExpiresAt: leaseExpiry,
             },
+            $inc: { attemptCount: 1 },
+        };
+
+        // Priority 1: Structural commitments (SecurityEvent, Batch, Exam)
+        let claimed = await IntegrityOutbox.findOneAndUpdate(
+            {
+                ...baseFilter,
+                entityType: { $in: ['SecurityEvent', 'Batch', 'Exam'] },
+            },
+            updateDoc,
             {
                 sort: { createdAt: 1 },
                 returnDocument: 'after',
             }
         );
+
+        // Priority 2: Results (process newest first so active exam submissions aren't blocked by bulk backlog)
+        if (!claimed) {
+            claimed = await IntegrityOutbox.findOneAndUpdate(
+                baseFilter,
+                updateDoc,
+                {
+                    sort: { createdAt: -1 },
+                    returnDocument: 'after',
+                }
+            );
+        }
 
         if (!claimed) break;
         claims.push(claimed);
@@ -217,17 +238,29 @@ export async function enqueueResultCommitment(result) {
     });
 }
 
-export async function enqueueQuestionCommitment(question, version = 1, previousHash = '') {
+export async function enqueueSecurityEventCommitment(securityEvent, version = 1, previousHash = '') {
+    const entityId = (securityEvent._id || securityEvent.id).toString();
+    const commitmentId = fabricService.buildCommitmentId('SecurityEvent', entityId, version);
 
-    const entityId = question._id.toString();
-    const commitmentId = fabricService.buildCommitmentId('Question', entityId, version);
+    const canonical = {
+        _id: entityId,
+        actor: securityEvent.actor || '',
+        actorRole: securityEvent.actorRole || '',
+        action: securityEvent.action || securityEvent.eventType || '',
+        targetType: securityEvent.targetType || '',
+        targetId: String(securityEvent.targetId || ''),
+        status: securityEvent.status || '',
+        timestamp: securityEvent.createdAt instanceof Date ? securityEvent.createdAt.toISOString() : (securityEvent.createdAt || securityEvent.timestamp || new Date().toISOString()),
+    };
+
+    const dataHash = securityEvent.dataHash || fabricService.computeDataHash(canonical);
 
     return enqueueCommitment({
         commitmentId,
-        eventType: 'QUESTION_COMMITMENT',
-        entityType: 'Question',
+        eventType: 'SECURITY_EVENT',
+        entityType: 'SecurityEvent',
         entityId,
-        dataHash: question.contentHash, // Already computed SHA-256
+        dataHash,
         previousCommitmentHash: previousHash,
         version,
     });
@@ -294,7 +327,6 @@ export async function reconcileUncommittedEntities() {
         batchesReconciled: 0,
         resultsReconciled: 0,
         examsReconciled: 0,
-        questionsReconciled: 0,
         stuckProcessingReset: 0,
         permanentlyFailed: 0,
     };
@@ -342,9 +374,11 @@ export async function reconcileUncommittedEntities() {
             }
         }
 
-        // 4. Reconcile Completed Results
+        // 4. Reconcile Completed Results (recent only to prevent queue starvation)
         const { Result } = await import('../models/result.models.js');
         const completedResults = await Result.find({ status: 'Completed' })
+            .sort({ createdAt: -1 })
+            .limit(25)
             .select('_id student exam score totalQuestions status isTerminated assignedQuestions createdAt')
             .lean();
 
@@ -384,29 +418,7 @@ export async function reconcileUncommittedEntities() {
             }
         }
 
-        // 6. Reconcile Questions (limit to recent questions so cycles remain sub-second)
-        const { Question } = await import('../models/question.models.js');
-        const questions = await Question.find({ contentHash: { $exists: true, $ne: '' } })
-            .sort({ createdAt: -1 })
-            .limit(100)
-            .select('_id contentHash')
-            .lean();
-
-        const existingQuestionCommitments = new Set(
-            (await IntegrityOutbox.find({ entityType: 'Question' }).select('commitmentId').lean())
-                .map(r => r.commitmentId)
-        );
-
-        for (const q of questions) {
-            const commitmentId = fabricService.buildCommitmentId('Question', q._id.toString(), 1);
-            if (!existingQuestionCommitments.has(commitmentId)) {
-                await enqueueQuestionCommitment(q, 1, '');
-                existingQuestionCommitments.add(commitmentId);
-                stats.questionsReconciled++;
-            }
-        }
-
-        console.info(`[RECONCILER] Cycle completed: batches=${stats.batchesReconciled}, results=${stats.resultsReconciled}, exams=${stats.examsReconciled}, questions=${stats.questionsReconciled}, resetStuck=${stats.stuckProcessingReset}, failed=${stats.permanentlyFailed}`);
+        console.info(`[RECONCILER] Cycle completed: batches=${stats.batchesReconciled}, results=${stats.resultsReconciled}, exams=${stats.examsReconciled}, resetStuck=${stats.stuckProcessingReset}, failed=${stats.permanentlyFailed}`);
     } catch (err) {
         console.error('[RECONCILER] Error during reconciliation:', err.message);
     }

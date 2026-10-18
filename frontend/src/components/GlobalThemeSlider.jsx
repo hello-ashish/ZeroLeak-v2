@@ -1,25 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Sun, Moon } from 'lucide-react';
-import { applyThemeProgress } from '../utils/themeEngine.js';
+import { Sun, Moon, Sliders } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext.jsx';
 import './GlobalThemeSlider.css';
 
 const GlobalThemeSlider = () => {
-  const [themeProgress, setThemeProgress] = useState(() => {
-    return localStorage.getItem('themeProgress') || 0;
-  });
+  const { themeProgress, setTheme, isDark } = useTheme();
   const [isVisible, setIsVisible] = useState(false);
   const timeoutRef = useRef(null);
   const location = useLocation();
 
-  // Hide the global slider on landing and login pages (where it looks intrusive)
-  const isAuthPage = location.pathname === '/' || location.pathname.endsWith('/login');
-
-  // Apply theme progress globally on load and when it changes
-  useEffect(() => {
-    applyThemeProgress(themeProgress);
-    localStorage.setItem('themeProgress', themeProgress);
-  }, [themeProgress]);
+  // Hide the global slider on landing and login pages where a clean viewport is desired
+  const isAuthPage = location.pathname === '/' || location.pathname.endsWith('/login') || location.pathname.startsWith('/student/take-exam');
 
   const resetTimeout = () => {
     if (timeoutRef.current) {
@@ -27,7 +19,7 @@ const GlobalThemeSlider = () => {
     }
     timeoutRef.current = setTimeout(() => {
       setIsVisible(false);
-    }, 4000); // Hide after 4 seconds of inactivity
+    }, 4500); // Hide after 4.5s of inactivity
   };
 
   const handleToggleClick = () => {
@@ -48,7 +40,8 @@ const GlobalThemeSlider = () => {
   }, []);
 
   const handleChange = (e) => {
-    setThemeProgress(e.target.value);
+    const val = Number(e.target.value);
+    setTheme(val);
     resetTimeout();
   };
 
@@ -72,6 +65,16 @@ const GlobalThemeSlider = () => {
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
+      <button
+        type="button"
+        className="theme-toggle-btn"
+        onClick={handleToggleClick}
+        title="Precision Brightness Slider"
+        aria-label="Precision Brightness Slider"
+      >
+        <Sliders size={18} className={isDark ? 'active-icon moon' : 'active-icon sun'} />
+      </button>
+
       <div className="theme-slider-container">
         <Sun size={18} className="slider-icon sun-icon" />
         <div className="slider-track-wrapper">

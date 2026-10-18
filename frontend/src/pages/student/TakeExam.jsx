@@ -157,7 +157,7 @@ const TakeExam = () => {
                         console.error("Failed to restore session", e);
                     }
                 }
-                
+
                 if (response.data.examEndsAt && response.data.serverNow) {
                     const diffMs = new Date(response.data.examEndsAt).getTime() - new Date(response.data.serverNow).getTime();
                     setTimeLeft(Math.max(0, Math.floor(diffMs / 1000)));
@@ -657,7 +657,7 @@ const TakeExam = () => {
                     <p style={{ fontSize: 15, color: 'var(--text-secondary)', marginBottom: 40 }}>Exam Completed Successfully. Your result will be released soon.</p>
 
                     <button onClick={() => navigate('/student/dashboard')} className="btn btn-secondary exam-action-btn">
-                        Return to Command Center
+                        Return to Home
                     </button>
                 </div>
             </div>

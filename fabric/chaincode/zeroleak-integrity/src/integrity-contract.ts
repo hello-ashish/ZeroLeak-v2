@@ -249,7 +249,10 @@ export class ZeroLeakIntegrityContract extends Contract {
                 const id = idBytes.toString();
                 const recBytes = await ctx.stub.getState(id);
                 if (recBytes && recBytes.length > 0) {
-                    results.push(JSON.parse(recBytes.toString()));
+                    const commitment: IntegrityCommitment = JSON.parse(recBytes.toString());
+                    if (VALID_ENTITY_TYPES.includes(commitment.entityType)) {
+                        results.push(commitment);
+                    }
                 }
             }
         }

@@ -19,14 +19,20 @@ import {
 import './FabricIntegrityCenter.css';
 import FabricBlockchainVisualizer from './FabricBlockchainVisualizer';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+const rawApiBase = import.meta.env.VITE_API_URL || '';
+const API_BASE = rawApiBase.replace(/\/api\/?$/, '');
 
 // ---------------------------------------------------------------------------
 // API helpers
 // ---------------------------------------------------------------------------
 async function apiFetch(path, token, options = {}) {
+    const effectiveToken = token || localStorage.getItem('adminToken') || localStorage.getItem('auditorToken') || localStorage.getItem('token');
+    const headers = { 'Content-Type': 'application/json' };
+    if (effectiveToken && effectiveToken !== 'undefined' && effectiveToken !== 'null') {
+        headers['Authorization'] = `Bearer ${effectiveToken}`;
+    }
     const res = await fetch(`${API_BASE}/api/integrity${path}`, {
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        headers,
         ...options,
     });
     const data = await res.json();
@@ -39,6 +45,7 @@ async function apiFetch(path, token, options = {}) {
 // ---------------------------------------------------------------------------
 function StatusBadge({ status }) {
     const map = {
+        LOADING: { color: 'brand', icon: <Loader2 size={12} className="spin" />, label: 'CONNECTING...' },
         CONNECTED: { color: 'success', icon: <CheckCircle size={12} />, label: 'CONNECTED' },
         DISCONNECTED: { color: 'danger', icon: <XCircle size={12} />, label: 'DISCONNECTED' },
         FABRIC_DISABLED: { color: 'muted', icon: <ShieldOff size={12} />, label: 'DISABLED' },
@@ -178,7 +185,7 @@ function NetworkStatusCard({ status, onRefresh, loading }) {
                         <RefreshCw size={14} className={loading ? 'spin' : ''} />
                     </button>
                 </div>
-                <StatusBadge status={isConnected ? 'CONNECTED' : isEnabled ? 'DISCONNECTED' : 'FABRIC_DISABLED'} />
+                <StatusBadge status={(!status || loading) ? 'LOADING' : isConnected ? 'CONNECTED' : isEnabled ? 'DISCONNECTED' : 'FABRIC_DISABLED'} />
             </div>
             <div className="fi-card-body">
                 <div className="fi-data-grid">
@@ -199,13 +206,13 @@ function NetworkStatusCard({ status, onRefresh, loading }) {
                         <code className="fi-data-value">{status?.peerEndpoint || '—'}</code>
                     </div>
                 </div>
-                {!isEnabled && (
+                {!loading && status && !isEnabled && (
                     <div className="fi-notice fi-notice-info">
                         <Info size={14} />
                         Fabric integration is disabled. Set <code>FABRIC_ENABLED=true</code> and start the network to enable integrity commitments.
                     </div>
                 )}
-                {isEnabled && !isConnected && status?.error && (
+                {status && isEnabled && !isConnected && status?.error && (
                     <div className="fi-notice fi-notice-danger">
                         <AlertTriangle size={14} />
                         {status.error}
@@ -631,10 +638,17 @@ function RecentCommitmentsTable({ commitments, loading, onVerify }) {
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
 
-    const availableTypes = useMemo(() => {
+    const allowedTypes = useMemo(() => new Set(['BATCH_COMMITMENT', 'RESULT_COMMITMENT', 'EXAM_COMMITMENT', 'SECURITY_EVENT']), []);
+
+    const validCommitments = useMemo(() => {
         if (!commitments) return [];
-        return Array.from(new Set(commitments.map(c => c.eventType).filter(Boolean)));
-    }, [commitments]);
+        return commitments.filter(c => allowedTypes.has(c.eventType));
+    }, [commitments, allowedTypes]);
+
+    const availableTypes = useMemo(() => {
+        if (!validCommitments) return [];
+        return Array.from(new Set(validCommitments.map(c => c.eventType).filter(Boolean)));
+    }, [validCommitments]);
 
     // Reset page to 1 whenever filters or page size change
     useEffect(() => {
@@ -642,8 +656,8 @@ function RecentCommitmentsTable({ commitments, loading, onVerify }) {
     }, [typeFilter, searchQuery, pageSize]);
 
     const filtered = useMemo(() => {
-        if (!commitments) return [];
-        return commitments.filter(c => {
+        if (!validCommitments) return [];
+        return validCommitments.filter(c => {
             if (typeFilter !== 'ALL' && c.eventType !== typeFilter) return false;
             if (searchQuery.trim()) {
                 const q = searchQuery.toLowerCase().trim();
@@ -655,7 +669,7 @@ function RecentCommitmentsTable({ commitments, loading, onVerify }) {
             }
             return true;
         });
-    }, [commitments, typeFilter, searchQuery]);
+    }, [validCommitments, typeFilter, searchQuery]);
 
     const totalRecords = filtered.length;
     const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
@@ -684,7 +698,7 @@ function RecentCommitmentsTable({ commitments, loading, onVerify }) {
             <Loader2 size={16} className="spin" /> Loading commitments...
         </div>
     );
-    if (!commitments || commitments.length === 0) return (
+    if (!validCommitments || validCommitments.length === 0) return (
         <div className="fi-empty">
             <Database size={32} className="fi-icon-muted" />
             <p>No commitments on ledger yet.</p>
@@ -702,7 +716,7 @@ function RecentCommitmentsTable({ commitments, loading, onVerify }) {
                             className={`fi-filter-pill ${typeFilter === 'ALL' ? 'active' : ''}`}
                             onClick={() => setTypeFilter('ALL')}
                         >
-                            All Types <span className="fi-pill-count">{commitments.length}</span>
+                            All Types <span className="fi-pill-count">{validCommitments.length}</span>
                         </button>
                         {availableTypes.map(t => (
                             <button
@@ -711,7 +725,7 @@ function RecentCommitmentsTable({ commitments, loading, onVerify }) {
                                 className={`fi-filter-pill ${typeFilter === t ? 'active' : ''}`}
                                 onClick={() => setTypeFilter(t)}
                             >
-                                {t.replace('_COMMITMENT', '')} <span className="fi-pill-count">{commitments.filter(c => c.eventType === t).length}</span>
+                                {t.replace('_COMMITMENT', '')} <span className="fi-pill-count">{validCommitments.filter(c => c.eventType === t).length}</span>
                             </button>
                         ))}
                     </div>
@@ -1068,8 +1082,7 @@ export default function FabricIntegrityCenter({ token }) {
 
     const handleQuickVerify = (commitment) => {
         let mappedType = 'result';
-        if (commitment.eventType === 'QUESTION_COMMITMENT' || commitment.entityType === 'Question') mappedType = 'question';
-        else if (commitment.eventType === 'EXAM_COMMITMENT' || commitment.entityType === 'Exam') mappedType = 'exam';
+        if (commitment.eventType === 'EXAM_COMMITMENT' || commitment.entityType === 'Exam') mappedType = 'exam';
         else if (commitment.eventType === 'BATCH_COMMITMENT' || commitment.entityType === 'Batch') mappedType = 'batch';
         else if (commitment.eventType === 'SECURITY_EVENT' || commitment.entityType === 'SecurityEvent') mappedType = 'event';
 
@@ -1117,10 +1130,14 @@ export default function FabricIntegrityCenter({ token }) {
     useEffect(() => {
         loadStatus();
         loadAlertCount();
-        // Poll alert count every 30s
-        const interval = setInterval(loadAlertCount, 30_000);
+        loadCommitments();
+        // Auto-poll network status and alerts every 15s
+        const interval = setInterval(() => {
+            loadStatus();
+            loadAlertCount();
+        }, 15_000);
         return () => clearInterval(interval);
-    }, [loadStatus, loadAlertCount]);
+    }, [loadStatus, loadAlertCount, loadCommitments]);
 
     useEffect(() => {
         if (activeTab === 'commitments') {
@@ -1161,8 +1178,9 @@ export default function FabricIntegrityCenter({ token }) {
                         DEV NETWORK
                     </div>
                     <StatusBadge status={
-                        !fabricStatus?.enabled ? 'FABRIC_DISABLED' :
-                            fabricStatus?.connected ? 'CONNECTED' : 'DISCONNECTED'
+                        !fabricStatus ? 'LOADING' :
+                        !fabricStatus.enabled ? 'FABRIC_DISABLED' :
+                        fabricStatus.connected ? 'CONNECTED' : 'DISCONNECTED'
                     } />
                 </div>
             </div>

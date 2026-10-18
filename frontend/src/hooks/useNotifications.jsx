@@ -81,13 +81,21 @@ export const useNotifications = (role) => {
         }
     };
 
-    // Auto-fetch on mount
+    // Auto-fetch on mount & listen to global refresh
     useEffect(() => {
         fetchNotifications();
+
+        const onGlobalRefresh = () => {
+            fetchNotifications();
+        };
+        window.addEventListener('zl-global-refresh', onGlobalRefresh);
         
         // Optional: poll every minute
         const intervalId = setInterval(fetchNotifications, 60000);
-        return () => clearInterval(intervalId);
+        return () => {
+            clearInterval(intervalId);
+            window.removeEventListener('zl-global-refresh', onGlobalRefresh);
+        };
     }, [fetchNotifications]);
 
     return { notifications, unreadCount, fetchNotifications, markAsRead, markAllAsRead };

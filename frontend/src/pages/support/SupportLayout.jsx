@@ -6,6 +6,7 @@ import { HeaderThemeToggle } from '../../components/HeaderThemeToggle.jsx';
 import { SkeletonCard, Skeleton, SkeletonTable } from '../../components/SkeletonLoader.jsx';
 import { ZMailUnreadBadge } from '../../components/zmail/ZMailUnreadBadge.jsx';
 import { History } from 'lucide-react';
+import { useRefresh } from '../../context/RefreshContext.jsx';
 import '../../components/support/support.css';
 
 const NAV = [
@@ -29,8 +30,7 @@ export const SupportLayout = ({ children, noPadding = false }) => {
     const [mobileOpen, setMobileOpen] = useState(false);
     const [showCommand, setShowCommand] = useState(false);
     const [showProfile, setShowProfile] = useState(false);
-    const [isRefreshing, setIsRefreshing] = useState(false);
-    const [refreshKey, setRefreshKey] = useState(0);
+    const { isRefreshing, triggerRefresh } = useRefresh();
     const profileRef = useRef(null);
     const navigate = useNavigate();
     const location = useLocation();
@@ -61,9 +61,7 @@ export const SupportLayout = ({ children, noPadding = false }) => {
     };
 
     const handleRefresh = () => {
-        setIsRefreshing(true);
-        setRefreshKey(prev => prev + 1);
-        setTimeout(() => setIsRefreshing(false), 800);
+        triggerRefresh();
     };
 
     // Close dropdowns on click outside
@@ -183,10 +181,11 @@ export const SupportLayout = ({ children, noPadding = false }) => {
                         <button
                             className="topbar-btn"
                             onClick={handleRefresh}
+                            disabled={isRefreshing}
                             title="Refresh Page"
                             aria-label="Refresh Page"
                         >
-                            <RefreshCw size={18} />
+                            <RefreshCw size={18} className={isRefreshing ? 'spin' : ''} />
                         </button>
 
                         {/* Profile */}
@@ -242,9 +241,7 @@ export const SupportLayout = ({ children, noPadding = false }) => {
                             </div>
                         </div>
                     ) : (
-                        <React.Fragment key={refreshKey}>
-                            {children}
-                        </React.Fragment>
+                        <>{children}</>
                     )}
                 </main>
             </div>

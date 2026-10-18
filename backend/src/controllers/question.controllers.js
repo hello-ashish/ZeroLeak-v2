@@ -5,7 +5,6 @@ import {
     hashQuestionContent,
     decryptQuestionContent,
 } from "../Services/crypto.service.js"
-import { enqueueQuestionCommitment } from "../Services/integrityOutbox.service.js";
 import { selectQuestionsByDifficultyRatio } from "../Services/question.service.js";
 import { AuditLog } from "../models/auditlog.models.js";
 
@@ -64,11 +63,7 @@ export const createQuestion = async (req, res) => {
             createdBy: req.professor._id,
         })
 
-        try {
-            await enqueueQuestionCommitment(question, 1, '');
-        } catch (err) {
-            console.error('[FABRIC] Failed to enqueue question commitment (reconciler will retry):', err.message);
-        }
+        // Questions are committed to blockchain only via accepted Batches (Merkle root)
         // Audit Log
         try {
             await AuditLog.create({

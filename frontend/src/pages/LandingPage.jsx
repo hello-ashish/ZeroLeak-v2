@@ -29,7 +29,7 @@ import {
   Search,
   LifeBuoy
 } from 'lucide-react';
-import { applyThemeProgress } from '../utils/themeEngine.js';
+import { useTheme } from '../context/ThemeContext.jsx';
 import './LandingPage.css';
 
 // Client-side SHA-256 helper for the interactive simulation
@@ -48,26 +48,8 @@ export default function LandingPage() {
   const navigate = useNavigate();
   const architectureRef = useRef(null);
 
-  // Theme state: progress <= 50 is dark, > 50 is light. Default to dark mode.
-  const [isDark, setIsDark] = useState(() => {
-    const saved = localStorage.getItem('themeProgress');
-    return saved !== null ? parseInt(saved, 10) <= 50 : true;
-  });
-
-  // Apply theme on initial mount
-  useEffect(() => {
-    const saved = localStorage.getItem('themeProgress');
-    const initialProgress = saved !== null ? parseInt(saved, 10) : 0;
-    applyThemeProgress(initialProgress);
-  }, []);
-
-  const toggleTheme = () => {
-    const nextDark = !isDark;
-    setIsDark(nextDark);
-    const targetProgress = nextDark ? 0 : 100;
-    applyThemeProgress(targetProgress);
-    localStorage.setItem('themeProgress', targetProgress);
-  };
+  // Centralized theme state from ThemeContext
+  const { isDark, toggleTheme } = useTheme();
 
   // Card view mode: 'blueprint' (matching user image exactly) vs 'simulator' (interactive live test)
   const [cardMode, setCardMode] = useState('blueprint');

@@ -7,6 +7,7 @@ resources:
   - namespace.yaml
   - configmap.yaml
   - secret.yaml
+  - fabric-crypto-secret.yaml
   - mongodb.yaml
   - redis.yaml
   - backend.yaml

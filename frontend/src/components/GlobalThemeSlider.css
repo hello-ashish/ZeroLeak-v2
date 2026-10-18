@@ -10,16 +10,24 @@
   gap: 16px;
 }
 
-/* When used inside a dashboard layout (which has .app-shell), position it below the topbar and hide the floating button */
+/* When used inside a dashboard layout (which has .app-shell), position it at bottom-right */
 body:has(.app-shell) .global-theme-controller {
   left: auto;
-  right: 18px;
-  top: 64px;
+  right: 24px;
+  bottom: 24px;
+  top: auto;
   transform: none;
 }
 
 body:has(.app-shell) .theme-toggle-btn {
-  display: none;
+  display: flex;
+  width: 38px;
+  height: 38px;
+  opacity: 0.65;
+}
+
+body:has(.app-shell) .theme-toggle-btn:hover {
+  opacity: 1;
 }
 
 .theme-toggle-btn {

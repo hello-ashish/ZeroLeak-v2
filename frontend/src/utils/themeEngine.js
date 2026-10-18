@@ -54,6 +54,8 @@ const THEME_STOPS = {
     '--bg-hover': 'rgba(255, 255, 255, 0.035)',
     '--bg-active': 'rgba(255, 255, 255, 0.06)',
     '--bg-input': '#121214',
+    '--bg-base': '#09090b',
+    '--bg-body': '#121214',
     '--border-subtle': 'rgba(255, 255, 255, 0.04)',
     '--border-default': 'rgba(255, 255, 255, 0.08)',
     '--border-strong': 'rgba(255, 255, 255, 0.15)',
@@ -73,6 +75,8 @@ const THEME_STOPS = {
     '--bg-hover': 'rgba(255, 255, 255, 0.08)',
     '--bg-active': 'rgba(255, 255, 255, 0.12)',
     '--bg-input': '#262931',
+    '--bg-base': '#1f2229',
+    '--bg-body': '#262931',
     '--border-subtle': 'rgba(255, 255, 255, 0.10)',
     '--border-default': 'rgba(255, 255, 255, 0.15)',
     '--border-strong': 'rgba(255, 255, 255, 0.25)',
@@ -92,7 +96,9 @@ const THEME_STOPS = {
     '--bg-hover': 'rgba(0, 0, 0, 0.04)',
     '--bg-active': 'rgba(0, 0, 0, 0.08)',
     '--bg-input': '#ffffff',
-    '--border-subtle': 'rgba(0, 0, 0, 0.04)',
+    '--bg-base': '#f4f4f5',
+    '--bg-body': '#ffffff',
+    '--border-subtle': 'rgba(0, 0, 0, 0.05)',
     '--border-default': 'rgba(0, 0, 0, 0.1)',
     '--border-strong': 'rgba(0, 0, 0, 0.18)',
     '--text-primary': '#09090b',
@@ -118,11 +124,10 @@ Object.keys(THEME_STOPS.dark).forEach(key => {
 
 export const applyThemeProgress = (progress) => {
   const root = document.documentElement;
+  const p = Math.max(0, Math.min(100, Math.round(Number(progress) || 0)));
   
-  // Also pass the raw progress to CSS for anything that still needs it
-  root.style.setProperty('--theme-progress', progress);
-  
-  const p = Math.max(0, Math.min(100, progress));
+  // Pass the raw progress to CSS for anything that still needs it
+  root.style.setProperty('--theme-progress', p);
   
   let startStop, endStop, factor;
   
@@ -141,10 +146,15 @@ export const applyThemeProgress = (progress) => {
     root.style.setProperty(key, colorStr);
   });
   
-  // Shadows toggle at 50%
-  if (p > 50) {
-    root.setAttribute('data-theme', 'light');
-  } else {
-    root.removeAttribute('data-theme');
-  }
+  // Set explicit theme and color-scheme
+  const isLight = p > 50;
+  root.setAttribute('data-theme', isLight ? 'light' : 'dark');
+  root.style.colorScheme = isLight ? 'light' : 'dark';
+
+  // Broadcast change for non-React listeners
+  try {
+    window.dispatchEvent(new CustomEvent('zl-theme-change', {
+      detail: { progress: p, isDark: !isLight, theme: isLight ? 'light' : 'dark' }
+    }));
+  } catch (_) {}
 };

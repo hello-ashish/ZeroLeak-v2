@@ -20,7 +20,8 @@ import {
 } from 'lucide-react';
 import './FabricBlockchainVisualizer.css';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+const rawApiBase = import.meta.env.VITE_API_URL || '';
+const API_BASE = rawApiBase.replace(/\/api\/?$/, '');
 
 async function fetchBlocks(token) {
     const effectiveToken = token || localStorage.getItem('adminToken') || localStorage.getItem('auditorToken') || localStorage.getItem('token');

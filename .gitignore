@@ -22,6 +22,7 @@ block-inspect/
 .env
 .env.*
 !.env.example
+*.local.yaml
 
 # Build output
 dist/
