@@ -159,6 +159,9 @@ docker build -t zeroleak-frontend:latest ./frontend
 ### Step 3: Deploy via Kustomize
 ```bash
 kubectl apply -k k8s/
+
+# (Optional) Apply your local secrets if overriding default placeholders:
+kubectl apply -f k8s/secret.local.yaml
 ```
 
 ### Step 4: Verify Rollout Status
@@ -216,6 +219,9 @@ docker build -t zeroleak-frontend:latest ./frontend
 ### Step 4: Deploy Stack With Autoscaling
 ```bash
 kubectl apply -k k8s-autoscale/
+
+# (Optional) Apply your local secrets if overriding default placeholders:
+kubectl apply -f k8s/secret.local.yaml
 ```
 
 ### Step 5: Monitor Autoscaling in Real-Time
@@ -308,13 +314,33 @@ docker compose down -v --remove-orphans
 npm run fabric:down
 ```
 
+---
+
+## Method 7: Public Sharing & Custom Domain (Cloudflare Tunnel)
+
+### Option A: Instant Public Link (No Account / Free Quick Tunnel)
+First, ensure the frontend port-forward is running:
+```bash
+kubectl -n zeroleak port-forward svc/frontend 8080:80
 ```
-# Login to Cloudflare
+In another terminal, generate an instant secure HTTPS public URL:
+```bash
+cloudflared tunnel --url http://localhost:8080
+```
+*(Outputs an instant `https://<unique-name>.trycloudflare.com` URL accessible by anyone without signing up or opening router ports).*
+
+### Option B: Permanent Custom Domain (Named Tunnel)
+To route your own domain (e.g. `zeroleak.yourdomain.com`):
+```bash
+# 1. Login to Cloudflare
 cloudflared login
 
-# Create Tunnel
+# 2. Create the tunnel
 cloudflared tunnel create zeroleak
 
-# Cloudflare Tunnel
-cloudflared tunnel --url http://localhost:8080
+# 3. Route your custom domain / subdomain
+cloudflared tunnel route dns zeroleak zeroleak.yourdomain.com
+
+# 4. Start the tunnel
+cloudflared tunnel run zeroleak
 ```
