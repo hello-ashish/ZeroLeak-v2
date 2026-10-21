@@ -378,6 +378,8 @@ export async function adminReviewBatch(batchData, adminId) {
                 topic: q.topic || 'General',
                 difficulty: q.difficultyLevel || 'medium',
                 title: q.title && !/^[a-f0-9]{64}$/i.test(q.title) ? q.title : undefined,
+                options: Array.isArray(q.options) && q.options.length > 0 ? q.options : undefined,
+                correctAnswer: q.correctAnswer || (Array.isArray(q.options) && q.correctAnswerIndex !== undefined ? q.options[q.correctAnswerIndex] : undefined),
             })),
         };
 

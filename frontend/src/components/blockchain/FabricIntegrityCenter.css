@@ -1760,5 +1760,511 @@
     background: #f8fafc;
 }
 
+/* ─── Outbox Re-commit Panel Styles ────────────────────────────────────────── */
+.fi-recommit-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    animation: fi-fade-in 0.4s ease-out;
+}
+
+.fi-recommit-hero {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 24px 28px;
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(99, 102, 241, 0.04));
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: var(--radius-xl);
+    position: relative;
+    overflow: hidden;
+}
+
+.fi-recommit-hero-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: var(--radius-lg);
+    background: linear-gradient(135deg, #2563eb, #6366f1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    flex-shrink: 0;
+    box-shadow: 0 8px 20px rgba(37, 99, 235, 0.25);
+}
+
+.fi-recommit-hero-text h2 {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 6px;
+}
+
+.fi-recommit-hero-text p {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* Sync Alert Banner */
+.fi-sync-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 20px;
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: var(--radius-lg);
+    color: var(--text-primary);
+}
+
+.fi-sync-banner-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.fi-sync-banner-text strong {
+    display: block;
+    font-size: 0.95rem;
+    color: #f59e0b;
+    margin-bottom: 2px;
+}
+
+.fi-sync-banner-text span {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+/* Overview Callout */
+.fi-sync-overview-callout {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 20px;
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(217, 119, 6, 0.06));
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    border-radius: var(--radius-lg);
+    margin-bottom: 24px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.fi-sync-overview-callout:hover {
+    transform: translateY(-1px);
+    border-color: rgba(245, 158, 11, 0.6);
+    box-shadow: 0 6px 16px rgba(245, 158, 11, 0.12);
+}
+
+.fi-sync-overview-callout-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.fi-sync-overview-callout-left strong {
+    display: block;
+    font-size: 0.95rem;
+    color: #f59e0b;
+    margin-bottom: 2px;
+}
+
+.fi-sync-overview-callout-left p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+/* Stats 4-Grid */
+.fi-recommit-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+}
+
+.fi-recommit-stat-card {
+    padding: 18px 20px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: border-color 0.2s;
+}
+
+.fi-recommit-stat-card:hover {
+    border-color: var(--border-hover);
+}
+
+.fi-recommit-stat-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-md);
+    background: rgba(37, 99, 235, 0.1);
+    color: #2563eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.fi-recommit-stat-val {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    line-height: 1.1;
+}
+
+.fi-recommit-stat-lbl {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 600;
+}
+
+/* Entity Breakdown Pills */
+.fi-entity-breakdown {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.fi-entity-breakdown-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.fi-entity-pills-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.fi-entity-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 9999px;
+    background: var(--bg-surface-elevated, rgba(255, 255, 255, 0.05));
+    border: 1px solid var(--border-default);
+    font-size: 0.82rem;
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.fi-entity-pill-count {
+    background: rgba(37, 99, 235, 0.15);
+    color: #3b82f6;
+    padding: 1px 7px;
+    border-radius: 9999px;
+    font-weight: 700;
+    font-size: 0.78rem;
+}
+
+/* Recommit Action Cards Grid */
+.fi-recommit-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+.fi-recommit-action-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-xl);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.fi-recommit-action-card:hover {
+    border-color: rgba(59, 130, 246, 0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.06);
+}
+
+.fi-recommit-action-card-highlight {
+    border-color: rgba(37, 99, 235, 0.35);
+    background: linear-gradient(180deg, var(--bg-surface), rgba(37, 99, 235, 0.03));
+}
+
+.fi-action-badge {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: rgba(37, 99, 235, 0.12);
+    color: #3b82f6;
+    border: 1px solid rgba(37, 99, 235, 0.25);
+    letter-spacing: 0.04em;
+}
+
+.fi-action-card-top {
+    margin-bottom: 20px;
+}
+
+.fi-action-card-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-md);
+    background: rgba(37, 99, 235, 0.1);
+    color: #2563eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 14px;
+}
+
+.fi-action-card-top h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 8px;
+}
+
+.fi-action-card-top p {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin: 0;
+}
+
+.fi-action-card-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 16px;
+    font-weight: 600;
+    border-radius: var(--radius-md);
+}
+
+/* Active Recommit Job Monitor Card */
+.fi-job-monitor-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-xl);
+    padding: 24px;
+    animation: fi-fade-in 0.3s ease;
+}
+
+.fi-job-monitor-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+}
+
+.fi-job-title-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.fi-job-title-row h3 {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.fi-progress-track {
+    width: 100%;
+    height: 12px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 9999px;
+    overflow: hidden;
+    margin-bottom: 16px;
+    position: relative;
+}
+
+[data-theme="light"] .fi-progress-track {
+    background: #e2e8f0;
+}
+
+.fi-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #2563eb, #6366f1);
+    border-radius: 9999px;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    box-shadow: 0 0 12px rgba(37, 99, 235, 0.5);
+}
+
+.fi-progress-fill.running {
+    background-size: 30px 30px;
+    background-image: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.2) 25%,
+        transparent 25%,
+        transparent 50%,
+        rgba(255, 255, 255, 0.2) 50%,
+        rgba(255, 255, 255, 0.2) 75%,
+        transparent 75%,
+        transparent
+    );
+    animation: fi-stripe-move 1s linear infinite;
+}
+
+@keyframes fi-stripe-move {
+    0% { background-position: 0 0; }
+    100% { background-position: 30px 0; }
+}
+
+.fi-job-meta-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    flex-wrap: wrap;
+}
+
+.fi-job-counters {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.fi-counter-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-weight: 600;
+}
+
+.fi-counter-success { color: #22c55e; }
+.fi-counter-fail { color: #ef4444; }
+
+.fi-current-item-ticker {
+    margin-top: 14px;
+    padding: 10px 14px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: var(--radius-md);
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+[data-theme="light"] .fi-current-item-ticker {
+    background: #f1f5f9;
+}
+
+.fi-current-item-ticker code {
+    color: #3b82f6;
+    font-weight: 600;
+}
+
+/* Success Celebration State */
+.fi-sync-completed-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 18px 24px;
+    background: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    border-radius: var(--radius-lg);
+    margin-top: 16px;
+}
+
+.fi-sync-completed-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.fi-sync-completed-left strong {
+    display: block;
+    color: #22c55e;
+    font-size: 0.95rem;
+    margin-bottom: 2px;
+}
+
+.fi-sync-completed-left p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+/* Confirmation Modal Overlay */
+.fi-modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 20px;
+    animation: fi-fade-in 0.2s ease-out;
+}
+
+.fi-modal-box {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-xl);
+    max-width: 500px;
+    width: 100%;
+    padding: 28px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    animation: fi-slide-up 0.25s ease-out;
+}
+
+.fi-modal-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0 0 14px;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.fi-modal-desc {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 24px;
+}
+
+.fi-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
 
 

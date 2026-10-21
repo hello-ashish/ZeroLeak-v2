@@ -39,11 +39,11 @@ export default function AdminActivityPage() {
     const navigate = useNavigate()
     const toast = useToast()
 
-    const fetchLogs = async (p = 1) => {
+    const fetchLogs = async (p = 1, showLoading = false) => {
         const token = getToken()
         if (!token) { navigate('/admin/login'); return }
         try {
-            setLoading(true)
+            if (showLoading) setLoading(true)
             const res = await axios.get(`${API}/admin/audit-logs?page=${p}&limit=${LIMIT}`, {
                 headers: { Authorization: `Bearer ${token}` }
             })
@@ -53,7 +53,7 @@ export default function AdminActivityPage() {
         } catch {
             toast.error('Failed to load activity log')
         } finally {
-            setLoading(false)
+            if (showLoading) setLoading(false)
         }
     }
 
@@ -75,7 +75,7 @@ export default function AdminActivityPage() {
         }
     }
 
-    useEffect(() => { fetchLogs() }, [])
+    useEffect(() => { fetchLogs(1, true) }, [])
 
     const totalPages = Math.ceil(total / LIMIT)
 
@@ -241,14 +241,14 @@ export default function AdminActivityPage() {
                             Page {page} of {totalPages} · {total} events
                         </span>
                         <div className="pagination">
-                            <button className="pagination-btn" onClick={() => fetchLogs(page - 1)} disabled={page <= 1}>←</button>
+                            <button className="pagination-btn" onClick={() => fetchLogs(page - 1, false)} disabled={page <= 1}>←</button>
                             {[...Array(Math.min(totalPages, 5))].map((_, i) => {
                                 const p = i + 1
                                 return (
-                                    <button key={p} className={`pagination-btn ${p === page ? 'active' : ''}`} onClick={() => fetchLogs(p)}>{p}</button>
+                                    <button key={p} className={`pagination-btn ${p === page ? 'active' : ''}`} onClick={() => fetchLogs(p, false)}>{p}</button>
                                 )
                             })}
-                            <button className="pagination-btn" onClick={() => fetchLogs(page + 1)} disabled={page >= totalPages}>→</button>
+                            <button className="pagination-btn" onClick={() => fetchLogs(page + 1, false)} disabled={page >= totalPages}>→</button>
                         </div>
                     </div>
                 )}

@@ -619,6 +619,14 @@ export async function closeFabricGateway() {
     _connected = false;
 }
 
+export async function forceReconnect() {
+    console.info('[FABRIC] Forcing Fabric Gateway reconnection...');
+    await closeFabricGateway();
+    _connectAttemptedAt = null;
+    await _connect();
+    return getFabricStatus();
+}
+
 export async function initFabricGateway() {
     const cfg = _getFabricConfig();
     if (!cfg.enabled) {

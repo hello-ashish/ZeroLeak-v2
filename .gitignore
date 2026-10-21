@@ -24,6 +24,9 @@ block-inspect/
 !.env.example
 *.local.yaml
 
+# Data files
+*.csv
+
 # Build output
 dist/
 dist-ssr/

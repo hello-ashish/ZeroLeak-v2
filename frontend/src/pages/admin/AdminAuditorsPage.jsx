@@ -4,6 +4,7 @@ import axios from 'axios'
 import { AdminLayout } from './AdminLayout.jsx'
 import { Modal, ConfirmDialog } from '../../components/Modal.jsx'
 import { SkeletonTable, EmptyState } from '../../components/SkeletonLoader.jsx'
+import { Pagination } from '../../components/Pagination.jsx'
 import { useToast } from '../../components/Toast.jsx'
 import { Search, Users, Trash2, AlertTriangle, BookOpen, Clock, Activity, X, Mail, Upload, Download, CheckSquare, Loader2 } from 'lucide-react'
 
@@ -24,6 +25,8 @@ export default function AdminAuditorsPage() {
     const [isSelectMode, setIsSelectMode] = useState(false)
     const [filterStatus, setFilterStatus] = useState('all')
     const [sortConfig, setSortConfig] = useState('default')
+    const [page, setPage] = useState(1)
+    const ITEMS_PER_PAGE = 10
     const [isImporting, setIsImporting] = useState(false)
     const [form, setForm] = useState({ auditorId: '', name: '', email: '', contact: '', address: '', password: '' })
     const [formErrors, setFormErrors] = useState({})
@@ -86,6 +89,17 @@ export default function AdminAuditorsPage() {
         }
         return result;
     }, [auditors, search, filterStatus, sortConfig])
+
+    useEffect(() => {
+        setPage(1)
+    }, [search, filterStatus, sortConfig])
+
+    const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE))
+    const currentPage = Math.min(page, totalPages)
+    const paginated = useMemo(() => {
+        const start = (currentPage - 1) * ITEMS_PER_PAGE
+        return filtered.slice(start, start + ITEMS_PER_PAGE)
+    }, [filtered, currentPage])
 
     const activeCreatorsCount = useMemo(() => {
         const sevenDaysAgo = new Date();
@@ -414,7 +428,7 @@ export default function AdminAuditorsPage() {
                                     <th>Added</th>
                                 </tr>
                             </thead>
-                            {loading ? (
+                            {loading && auditors.length === 0 ? (
                                 <SkeletonTable rows={5} />
                             ) : (
                                 <tbody>
@@ -427,7 +441,7 @@ export default function AdminAuditorsPage() {
                                                 action={!search && <button className="btn btn-primary" onClick={handleOpenAdd}>+ Add Auditor</button>}
                                             />
                                         </td></tr>
-                                    ) : filtered.map(prof => {
+                                    ) : paginated.map(prof => {
                                         const isSelected = selectedAud?._id === prof._id
                                         return (
                                             <tr key={prof._id}
@@ -472,6 +486,14 @@ export default function AdminAuditorsPage() {
                                 </tbody>
                             )}
                         </table>
+
+                        <Pagination
+                            currentPage={currentPage}
+                            totalItems={filtered.length}
+                            itemsPerPage={ITEMS_PER_PAGE}
+                            onPageChange={setPage}
+                            itemLabel="auditors"
+                        />
                     </div>
                 </div>
 

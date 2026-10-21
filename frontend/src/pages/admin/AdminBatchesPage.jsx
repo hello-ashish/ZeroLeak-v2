@@ -5,7 +5,7 @@ import { AdminLayout } from './AdminLayout.jsx'
 import { StatusBadge, DifficultyBadge } from '../../components/StatusBadge.jsx'
 import { SkeletonCard, EmptyState } from '../../components/SkeletonLoader.jsx'
 import { useToast } from '../../components/Toast.jsx'
-import { AlertTriangle, PackageOpen, Check, X, Eye, Clock, MessageSquare, ChevronRight, Trash2 } from 'lucide-react'
+import { AlertTriangle, PackageOpen, Check, X, Eye, Clock, MessageSquare, ChevronRight, Trash2, Sparkles, Copy, FileText } from 'lucide-react'
 
 const API = '/api'
 const getToken = () => localStorage.getItem('adminToken')
@@ -113,12 +113,30 @@ export default function AdminBatchesPage() {
             const res = await axios.post(`${API}/ai/admin/review-batch`, { batchData: activeBatch }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            setAiReviewResult(res.data);
-            toast.success("AI Audit complete");
+            const data = res.data?.data || res.data;
+            setAiReviewResult(data);
+            toast.success("AI Preview & Audit complete");
         } catch (error) {
-            toast.error("AI Review failed");
+            const msg = error.response?.data?.message || error.message || "AI Review failed";
+            toast.error(msg);
         } finally {
             setAiReviewing(false);
+        }
+    }
+
+    const applyAiFeedback = (targetAction = 'mark') => {
+        if (!aiReviewResult) return;
+        const issuesText = aiReviewResult.issues && aiReviewResult.issues.length > 0
+            ? aiReviewResult.issues.map((iss, i) => `${i + 1}. ${iss}`).join('\n')
+            : 'No critical structural issues flagged.';
+        const feedback = `[AI Quality Audit]\nSummary: ${aiReviewResult.summary}\nDifficulty Distribution: ${aiReviewResult.difficultySkew}\n\nIdentified Issues:\n${issuesText}`;
+
+        if (targetAction === 'mark') {
+            setMarkReason(feedback);
+            setActionState('mark');
+        } else if (targetAction === 'reject') {
+            setRejectReason(feedback);
+            setActionState('reject');
         }
     }
 
@@ -161,9 +179,9 @@ export default function AdminBatchesPage() {
                 <div style={{ width: 340, flexShrink: 0, display: 'flex', flexDirection: 'column', background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
                     <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-default)' }}>
                         <div className="tabs" style={{ marginBottom: 0, width: '100%', display: 'flex' }}>
-                            {TABS.slice(0, 4).map(t => (
-                                <button key={t} className={`tab-item ${activeTab === t ? 'active' : ''}`} style={{ flex: 1, padding: '8px 4px', fontSize: 11, textAlign: 'center', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} onClick={() => { setActiveTab(t); setActiveBatch(null); }}>
-                                    {t} <span className="tab-count">{tabCounts[t]}</span>
+                            {TABS.map(t => (
+                                <button key={t} className={`tab-item ${activeTab === t ? 'active' : ''}`} style={{ flex: 1, padding: '8px 2px', fontSize: 11, textAlign: 'center', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} onClick={() => { setActiveTab(t); setActiveBatch(null); }}>
+                                    {t} <span className="tab-count">{tabCounts[t] ?? 0}</span>
                                 </button>
                             ))}
                         </div>
@@ -229,7 +247,7 @@ export default function AdminBatchesPage() {
                     ) : activeBatch ? (
                         <>
                             {/* Header */}
-                            <div style={{ padding: '24px 32px', borderBottom: '1px solid var(--border-default)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div style={{ padding: '24px 32px', borderBottom: '1px solid var(--border-default)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
                                 <div>
                                     <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 8 }}>
                                         <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}>{activeBatch.title}</h2>
@@ -243,12 +261,28 @@ export default function AdminBatchesPage() {
                                 </div>
 
                                 {!actionState && (
-                                    <div style={{ display: 'flex', gap: 8 }}>
+                                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                                        {/* AI Preview Button available for any active batch with questions */}
+                                        <button
+                                            className="btn btn-secondary"
+                                            onClick={doAiReview}
+                                            disabled={aiReviewing}
+                                            style={{
+                                                background: 'linear-gradient(135deg, var(--brand-primary), #6366f1)',
+                                                color: '#fff',
+                                                border: 'none',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 6
+                                            }}
+                                            title="Run AI Pre-Review to inspect question quality, difficulty skew, and batch integrity"
+                                        >
+                                            <Sparkles size={16} />
+                                            {aiReviewing ? 'Analyzing Batch...' : 'AI Preview & Audit'}
+                                        </button>
+
                                         {activeBatch.status === 'Submitted' && (
                                             <>
-                                                <button className="btn btn-secondary" onClick={doAiReview} disabled={aiReviewing} style={{ background: 'var(--brand-primary)', color: '#fff', border: 'none' }}>
-                                                    {aiReviewing ? 'Analyzing...' : 'AI Pre-Review'}
-                                                </button>
                                                 <button className="btn btn-secondary" onClick={() => setActionState('mark')}>Mark for Review</button>
                                                 <button className="btn btn-danger" onClick={() => setActionState('reject')}>Reject</button>
                                                 <button className="btn btn-success" onClick={() => doReview('Accept')} disabled={reviewing}>
@@ -263,33 +297,98 @@ export default function AdminBatchesPage() {
                                 )}
                             </div>
 
+                            {/* AI Review In Progress Banner */}
+                            {aiReviewing && (
+                                <div style={{ padding: '18px 32px', background: 'var(--bg-card)', borderBottom: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', gap: 14 }}>
+                                    <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--brand-primary-subtle, rgba(99, 102, 241, 0.15))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--brand-primary)' }}>
+                                        <Sparkles size={18} className="animate-spin" />
+                                    </div>
+                                    <div>
+                                        <h4 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>AI Audit & Pre-Review in Progress</h4>
+                                        <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '2px 0 0' }}>Analyzing question distribution, topics covered, difficulty balance, and integrity rules...</p>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* AI Review Results */}
                             {aiReviewResult && (
-                                <div style={{ padding: '24px 32px', background: 'var(--bg-card)', borderBottom: '1px solid var(--border-default)' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                                        <div style={{ width: 32, height: 32, borderRadius: 8, background: aiReviewResult.isApproved ? 'var(--success-subtle)' : 'var(--danger-subtle)', color: aiReviewResult.isApproved ? 'var(--success)' : 'var(--danger)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                            {aiReviewResult.isApproved ? <Check size={18} /> : <AlertTriangle size={18} />}
+                                <div style={{ padding: '24px 32px', background: 'var(--bg-card)', borderBottom: '1px solid var(--border-default)', position: 'relative' }}>
+                                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                            <div style={{ width: 36, height: 36, borderRadius: 10, background: aiReviewResult.isApproved ? 'var(--success-subtle)' : 'var(--danger-subtle)', color: aiReviewResult.isApproved ? 'var(--success)' : 'var(--danger)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                {aiReviewResult.isApproved ? <Check size={20} /> : <AlertTriangle size={20} />}
+                                            </div>
+                                            <div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                    <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>AI Audit Report</h3>
+                                                    <span style={{
+                                                        padding: '2px 8px',
+                                                        borderRadius: 4,
+                                                        fontSize: 11,
+                                                        fontWeight: 700,
+                                                        textTransform: 'uppercase',
+                                                        background: aiReviewResult.isApproved ? 'var(--success-subtle)' : 'var(--danger-subtle)',
+                                                        color: aiReviewResult.isApproved ? 'var(--success)' : 'var(--danger)',
+                                                        border: `1px solid ${aiReviewResult.isApproved ? 'var(--success-border)' : 'var(--danger-border)'}`
+                                                    }}>
+                                                        {aiReviewResult.isApproved ? 'Recommended: Approve' : 'Recommended: Revisions Needed'}
+                                                    </span>
+                                                </div>
+                                                <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>{aiReviewResult.summary}</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <h3 style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>AI Audit Report</h3>
-                                            <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{aiReviewResult.summary}</p>
-                                        </div>
+
+                                        <button
+                                            onClick={() => setAiReviewResult(null)}
+                                            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 4 }}
+                                            title="Close AI Report"
+                                        >
+                                            <X size={18} />
+                                        </button>
                                     </div>
                                     
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}>
                                         <div style={{ background: 'var(--bg-surface)', padding: '12px 16px', borderRadius: 8, border: '1px solid var(--border-subtle)' }}>
-                                            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 6 }}>Difficulty Skew</div>
-                                            <div style={{ fontSize: 14, color: 'var(--text-primary)' }}>{aiReviewResult.difficultySkew}</div>
+                                            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 6 }}>Difficulty Balance</div>
+                                            <div style={{ fontSize: 14, color: 'var(--text-primary)', fontWeight: 500 }}>{aiReviewResult.difficultySkew}</div>
                                         </div>
                                         
-                                        {aiReviewResult.issues && aiReviewResult.issues.length > 0 && (
-                                            <div style={{ background: 'var(--danger-subtle)', padding: '12px 16px', borderRadius: 8, border: '1px solid var(--danger-border)' }}>
-                                                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--danger)', textTransform: 'uppercase', marginBottom: 8 }}>Found Issues ({aiReviewResult.issues.length})</div>
+                                        {aiReviewResult.issues && aiReviewResult.issues.length > 0 ? (
+                                            <div style={{ background: 'var(--danger-subtle)', padding: '14px 16px', borderRadius: 8, border: '1px solid var(--danger-border)' }}>
+                                                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--danger)', textTransform: 'uppercase', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                    <AlertTriangle size={14} /> Identified Issues ({aiReviewResult.issues.length})
+                                                </div>
                                                 <ul style={{ margin: 0, paddingLeft: 20, color: 'var(--danger)', fontSize: 13 }}>
                                                     {aiReviewResult.issues.map((issue, idx) => (
                                                         <li key={idx} style={{ marginBottom: 4 }}>{issue}</li>
                                                     ))}
                                                 </ul>
+                                            </div>
+                                        ) : (
+                                            <div style={{ background: 'var(--success-subtle)', padding: '12px 16px', borderRadius: 8, border: '1px solid var(--success-border)', display: 'flex', alignItems: 'center', gap: 8, color: 'var(--success)', fontSize: 13, fontWeight: 500 }}>
+                                                <Check size={16} /> No structural or balance defects detected. Batch is ready for approval.
+                                            </div>
+                                        )}
+
+                                        {/* Action helpers to apply AI feedback into review workflows */}
+                                        {activeBatch.status === 'Submitted' && (
+                                            <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                                                <button
+                                                    className="btn btn-sm btn-secondary flex items-center gap-1"
+                                                    onClick={() => applyAiFeedback('mark')}
+                                                    style={{ fontSize: 12 }}
+                                                >
+                                                    <FileText size={14} /> Copy AI Report to 'Mark for Review'
+                                                </button>
+                                                {!aiReviewResult.isApproved && (
+                                                    <button
+                                                        className="btn btn-sm btn-ghost flex items-center gap-1"
+                                                        onClick={() => applyAiFeedback('reject')}
+                                                        style={{ fontSize: 12, color: 'var(--danger)' }}
+                                                    >
+                                                        <FileText size={14} /> Copy to 'Reject'
+                                                    </button>
+                                                )}
                                             </div>
                                         )}
                                     </div>

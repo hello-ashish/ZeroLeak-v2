@@ -7,6 +7,7 @@ import { AdminLayout } from './AdminLayout.jsx'
 import { Modal, ConfirmDialog } from '../../components/Modal.jsx'
 import { SkeletonTable, EmptyState } from '../../components/SkeletonLoader.jsx'
 import { ScorePill } from '../../components/StatusBadge.jsx'
+import { Pagination } from '../../components/Pagination.jsx'
 import { useToast } from '../../components/Toast.jsx'
 
 const API = '/api'
@@ -26,6 +27,8 @@ export default function AdminStudentsPage() {
     const [selectedIds, setSelectedIds] = useState([])
     const [isSelectMode, setIsSelectMode] = useState(false)
     const [sortConfig, setSortConfig] = useState('default')
+    const [page, setPage] = useState(1)
+    const ITEMS_PER_PAGE = 10
     const [isImporting, setIsImporting] = useState(false)
     const [liveStudents, setLiveStudents] = useState([])
     const [form, setForm] = useState({ studentId: '', name: '', email: '', password: '', department: '', batch: '', contact: '', dateOfBirth: '', address: '', gender: '', program: '' })
@@ -135,8 +138,8 @@ export default function AdminStudentsPage() {
 
     const getAvg = (studentId) => {
         const data = studentStats[studentId]
-        if (!data || data.scores.length === 0) return null
-        return Math.round((data.scores.reduce((a, b) => a + b, 0) / data.scores.length / data.totalQ) * 100)
+        if (!data || data.scores.length === 0 || !data.totalQ) return null
+        return Math.min(100, Math.max(0, Math.round((data.scores.reduce((a, b) => a + b, 0) / data.scores.length / data.totalQ) * 100)))
     }
 
     const filtered = useMemo(() => {
@@ -186,6 +189,17 @@ export default function AdminStudentsPage() {
 
         return result;
     }, [students, search, filterStatus, liveStudents, sortConfig, studentStats])
+
+    useEffect(() => {
+        setPage(1)
+    }, [search, filterStatus, sortConfig])
+
+    const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE))
+    const currentPage = Math.min(page, totalPages)
+    const paginated = useMemo(() => {
+        const start = (currentPage - 1) * ITEMS_PER_PAGE
+        return filtered.slice(start, start + ITEMS_PER_PAGE)
+    }, [filtered, currentPage])
 
     const activeThisWeekCount = useMemo(() => {
         const sevenDaysAgo = new Date();
@@ -535,7 +549,7 @@ export default function AdminStudentsPage() {
                                     <th>Avg Score</th>
                                 </tr>
                             </thead>
-                            {loading ? (
+                            {loading && students.length === 0 ? (
                                 <SkeletonTable rows={7} />
                             ) : (
                                 <tbody>
@@ -548,7 +562,7 @@ export default function AdminStudentsPage() {
                                                 action={!search && <button className="btn btn-primary" onClick={handleOpenAdd}>+ Add Student</button>}
                                             />
                                         </td></tr>
-                                    ) : filtered.map(stu => {
+                                    ) : paginated.map(stu => {
                                         const avg = getAvg(stu._id)
                                         const examsCount = examsForStudent(stu._id)
                                         const isSelected = selectedStudent?._id === stu._id
@@ -606,6 +620,14 @@ export default function AdminStudentsPage() {
                                 </tbody>
                             )}
                         </table>
+
+                        <Pagination
+                            currentPage={currentPage}
+                            totalItems={filtered.length}
+                            itemsPerPage={ITEMS_PER_PAGE}
+                            onPageChange={setPage}
+                            itemLabel="students"
+                        />
                     </div>
                 </div>
 

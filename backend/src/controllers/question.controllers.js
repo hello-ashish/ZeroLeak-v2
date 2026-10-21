@@ -1,5 +1,6 @@
-import { Question } from "../models/question.models.js"
-import { Exam } from "../models/exam.models.js"
+import crypto from "crypto";
+import { Question } from "../models/question.models.js";
+import { Exam } from "../models/exam.models.js";
 import {
     encryptQuestionContent,
     hashQuestionContent,
@@ -156,14 +157,51 @@ export const getAllQuestions = async (req, res) => {
     try {
         const { page = 1, limit = 10, search = '', difficulty = '', subject = '', decrypt = 'false' } = req.query;
 
-        // Run question fetch and usage aggregation in parallel
-        const [questions, usageAgg] = await Promise.all([
-            Question.find({}).sort({ createdAt: -1 }).lean(),
-            Exam.aggregate([
-                { $unwind: "$questions" },
-                { $group: { _id: "$questions", usageCount: { $sum: 1 } } }
+        const filter = {};
+        if (difficulty) {
+            filter.difficultyLevel = difficulty.toLowerCase();
+        }
+        if (subject) {
+            filter.subject = new RegExp(`^${subject}$`, 'i');
+        }
+        if (search && search.trim()) {
+            const searchRegex = new RegExp(search.trim(), 'i');
+            filter.$or = [
+                { topic: searchRegex },
+                { subject: searchRegex },
+                { contentHash: searchRegex }
+            ];
+        }
+
+        const pageNum = Math.max(1, parseInt(page, 10) || 1);
+        const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 10));
+        const skip = (pageNum - 1) * limitNum;
+
+        // Run paginated fetch, count, and global stats aggregation in parallel
+        const [questions, totalFiltered, aggResult] = await Promise.all([
+            Question.find(filter)
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limitNum)
+                .lean(),
+            Question.countDocuments(filter),
+            Question.aggregate([
+                {
+                    $group: {
+                        _id: { subject: "$subject", topic: "$topic", difficulty: "$difficultyLevel" },
+                        count: { $sum: 1 }
+                    }
+                }
             ])
         ]);
+
+        const questionIds = questions.map(q => q._id);
+        const usageAgg = questionIds.length > 0 ? await Exam.aggregate([
+            { $match: { questions: { $in: questionIds } } },
+            { $unwind: "$questions" },
+            { $match: { questions: { $in: questionIds } } },
+            { $group: { _id: "$questions", usageCount: { $sum: 1 } } }
+        ]) : [];
 
         const usageMap = {};
         usageAgg.forEach(u => { usageMap[String(u._id)] = u.usageCount; });
@@ -173,14 +211,12 @@ export const getAllQuestions = async (req, res) => {
             return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
         };
 
-        // Format all questions (decrypting sensitive content for Admins ONLY if explicitly requested by Simulator)
-        const allDecrypted = questions.map((question) => {
-            let decryptedContent = {}
-            if (decrypt === 'true') {
+        // Decrypt only the questions on the requested page if requested
+        const paginated = questions.map((question) => {
+            let decryptedContent = {};
+            if (decrypt === 'true' && question.encryptedContent) {
                 try {
-                    if (question.encryptedContent) {
-                        decryptedContent = decryptQuestionContent(question.encryptedContent)
-                    }
+                    decryptedContent = decryptQuestionContent(question.encryptedContent);
                 } catch (error) {
                     console.error("Failed to decrypt in getAllQuestions:", error.message);
                 }
@@ -201,68 +237,74 @@ export const getAllQuestions = async (req, res) => {
                     successRate: 0,
                     flagged: false,
                 },
-            }
-        });
-
-        // Compute global stats and subjects BEFORE filtering
-        const stats = {
-            total: allDecrypted.length,
-            easy: allDecrypted.filter(q => q.difficultyLevel === 'easy').length,
-            medium: allDecrypted.filter(q => q.difficultyLevel === 'medium').length,
-            hard: allDecrypted.filter(q => q.difficultyLevel === 'hard').length,
-            highSuccess: allDecrypted.filter(q => (q.health?.successRate || 0) > 70).length,
-            lowSuccess: allDecrypted.filter(q => (q.health?.successRate || 0) < 40).length,
-            flagged: allDecrypted.filter(q => q.health?.flagged).length,
-        };
-
-        const subjects = [...new Set(allDecrypted.map(q => q.subject).filter(Boolean))];
-
-        // Chart data logic (simplified to return full grouped data)
-        const chartDataAll = subjects.map(sub => {
-            const subQs = allDecrypted.filter(q => q.subject === sub);
-            return {
-                name: sub,
-                Easy: subQs.filter(q => q.difficultyLevel === 'easy').length,
-                Medium: subQs.filter(q => q.difficultyLevel === 'medium').length,
-                Hard: subQs.filter(q => q.difficultyLevel === 'hard').length,
             };
         });
 
+        // Compute global stats and charts from lightweight aggregation
+        let total = 0;
+        let easy = 0;
+        let medium = 0;
+        let hard = 0;
+        const subjectsSet = new Set();
+        const subjectDiffMap = {};
+        const topicDiffMap = {};
+
+        aggResult.forEach(item => {
+            const count = item.count;
+            total += count;
+            const diff = (item._id.difficulty || '').toLowerCase();
+            if (diff === 'easy') easy += count;
+            else if (diff === 'medium') medium += count;
+            else if (diff === 'hard') hard += count;
+
+            const sub = formatString(item._id.subject) || 'General';
+            subjectsSet.add(sub);
+
+            if (!subjectDiffMap[sub]) subjectDiffMap[sub] = { Easy: 0, Medium: 0, Hard: 0 };
+            if (diff === 'easy') subjectDiffMap[sub].Easy += count;
+            else if (diff === 'medium') subjectDiffMap[sub].Medium += count;
+            else if (diff === 'hard') subjectDiffMap[sub].Hard += count;
+
+            const top = formatString(item._id.topic) || 'General';
+            if (!topicDiffMap[sub]) topicDiffMap[sub] = {};
+            if (!topicDiffMap[sub][top]) topicDiffMap[sub][top] = { Easy: 0, Medium: 0, Hard: 0 };
+            if (diff === 'easy') topicDiffMap[sub][top].Easy += count;
+            else if (diff === 'medium') topicDiffMap[sub][top].Medium += count;
+            else if (diff === 'hard') topicDiffMap[sub][top].Hard += count;
+        });
+
+        const subjects = Array.from(subjectsSet).sort();
+        const chartDataAll = subjects.map(sub => ({
+            name: sub,
+            Easy: subjectDiffMap[sub]?.Easy || 0,
+            Medium: subjectDiffMap[sub]?.Medium || 0,
+            Hard: subjectDiffMap[sub]?.Hard || 0,
+        }));
+
         const topicsBySubject = {};
         subjects.forEach(sub => {
-            const subQs = allDecrypted.filter(q => q.subject === sub);
-            const topics = [...new Set(subQs.map(q => q.topic).filter(Boolean))];
-            topicsBySubject[sub] = topics.map(top => {
-                const topQs = subQs.filter(q => q.topic === top);
-                return {
-                    name: top,
-                    Easy: topQs.filter(q => q.difficultyLevel === 'easy').length,
-                    Medium: topQs.filter(q => q.difficultyLevel === 'medium').length,
-                    Hard: topQs.filter(q => q.difficultyLevel === 'hard').length,
-                };
-            });
+            topicsBySubject[sub] = Object.entries(topicDiffMap[sub] || {}).map(([topName, diffCounts]) => ({
+                name: topName,
+                Easy: diffCounts.Easy,
+                Medium: diffCounts.Medium,
+                Hard: diffCounts.Hard,
+            }));
         });
 
-        // Apply filters
-        const qSearch = search.toLowerCase();
-        const filtered = allDecrypted.filter(q => {
-            const matchSearch = q.title?.toLowerCase().includes(qSearch) ||
-                q.subject?.toLowerCase().includes(qSearch) ||
-                q.topic?.toLowerCase().includes(qSearch);
-            const matchDiff = !difficulty || q.difficultyLevel === difficulty;
-            const matchSub = !subject || q.subject === subject;
-            return matchSearch && matchDiff && matchSub;
-        });
-
-        // Paginate
-        const pageNum = parseInt(page, 10);
-        const limitNum = parseInt(limit, 10);
-        const paginated = filtered.slice((pageNum - 1) * limitNum, pageNum * limitNum);
+        const stats = {
+            total,
+            easy,
+            medium,
+            hard,
+            highSuccess: 0,
+            lowSuccess: 0,
+            flagged: 0
+        };
 
         return res.status(200).json({
             message: "Questions fetched successfully",
             questions: paginated,
-            totalFiltered: filtered.length,
+            totalFiltered,
             stats,
             subjects,
             chartDataAll,
@@ -270,10 +312,10 @@ export const getAllQuestions = async (req, res) => {
         });
 
     } catch (error) {
-        console.error("Error fetching all questions: ", error)
+        console.error("Error fetching all questions: ", error);
         return res.status(500).json({
             message: "Something went wrong while fetching all questions",
-        })
+        });
     }
 }
 
@@ -282,13 +324,41 @@ export const simulatePaper = async (req, res) => {
         const { subject, numQuestions = 10 } = req.query;
         if (!subject) return res.status(400).json({ message: "Subject is required" });
 
-        const allQuestions = await Question.find({ subject }).lean();
-        if (allQuestions.length === 0) {
+        const count = Number(numQuestions) || 10;
+        const numEasy = Math.round(count * 0.4);
+        const numMedium = Math.round(count * 0.3);
+        const numHard = count - numEasy - numMedium;
+
+        const subjectRegex = new RegExp(`^${subject}$`, 'i');
+
+        // Sample directly from database for ultra-fast response
+        const [easyQs, medQs, hardQs] = await Promise.all([
+            Question.aggregate([{ $match: { subject: subjectRegex, difficultyLevel: 'easy' } }, { $sample: { size: numEasy } }]),
+            Question.aggregate([{ $match: { subject: subjectRegex, difficultyLevel: 'medium' } }, { $sample: { size: numMedium } }]),
+            Question.aggregate([{ $match: { subject: subjectRegex, difficultyLevel: 'hard' } }, { $sample: { size: numHard } }])
+        ]);
+
+        let selectedQuestions = [...easyQs, ...medQs, ...hardQs];
+
+        if (selectedQuestions.length < count) {
+            const needed = count - selectedQuestions.length;
+            const existingIds = selectedQuestions.map(q => q._id);
+            const extra = await Question.aggregate([
+                { $match: { subject: subjectRegex, _id: { $nin: existingIds } } },
+                { $sample: { size: needed } }
+            ]);
+            selectedQuestions.push(...extra);
+        }
+
+        if (selectedQuestions.length === 0) {
             return res.status(404).json({ message: "No questions found for this subject" });
         }
 
-        // Use the exact same logic as real examination generation
-        const selectedQuestions = selectQuestionsByDifficultyRatio(allQuestions, Number(numQuestions));
+        // Shuffle
+        for (let i = selectedQuestions.length - 1; i > 0; i--) {
+            const j = crypto.randomInt(0, i + 1);
+            [selectedQuestions[i], selectedQuestions[j]] = [selectedQuestions[j], selectedQuestions[i]];
+        }
 
         const decryptedQuestions = selectedQuestions.map(question => {
             let decryptedContent = {};

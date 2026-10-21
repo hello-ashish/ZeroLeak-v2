@@ -3,7 +3,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom"
 import { ThemeProvider } from './context/ThemeContext.jsx'
 import { RefreshProvider, useRefresh } from './context/RefreshContext.jsx'
 import { ToastProvider } from './components/Toast.jsx'
-import GlobalThemeSlider from './components/GlobalThemeSlider.jsx'
 import { SessionReplacedModal } from './components/SessionReplacedModal.jsx'
 import { IdleTimer } from './components/IdleTimer.jsx'
 import { Loader2 } from 'lucide-react'
@@ -177,7 +176,6 @@ function App() {
               <Suspense fallback={<PageLoader />}>
                 <AppRoutes />
               </Suspense>
-              <GlobalThemeSlider />
             </ZMailProvider>
           </BrowserRouter>
         </ToastProvider>

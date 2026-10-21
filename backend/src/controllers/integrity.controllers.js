@@ -1,8 +1,11 @@
 import * as verificationService from '../Services/integrityVerification.service.js';
 import * as fabricService from '../Services/fabric.service.js';
+import * as outboxService from '../Services/integrityOutbox.service.js';
 import { IntegrityOutbox } from '../models/integrityOutbox.models.js';
 import { Notification } from '../models/notification.models.js';
 import { AuditLog } from '../models/auditlog.models.js';
+import { Admin } from '../models/admin.models.js';
+import { Auditor } from '../models/auditor.models.js';
 
 export const getFabricStatus = async (req, res) => {
     try {
@@ -198,24 +201,145 @@ export const getIntegrityAlerts = async (req, res) => {
                 { userRole, title: '⚠️ DB TAMPERING DETECTED' },
                 { title: '⚠️ DB TAMPERING DETECTED' }
             ]
-        }).sort({ createdAt: -1 }).limit(25).lean();
+        }).sort({ createdAt: -1 }).limit(100).lean();
 
-        // Deduplicate by message & incident time bucket (10s) so broadcast alerts appear once
-        const seen = new Set();
-        const uniqueAlerts = [];
-        for (const a of alerts) {
-            const timeBucket = Math.floor(new Date(a.createdAt).getTime() / 10000);
-            const key = `${a.message}-${timeBucket}`;
-            if (!seen.has(key)) {
-                seen.add(key);
-                uniqueAlerts.push(a);
+        // Fetch staff maps to resolve recipient emails and names
+        const [admins, auditors] = await Promise.all([
+            Admin.find({}).select('_id name email').lean(),
+            Auditor.find({}).select('_id name email').lean()
+        ]);
+        const userMap = new Map();
+        admins.forEach(a => userMap.set(a._id.toString(), { name: a.name || 'System Admin', email: a.email, role: 'Admin' }));
+        auditors.forEach(a => userMap.set(a._id.toString(), { name: a.name || 'Auditor', email: a.email, role: 'Auditor' }));
+
+        const enrichedDeliveries = alerts.map(a => {
+            const user = userMap.get(a.userId?.toString()) || { name: 'Staff Member', email: 'Unknown', role: a.userRole };
+            return {
+                ...a,
+                recipientName: user.name,
+                recipientEmail: user.email,
+                recipientRole: user.role
+            };
+        });
+
+        // Group into unique incidents by message & incident time bucket (10s)
+        const incidentMap = new Map();
+        for (const d of enrichedDeliveries) {
+            const timeBucket = Math.floor(new Date(d.createdAt).getTime() / 10000);
+            const key = `${d.message}-${timeBucket}`;
+            if (!incidentMap.has(key)) {
+                incidentMap.set(key, {
+                    ...d,
+                    recipients: [],
+                    deliveryCount: 0
+                });
             }
+            const incident = incidentMap.get(key);
+            incident.recipients.push({
+                _id: d._id,
+                userId: d.userId,
+                name: d.recipientName,
+                email: d.recipientEmail,
+                role: d.recipientRole,
+                isRead: d.isRead
+            });
+            incident.deliveryCount = incident.recipients.length;
         }
-        
-        res.json({ alerts: uniqueAlerts });
+
+        const uniqueAlerts = Array.from(incidentMap.values()).map(inc => {
+            const isAcknowledged = inc.recipients.length > 0 && inc.recipients.some(r => r.isRead);
+            return {
+                ...inc,
+                isAcknowledged
+            };
+        });
+
+        const activeIncidents = uniqueAlerts.filter(a => !a.isAcknowledged).length;
+
+        res.json({
+            alerts: uniqueAlerts,
+            deliveries: enrichedDeliveries,
+            totalIncidents: uniqueAlerts.length,
+            activeIncidents,
+            totalDeliveries: enrichedDeliveries.length
+        });
     } catch (e) {
         console.error("[INTEGRITY] Error getting alerts:", e.message);
         res.status(500).json({ message: "Failed to fetch integrity alerts" });
+    }
+};
+
+// ─── POST /api/integrity/alerts/dismiss ──────────────────────────────────────
+export const dismissIntegrityAlerts = async (req, res) => {
+    try {
+        const { deliveryIds, dismissAll } = req.body || {};
+
+        let filter = { title: '⚠️ DB TAMPERING DETECTED' };
+        if (!dismissAll && Array.isArray(deliveryIds) && deliveryIds.length > 0) {
+            filter = { _id: { $in: deliveryIds } };
+        }
+
+        const result = await Notification.updateMany(filter, { $set: { isRead: true } });
+
+        try {
+            const { AuditLog } = await import('../models/auditLog.models.js');
+            await AuditLog.create({
+                actor: req.admin?.name || req.auditor?.name || "Admin",
+                actorRole: req.admin ? "Admin" : "Auditor",
+                action: "TAMPER_ALERTS_ACKNOWLEDGED",
+                targetType: "IntegrityAlert",
+                details: dismissAll
+                    ? "All tamper breach alerts acknowledged"
+                    : `Tamper incident (${deliveryIds?.length || 0} deliveries) acknowledged`,
+                status: "success"
+            });
+        } catch (_) {}
+
+        res.json({
+            success: true,
+            message: "Tamper alert(s) acknowledged successfully",
+            modifiedCount: result.modifiedCount
+        });
+    } catch (e) {
+        console.error("[INTEGRITY] Error dismissing alerts:", e.message);
+        res.status(500).json({ message: "Failed to dismiss integrity alerts" });
+    }
+};
+
+// ─── DELETE /api/integrity/alerts ─────────────────────────────────────────────
+export const clearIntegrityAlerts = async (req, res) => {
+    try {
+        const { deliveryIds, clearAll } = req.body || {};
+
+        let filter = { title: '⚠️ DB TAMPERING DETECTED' };
+        if (!clearAll && Array.isArray(deliveryIds) && deliveryIds.length > 0) {
+            filter = { _id: { $in: deliveryIds } };
+        }
+
+        const result = await Notification.deleteMany(filter);
+
+        try {
+            const { AuditLog } = await import('../models/auditLog.models.js');
+            await AuditLog.create({
+                actor: req.admin?.name || req.auditor?.name || "Admin",
+                actorRole: req.admin ? "Admin" : "Auditor",
+                action: "TAMPER_ALERTS_CLEARED",
+                targetType: "IntegrityAlert",
+                details: clearAll
+                    ? "All tamper breach alerts permanently cleared from database"
+                    : `Tamper incident (${deliveryIds?.length || 0} deliveries) cleared from logs`,
+                status: "success"
+            });
+        } catch (_) {}
+
+        res.json({
+            success: true,
+            message: "Tamper alert log(s) cleared successfully",
+            deletedCount: result.deletedCount
+        });
+    } catch (e) {
+        console.error("[INTEGRITY] Error clearing alerts:", e.message);
+        res.status(500).json({ message: "Failed to clear integrity alerts" });
     }
 };
 
@@ -367,5 +491,71 @@ export const triggerReconciliation = async (req, res) => {
     } catch (err) {
         console.error('[INTEGRITY] Error triggering reconciliation:', err.message);
         return res.status(500).json({ message: 'Failed to run reconciliation.', error: err.message });
+    }
+};
+
+// ─── Outbox Stats & Recommit Controllers ────────────────────────────────────
+
+export const getOutboxStats = async (req, res) => {
+    try {
+        const stats = await outboxService.getOutboxStats();
+        const heightData = await fabricService.getLedgerHeight().catch(() => ({ height: 0 }));
+        const fabricStatus = await fabricService.getFabricStatus().catch(() => ({ connected: false }));
+
+        return res.status(200).json({
+            ...stats,
+            ledgerHeight: heightData?.height ?? 0,
+            fabricConnected: fabricStatus?.connected ?? false,
+            fabricEnabled: fabricStatus?.enabled ?? false,
+        });
+    } catch (err) {
+        console.error('[INTEGRITY] Error fetching outbox stats:', err.message);
+        return res.status(500).json({ message: 'Failed to fetch outbox stats.', error: err.message });
+    }
+};
+
+export const startRecommit = async (req, res) => {
+    try {
+        const { mode = 'all', resetDb = true } = req.body || {};
+        const result = await outboxService.startRecommitJob({ mode, resetDb });
+        return res.status(200).json(result);
+    } catch (err) {
+        console.error('[INTEGRITY] Error starting recommit job:', err.message);
+        const status = err.code === 'JOB_ALREADY_RUNNING' ? 409 : 500;
+        return res.status(status).json({ message: err.message, code: err.code || 'RECOMMIT_ERROR' });
+    }
+};
+
+export const getRecommitStatus = async (req, res) => {
+    try {
+        const job = outboxService.getRecommitJobStatus();
+        const heightData = await fabricService.getLedgerHeight().catch(() => ({ height: 0 }));
+        return res.status(200).json({
+            job,
+            ledgerHeight: heightData?.height ?? 0,
+        });
+    } catch (err) {
+        console.error('[INTEGRITY] Error fetching recommit status:', err.message);
+        return res.status(500).json({ message: 'Failed to fetch recommit status.', error: err.message });
+    }
+};
+
+export const stopRecommit = async (req, res) => {
+    try {
+        const result = outboxService.stopRecommitJob();
+        return res.status(200).json(result);
+    } catch (err) {
+        console.error('[INTEGRITY] Error stopping recommit job:', err.message);
+        return res.status(500).json({ message: 'Failed to stop recommit job.', error: err.message });
+    }
+};
+
+export const reconnectFabric = async (req, res) => {
+    try {
+        const status = await fabricService.forceReconnect();
+        return res.status(200).json({ message: 'Fabric gateway reconnected.', status });
+    } catch (err) {
+        console.error('[INTEGRITY] Error reconnecting to Fabric:', err.message);
+        return res.status(500).json({ message: 'Failed to reconnect to Fabric.', error: err.message });
     }
 };

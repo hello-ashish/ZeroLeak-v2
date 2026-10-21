@@ -40,8 +40,8 @@ export default function SupportGlobalHistory() {
         }
     }, [navigate]);
 
-    const loadTickets = useCallback(async (page = 1) => {
-        setTicketsLoading(true);
+    const loadTickets = useCallback(async (page = 1, showLoading = false) => {
+        if (showLoading) setTicketsLoading(true);
         try {
             const res = await fetchSupportTickets({ status: 'RESOLVED,CLOSED', page });
             setTickets(res.tickets || []);
@@ -49,12 +49,12 @@ export default function SupportGlobalHistory() {
         } catch (e) {
             toast.error(e.message);
         } finally {
-            setTicketsLoading(false);
+            if (showLoading) setTicketsLoading(false);
         }
     }, []);
 
-    const loadHistory = useCallback(async (page = 1) => {
-        setHistoryLoading(true);
+    const loadHistory = useCallback(async (page = 1, showLoading = false) => {
+        if (showLoading) setHistoryLoading(true);
         try {
             const res = await fetchGlobalSupportHistory(page);
             setHistory(res.history || []);
@@ -62,13 +62,13 @@ export default function SupportGlobalHistory() {
         } catch (e) {
             toast.error(e.message);
         } finally {
-            setHistoryLoading(false);
+            if (showLoading) setHistoryLoading(false);
         }
     }, []);
 
     useEffect(() => {
-        if (activeTab === 'fixed') loadTickets(1);
-        if (activeTab === 'audit') loadHistory(1);
+        if (activeTab === 'fixed') loadTickets(1, true);
+        if (activeTab === 'audit') loadHistory(1, true);
     }, [activeTab, loadTickets, loadHistory]);
 
     return (
@@ -138,11 +138,11 @@ export default function SupportGlobalHistory() {
                             )}
                             {ticketsPagination.pages > 1 && (
                                 <div className="support-pagination">
-                                    <button type="button" disabled={ticketsPagination.page <= 1} onClick={() => loadTickets(ticketsPagination.page - 1)}>
+                                    <button type="button" disabled={ticketsPagination.page <= 1} onClick={() => loadTickets(ticketsPagination.page - 1, false)}>
                                         ‹ Prev
                                     </button>
                                     <span>{ticketsPagination.page} / {ticketsPagination.pages}</span>
-                                    <button type="button" disabled={ticketsPagination.page >= ticketsPagination.pages} onClick={() => loadTickets(ticketsPagination.page + 1)}>
+                                    <button type="button" disabled={ticketsPagination.page >= ticketsPagination.pages} onClick={() => loadTickets(ticketsPagination.page + 1, false)}>
                                         Next ›
                                     </button>
                                 </div>
@@ -186,11 +186,11 @@ export default function SupportGlobalHistory() {
                             )}
                             {historyPagination.pages > 1 && (
                                 <div className="support-pagination">
-                                    <button type="button" disabled={historyPagination.page <= 1} onClick={() => loadHistory(historyPagination.page - 1)}>
+                                    <button type="button" disabled={historyPagination.page <= 1} onClick={() => loadHistory(historyPagination.page - 1, false)}>
                                         ‹ Prev
                                     </button>
                                     <span>{historyPagination.page} / {historyPagination.pages}</span>
-                                    <button type="button" disabled={historyPagination.page >= historyPagination.pages} onClick={() => loadHistory(historyPagination.page + 1)}>
+                                    <button type="button" disabled={historyPagination.page >= historyPagination.pages} onClick={() => loadHistory(historyPagination.page + 1, false)}>
                                         Next ›
                                     </button>
                                 </div>

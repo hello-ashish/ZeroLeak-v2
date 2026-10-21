@@ -433,6 +433,22 @@ html.sidebar-is-dragging .app-main {
   flex-wrap: wrap;
 }
 
+.sticky-page-header-bar {
+  position: sticky;
+  top: var(--topbar-height);
+  z-index: 20;
+  background: var(--bg-base);
+  padding-top: 24px;
+  margin-top: -24px;
+  padding-left: 28px;
+  padding-right: 28px;
+  margin-left: -28px;
+  margin-right: -28px;
+  padding-bottom: 16px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
 /* ─── Buttons ────────────────────────────────────────────────── */
 .btn {
   display: inline-flex;
@@ -1502,6 +1518,22 @@ html.sidebar-is-dragging .app-main {
   color: var(--text-tertiary);
 }
 
+.input {
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  outline: none;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.input:focus {
+  border-color: var(--brand-primary);
+  box-shadow: var(--shadow-glow);
+}
+
 /* ─── Pagination ─────────────────────────────────────────────── */
 .pagination {
   display: flex;
@@ -1919,6 +1951,17 @@ html.sidebar-is-dragging .app-main {
 
   .page-content {
     padding: 16px;
+  }
+
+  .sticky-page-header-bar {
+    padding-top: 16px;
+    margin-top: -16px;
+    padding-left: 16px;
+    padding-right: 16px;
+    margin-left: -16px;
+    margin-right: -16px;
+    padding-bottom: 14px;
+    margin-bottom: 16px;
   }
 
   .kpi-grid {

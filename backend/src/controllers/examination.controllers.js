@@ -41,7 +41,10 @@ export const createExamination = async (req, res) => {
 
             if (examMode === "Normal") {
                 // Randomly select questions using difficulty ratio rules
-                const allQuestions = await Question.find({ subject: subject }).session(session);
+                const allQuestions = await Question.find(
+                    { subject: subject },
+                    { _id: 1, contentHash: 1, difficultyLevel: 1 }
+                ).lean().session(session);
                 
                 const selectedQuestions = selectQuestionsByDifficultyRatio(allQuestions, Number(numQuestions) || 10);
 

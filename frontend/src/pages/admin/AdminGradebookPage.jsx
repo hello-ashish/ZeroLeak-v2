@@ -5,6 +5,7 @@ import { AdminLayout } from './AdminLayout.jsx'
 import { Modal } from '../../components/Modal.jsx'
 import { SkeletonTable, EmptyState } from '../../components/SkeletonLoader.jsx'
 import { ScorePill } from '../../components/StatusBadge.jsx'
+import { Pagination } from '../../components/Pagination.jsx'
 import { useToast } from '../../components/Toast.jsx'
 import { Download, BarChart3, TrendingUp, Trophy, Search, ChevronRight, GraduationCap, Trash2, CheckSquare } from 'lucide-react'
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar, Cell } from 'recharts'
@@ -32,7 +33,9 @@ function getGrade(pct) {
 const generateCSVData = (data) => {
     const headers = ['Rank', 'Student', 'Student ID', 'Exam', 'Score', 'Total', 'Percentage', 'Grade', 'Date']
     const rows = data.map((r, i) => {
-        const pct = Math.round((r.score / r.totalQuestions) * 100)
+        const total = Math.max(1, r.totalQuestions || 0)
+        const validScore = Math.max(0, Math.min(r.score || 0, total))
+        const pct = Math.min(100, Math.max(0, Math.round((validScore / total) * 100)))
         return [i + 1, r.student?.name || 'Unknown', r.student?.studentId || '', r.exam?.title || '', r.score, r.totalQuestions, `${pct}%`, getGrade(pct), new Date(r.createdAt).toLocaleDateString()]
     })
     const content = [headers, ...rows].map(r => r.join(',')).join('\n')
@@ -47,6 +50,8 @@ export default function AdminGradebookPage() {
     const [searchParams] = useSearchParams()
     const [search, setSearch] = useState(searchParams.get('student') || '')
     const [sortDir, setSortDir] = useState('desc')
+    const [page, setPage] = useState(1)
+    const ITEMS_PER_PAGE = 10
     const [previewModal, setPreviewModal] = useState({ isOpen: false, title: '', content: '', headers: [], rows: [], filename: '' })
     const [selectedRows, setSelectedRows] = useState(new Set())
     const [isDeleting, setIsDeleting] = useState(false)
@@ -206,8 +211,8 @@ export default function AdminGradebookPage() {
             if (titleA < titleB) return -1
             if (titleA > titleB) return 1
             
-            const pa = (a.score / a.totalQuestions)
-            const pb = (b.score / b.totalQuestions)
+            const pa = a.totalQuestions > 0 ? Math.min(1, Math.max(0, a.score / a.totalQuestions)) : 0
+            const pb = b.totalQuestions > 0 ? Math.min(1, Math.max(0, b.score / b.totalQuestions)) : 0
             return sortDir === 'desc' ? pb - pa : pa - pb
         })
     }, [results, selectedExam, search, sortDir])
@@ -230,17 +235,32 @@ export default function AdminGradebookPage() {
         });
 
         return Object.values(groups).sort((a, b) => {
-            const pa = a.totalQuestions > 0 ? (a.totalScore / a.totalQuestions) : 0;
-            const pb = b.totalQuestions > 0 ? (b.totalScore / b.totalQuestions) : 0;
+            const pa = a.totalQuestions > 0 ? Math.min(1, Math.max(0, a.totalScore / a.totalQuestions)) : 0;
+            const pb = b.totalQuestions > 0 ? Math.min(1, Math.max(0, b.totalScore / b.totalQuestions)) : 0;
             return sortDir === 'desc' ? pb - pa : pa - pb;
         });
     }, [filtered, sortDir])
+
+    useEffect(() => {
+        setPage(1)
+    }, [selectedExam, search, sortDir])
+
+    const totalPages = Math.max(1, Math.ceil(groupedStudents.length / ITEMS_PER_PAGE))
+    const currentPage = Math.min(page, totalPages)
+    const paginatedStudents = useMemo(() => {
+        const start = (currentPage - 1) * ITEMS_PER_PAGE
+        return groupedStudents.slice(start, start + ITEMS_PER_PAGE)
+    }, [groupedStudents, currentPage])
 
     const hasOrphaned = useMemo(() => results.some(r => !r.exam), [results])
 
     const classSummary = useMemo(() => {
         if (filtered.length === 0) return null
-        const pcts = filtered.map(r => (r.score / r.totalQuestions) * 100)
+        const pcts = filtered.map(r => {
+            const total = Math.max(1, r.totalQuestions || 0)
+            const score = Math.max(0, Math.min(r.score || 0, total))
+            return Math.min(100, Math.max(0, (score / total) * 100))
+        })
         
         // Distribution buckets
         const dist = [
@@ -251,10 +271,10 @@ export default function AdminGradebookPage() {
         ]
 
         return {
-            avg: Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length),
-            highest: Math.round(Math.max(...pcts)),
-            lowest: Math.round(Math.min(...pcts)),
-            passRate: Math.round((pcts.filter(p => p >= 50).length / pcts.length) * 100),
+            avg: Math.min(100, Math.max(0, Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length))),
+            highest: Math.min(100, Math.max(0, Math.round(Math.max(...pcts)))),
+            lowest: Math.min(100, Math.max(0, Math.round(Math.min(...pcts)))),
+            passRate: Math.min(100, Math.max(0, Math.round((pcts.filter(p => p >= 50).length / pcts.length) * 100))),
             total: pcts.length,
             dist
         }
@@ -468,8 +488,8 @@ export default function AdminGradebookPage() {
                                         description={search || selectedExam !== 'all' ? 'Try a different search or filter.' : 'No exam submissions yet. Results will appear here as students complete exams.'}
                                     />
                                 </td></tr>
-                            ) : groupedStudents.map((group, i) => {
-                                const avgPct = Math.round((group.totalScore / Math.max(1, group.totalQuestions)) * 100)
+                            ) : paginatedStudents.map((group, i) => {
+                                const avgPct = Math.min(100, Math.max(0, Math.round((group.totalScore / Math.max(1, group.totalQuestions)) * 100)))
                                 const avgGrade = getGrade(avgPct)
                                 const isExpanded = expandedStudents.has(group.student?._id || 'unknown')
 
@@ -511,7 +531,9 @@ export default function AdminGradebookPage() {
                                             </td>
                                         </tr>
                                         {isExpanded && group.results.map(r => {
-                                            const pct = Math.round((r.score / r.totalQuestions) * 100)
+                                            const total = Math.max(1, r.totalQuestions || 0)
+                                            const validScore = Math.max(0, Math.min(r.score || 0, total))
+                                            const pct = Math.min(100, Math.max(0, Math.round((validScore / total) * 100)))
                                             return (
                                                 <tr key={r._id} style={{ background: 'var(--bg-elevated)' }}>
                                                     {selectionMode && (
@@ -545,6 +567,14 @@ export default function AdminGradebookPage() {
                         </tbody>
                     )}
                 </table>
+
+                <Pagination
+                    currentPage={currentPage}
+                    totalItems={groupedStudents.length}
+                    itemsPerPage={ITEMS_PER_PAGE}
+                    onPageChange={setPage}
+                    itemLabel="students"
+                />
             </div>
             <Modal open={previewModal.isOpen} onClose={() => setPreviewModal({ ...previewModal, isOpen: false })} title={previewModal.title} size="full">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -608,7 +638,7 @@ export default function AdminGradebookPage() {
                             <div style={{ background: 'var(--bg-surface)', padding: 16, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
                                 <p style={{ fontSize: 12, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Avg Score</p>
                                 <p style={{ fontSize: 24, fontWeight: 700, color: 'var(--brand-primary)', margin: 0 }}>
-                                    {Math.round((selectedProfile.totalScore / Math.max(1, selectedProfile.totalQuestions)) * 100)}%
+                                    {Math.min(100, Math.max(0, Math.round((selectedProfile.totalScore / Math.max(1, selectedProfile.totalQuestions)) * 100)))}%
                                 </p>
                             </div>
                         </div>
@@ -617,7 +647,9 @@ export default function AdminGradebookPage() {
                             <h4 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 12 }}>Exam History</h4>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 300, overflowY: 'auto', paddingRight: 8 }}>
                                 {selectedProfile.results.map(r => {
-                                    const pct = Math.round((r.score / r.totalQuestions) * 100);
+                                    const total = Math.max(1, r.totalQuestions || 0);
+                                    const validScore = Math.max(0, Math.min(r.score || 0, total));
+                                    const pct = Math.min(100, Math.max(0, Math.round((validScore / total) * 100)));
                                     return (
                                         <div key={r._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)' }}>
                                             <div>

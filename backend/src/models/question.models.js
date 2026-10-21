@@ -23,5 +23,7 @@ const questionSchema = new mongoose.Schema(
 questionSchema.index({ subject: 1 });
 questionSchema.index({ createdBy: 1 });
 questionSchema.index({ subject: 1, difficultyLevel: 1 });
+questionSchema.index({ createdAt: -1 });
+questionSchema.index({ subject: 1, createdAt: -1 });
 
 export const Question = mongoose.model("Question", questionSchema)

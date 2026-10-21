@@ -14,7 +14,8 @@ import {
     ChevronRight, Eye, Network, Layers, Box,
     AlertCircle, Info, BellRing, ScanLine, Play,
     ChevronDown, ChevronUp, Zap, Lock, Unlock,
-    Filter, Search,
+    Filter, Search, Square, RotateCcw, ArrowRight,
+    Trash2, Check,
 } from 'lucide-react';
 import './FabricIntegrityCenter.css';
 import FabricBlockchainVisualizer from './FabricBlockchainVisualizer';
@@ -89,15 +90,19 @@ function HashDisplay({ hash, label }) {
 // ---------------------------------------------------------------------------
 // Tamper Alerts Panel — auto polls every 30 seconds
 // ---------------------------------------------------------------------------
-function TamperAlertsPanel({ token }) {
+function TamperAlertsPanel({ token, onAlertsUpdated }) {
     const [alerts, setAlerts] = useState([]);
+    const [deliveries, setDeliveries] = useState([]);
+    const [viewMode, setViewMode] = useState('incidents'); // 'incidents' | 'deliveries'
     const [loading, setLoading] = useState(true);
     const [expanded, setExpanded] = useState(true);
+    const [busyId, setBusyId] = useState(null);
 
     const load = useCallback(async () => {
         try {
             const data = await apiFetch('/alerts', token);
             setAlerts(data.alerts || []);
+            setDeliveries(data.deliveries || []);
         } catch (err) {
             console.error('[TamperAlertsPanel] Failed to load alerts:', err.message);
         } finally {
@@ -112,8 +117,109 @@ function TamperAlertsPanel({ token }) {
         return () => clearInterval(interval);
     }, [load]);
 
+    const handleAcknowledgeAll = async () => {
+        try {
+            setBusyId('ack-all');
+            await apiFetch('/alerts/dismiss', token, {
+                method: 'POST',
+                body: JSON.stringify({ dismissAll: true })
+            });
+            await load();
+            onAlertsUpdated?.();
+        } catch (err) {
+            console.error('Failed to acknowledge all alerts:', err);
+        } finally {
+            setBusyId(null);
+        }
+    };
+
+    const handleClearAll = async () => {
+        if (!window.confirm("Permanently clear all tamper breach alert records from the database?")) return;
+        try {
+            setBusyId('clear-all');
+            await apiFetch('/alerts', token, {
+                method: 'DELETE',
+                body: JSON.stringify({ clearAll: true })
+            });
+            await load();
+            onAlertsUpdated?.();
+        } catch (err) {
+            console.error('Failed to clear tamper alerts:', err);
+        } finally {
+            setBusyId(null);
+        }
+    };
+
+    const handleAcknowledgeIncident = async (incident, idx) => {
+        try {
+            setBusyId(`ack-${idx}`);
+            const deliveryIds = (incident.recipients || []).map(r => r._id);
+            await apiFetch('/alerts/dismiss', token, {
+                method: 'POST',
+                body: JSON.stringify({ deliveryIds })
+            });
+            await load();
+            onAlertsUpdated?.();
+        } catch (err) {
+            console.error('Failed to acknowledge incident:', err);
+        } finally {
+            setBusyId(null);
+        }
+    };
+
+    const handleDeleteIncident = async (incident, idx) => {
+        if (!window.confirm(`Delete Incident #${idx + 1} from tamper records?`)) return;
+        try {
+            setBusyId(`del-${idx}`);
+            const deliveryIds = (incident.recipients || []).map(r => r._id);
+            await apiFetch('/alerts', token, {
+                method: 'DELETE',
+                body: JSON.stringify({ deliveryIds })
+            });
+            await load();
+            onAlertsUpdated?.();
+        } catch (err) {
+            console.error('Failed to delete incident:', err);
+        } finally {
+            setBusyId(null);
+        }
+    };
+
+    const handleAcknowledgeDelivery = async (deliveryId) => {
+        try {
+            setBusyId(`ack-del-${deliveryId}`);
+            await apiFetch('/alerts/dismiss', token, {
+                method: 'POST',
+                body: JSON.stringify({ deliveryIds: [deliveryId] })
+            });
+            await load();
+            onAlertsUpdated?.();
+        } catch (err) {
+            console.error('Failed to acknowledge delivery:', err);
+        } finally {
+            setBusyId(null);
+        }
+    };
+
+    const handleDeleteDelivery = async (deliveryId) => {
+        if (!window.confirm("Delete this delivery notification record?")) return;
+        try {
+            setBusyId(`del-del-${deliveryId}`);
+            await apiFetch('/alerts', token, {
+                method: 'DELETE',
+                body: JSON.stringify({ deliveryIds: [deliveryId] })
+            });
+            await load();
+            onAlertsUpdated?.();
+        } catch (err) {
+            console.error('Failed to delete delivery:', err);
+        } finally {
+            setBusyId(null);
+        }
+    };
+
     if (loading) return null;
-    if (alerts.length === 0) {
+    if (alerts.length === 0 && deliveries.length === 0) {
         return (
             <div className="fi-alerts-clean">
                 <ShieldCheck size={16} className="fi-icon-success" />
@@ -125,38 +231,303 @@ function TamperAlertsPanel({ token }) {
         );
     }
 
+    const activeIncidents = alerts.filter(a => !a.isAcknowledged);
+    const activeDeliveries = deliveries.filter(d => !d.isRead);
+
     return (
         <div className="fi-tamper-panel">
             <div className="fi-tamper-panel-header" onClick={() => setExpanded(v => !v)}>
                 <div className="fi-tamper-panel-title">
                     <span className="fi-tamper-pulse" />
                     <BellRing size={18} />
-                    <span>{alerts.length} Tampering Alert{alerts.length !== 1 ? 's' : ''} Detected</span>
+                    <span>
+                        {viewMode === 'incidents'
+                            ? `${alerts.length} Tampering Incident${alerts.length !== 1 ? 's' : ''} (${activeIncidents.length} Active)`
+                            : `All ${deliveries.length} Tampering Notification Deliveries (${activeDeliveries.length} Active)`}
+                    </span>
                 </div>
-                <div className="fi-tamper-panel-actions">
-                    <button className="fi-refresh-btn" onClick={(e) => { e.stopPropagation(); load(); }} title="Refresh alerts">
+                <div className="fi-tamper-panel-actions" onClick={e => e.stopPropagation()}>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginRight: 6 }}>
+                        <button
+                            type="button"
+                            className={`btn btn-xs ${viewMode === 'incidents' ? 'btn-primary' : 'btn-ghost'}`}
+                            style={{
+                                fontSize: 11,
+                                padding: '4px 10px',
+                                borderRadius: 4,
+                                background: viewMode === 'incidents' ? 'var(--brand-primary, #6366f1)' : 'rgba(255, 255, 255, 0.06)',
+                                color: '#fff',
+                                border: '1px solid rgba(255, 255, 255, 0.12)',
+                                cursor: 'pointer'
+                            }}
+                            onClick={() => setViewMode('incidents')}
+                        >
+                            Unique Incidents ({alerts.length})
+                        </button>
+                        <button
+                            type="button"
+                            className={`btn btn-xs ${viewMode === 'deliveries' ? 'btn-primary' : 'btn-ghost'}`}
+                            style={{
+                                fontSize: 11,
+                                padding: '4px 10px',
+                                borderRadius: 4,
+                                background: viewMode === 'deliveries' ? 'var(--brand-primary, #6366f1)' : 'rgba(255, 255, 255, 0.06)',
+                                color: '#fff',
+                                border: '1px solid rgba(255, 255, 255, 0.12)',
+                                cursor: 'pointer'
+                            }}
+                            onClick={() => setViewMode('deliveries')}
+                        >
+                            All Deliveries ({deliveries.length})
+                        </button>
+                    </div>
+
+                    {/* Batch Actions */}
+                    {activeIncidents.length > 0 && (
+                        <button
+                            type="button"
+                            className="btn btn-xs"
+                            style={{
+                                fontSize: 11,
+                                padding: '4px 10px',
+                                borderRadius: 4,
+                                background: 'rgba(16, 185, 129, 0.2)',
+                                color: '#34d399',
+                                border: '1px solid rgba(16, 185, 129, 0.4)',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                marginRight: 6
+                            }}
+                            disabled={busyId === 'ack-all'}
+                            onClick={handleAcknowledgeAll}
+                            title="Acknowledge all tamper alerts and dismiss active status"
+                        >
+                            {busyId === 'ack-all' ? <Loader2 size={11} className="spin" /> : <Check size={11} />}
+                            Acknowledge All ({activeIncidents.length})
+                        </button>
+                    )}
+
+                    <button
+                        type="button"
+                        className="btn btn-xs"
+                        style={{
+                            fontSize: 11,
+                            padding: '4px 10px',
+                            borderRadius: 4,
+                            background: 'rgba(239, 68, 68, 0.12)',
+                            color: '#fca5a5',
+                            border: '1px solid rgba(239, 68, 68, 0.3)',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            marginRight: 6
+                        }}
+                        disabled={busyId === 'clear-all'}
+                        onClick={handleClearAll}
+                        title="Permanently clear all tamper records from database"
+                    >
+                        {busyId === 'clear-all' ? <Loader2 size={11} className="spin" /> : <Trash2 size={11} />}
+                        Clear Logs
+                    </button>
+
+                    <button className="fi-refresh-btn" onClick={load} title="Refresh alerts">
                         <RefreshCw size={13} />
                     </button>
-                    {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                    <button className="fi-refresh-btn" onClick={() => setExpanded(v => !v)}>
+                        {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                    </button>
                 </div>
             </div>
             {expanded && (
                 <div className="fi-tamper-alerts-list">
-                    {alerts.map((alert, i) => (
-                        <div key={i} className="fi-tamper-alert-item">
-                            <div className="fi-tamper-alert-icon">
-                                <ShieldAlert size={20} />
-                            </div>
-                            <div className="fi-tamper-alert-body">
-                                <div className="fi-tamper-alert-title">{alert.title}</div>
-                                <div className="fi-tamper-alert-message">{alert.message}</div>
-                                <div className="fi-tamper-alert-time">
-                                    <Clock size={12} />
-                                    {new Date(alert.createdAt).toLocaleString()}
+                    {viewMode === 'incidents' ? (
+                        alerts.map((alert, i) => (
+                            <div key={i} className="fi-tamper-alert-item" style={{
+                                opacity: alert.isAcknowledged ? 0.78 : 1,
+                                borderLeft: alert.isAcknowledged ? '3px solid #10b981' : '3px solid #ef4444'
+                            }}>
+                                <div className="fi-tamper-alert-icon">
+                                    {alert.isAcknowledged ? <ShieldCheck size={20} className="fi-icon-success" /> : <ShieldAlert size={20} />}
+                                </div>
+                                <div className="fi-tamper-alert-body">
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, flexWrap: 'wrap', gap: 6 }}>
+                                        <div className="fi-tamper-alert-title">{alert.title}</div>
+                                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                                            {alert.isAcknowledged ? (
+                                                <span style={{ fontSize: 11, background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', padding: '2px 8px', borderRadius: 4, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                                    <CheckCircle size={11} /> Acknowledged
+                                                </span>
+                                            ) : (
+                                                <>
+                                                    <span style={{ fontSize: 11, background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', padding: '2px 8px', borderRadius: 4, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                                        <span className="fi-tamper-pulse" style={{ width: 6, height: 6 }} /> Active Breach
+                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-xs"
+                                                        style={{
+                                                            fontSize: 11,
+                                                            padding: '2px 8px',
+                                                            borderRadius: 4,
+                                                            background: 'rgba(99, 102, 241, 0.2)',
+                                                            color: '#a5b4fc',
+                                                            border: '1px solid rgba(99, 102, 241, 0.4)',
+                                                            cursor: 'pointer',
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            gap: 3
+                                                        }}
+                                                        disabled={busyId === `ack-${i}`}
+                                                        onClick={() => handleAcknowledgeIncident(alert, i)}
+                                                        title="Acknowledge this incident and dismiss alert"
+                                                    >
+                                                        {busyId === `ack-${i}` ? <Loader2 size={11} className="spin" /> : <Check size={11} />}
+                                                        Acknowledge
+                                                    </button>
+                                                </>
+                                            )}
+                                            <button
+                                                type="button"
+                                                className="btn btn-xs"
+                                                style={{
+                                                    fontSize: 11,
+                                                    padding: '2px 6px',
+                                                    borderRadius: 4,
+                                                    background: 'rgba(239, 68, 68, 0.1)',
+                                                    color: '#fca5a5',
+                                                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                                                    cursor: 'pointer'
+                                                }}
+                                                disabled={busyId === `del-${i}`}
+                                                onClick={() => handleDeleteIncident(alert, i)}
+                                                title="Delete this incident record"
+                                            >
+                                                {busyId === `del-${i}` ? <Loader2 size={11} className="spin" /> : <Trash2 size={11} />}
+                                            </button>
+                                            <span style={{ fontSize: 11, color: 'var(--text-tertiary)', background: 'rgba(255, 255, 255, 0.05)', padding: '2px 6px', borderRadius: 4, fontWeight: 600 }}>
+                                                Incident #{i + 1}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="fi-tamper-alert-message">{alert.message}</div>
+                                    <div className="fi-tamper-alert-time" style={{ marginTop: 6 }}>
+                                        <Clock size={12} />
+                                        {new Date(alert.createdAt).toLocaleString()}
+                                    </div>
+
+                                    {/* Broadcast recipients list */}
+                                    {alert.recipients && alert.recipients.length > 0 && (
+                                        <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(255, 255, 255, 0.08)', display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+                                            <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                                Delivered to ({alert.recipients.length}):
+                                            </span>
+                                            {alert.recipients.map((rec, rIdx) => (
+                                                <span key={rIdx} style={{
+                                                    fontSize: 11,
+                                                    padding: '2px 8px',
+                                                    borderRadius: 4,
+                                                    background: 'rgba(255, 255, 255, 0.05)',
+                                                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: 4
+                                                }}>
+                                                    <span style={{ fontWeight: 700, color: rec.role === 'Admin' ? '#818cf8' : '#fbbf24' }}>
+                                                        [{rec.role}]
+                                                    </span>
+                                                    <span style={{ color: 'var(--text-primary)' }}>{rec.name && rec.name !== 'Admin' && rec.name !== 'Auditor' ? `${rec.name} — ` : ''}{rec.email}</span>
+                                                    {rec.isRead && (
+                                                        <span style={{ color: '#34d399', fontSize: 10, fontWeight: 600 }}>✓</span>
+                                                    )}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
-                        </div>
-                    ))}
+                        ))
+                    ) : (
+                        deliveries.map((d, i) => (
+                            <div key={d._id || i} className="fi-tamper-alert-item" style={{
+                                opacity: d.isRead ? 0.78 : 1,
+                                borderLeft: d.isRead ? '3px solid #10b981' : '3px solid #ef4444'
+                            }}>
+                                <div className="fi-tamper-alert-icon">
+                                    {d.isRead ? <ShieldCheck size={20} className="fi-icon-success" /> : <ShieldAlert size={20} />}
+                                </div>
+                                <div className="fi-tamper-alert-body">
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, flexWrap: 'wrap', gap: 6 }}>
+                                        <div className="fi-tamper-alert-title">{d.title}</div>
+                                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                                            {d.isRead ? (
+                                                <span style={{ fontSize: 11, background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', padding: '2px 8px', borderRadius: 4, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                                    <CheckCircle size={11} /> Read
+                                                </span>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-xs"
+                                                    style={{
+                                                        fontSize: 11,
+                                                        padding: '2px 8px',
+                                                        borderRadius: 4,
+                                                        background: 'rgba(99, 102, 241, 0.2)',
+                                                        color: '#a5b4fc',
+                                                        border: '1px solid rgba(99, 102, 241, 0.4)',
+                                                        cursor: 'pointer',
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: 3
+                                                    }}
+                                                    disabled={busyId === `ack-del-${d._id}`}
+                                                    onClick={() => handleAcknowledgeDelivery(d._id)}
+                                                    title="Mark delivery as read"
+                                                >
+                                                    {busyId === `ack-del-${d._id}` ? <Loader2 size={11} className="spin" /> : <Check size={11} />}
+                                                    Mark Read
+                                                </button>
+                                            )}
+                                            <button
+                                                type="button"
+                                                className="btn btn-xs"
+                                                style={{
+                                                    fontSize: 11,
+                                                    padding: '2px 6px',
+                                                    borderRadius: 4,
+                                                    background: 'rgba(239, 68, 68, 0.1)',
+                                                    color: '#fca5a5',
+                                                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                                                    cursor: 'pointer'
+                                                }}
+                                                disabled={busyId === `del-del-${d._id}`}
+                                                onClick={() => handleDeleteDelivery(d._id)}
+                                                title="Delete delivery record"
+                                            >
+                                                {busyId === `del-del-${d._id}` ? <Loader2 size={11} className="spin" /> : <Trash2 size={11} />}
+                                            </button>
+                                            <span style={{ fontSize: 11, padding: '2px 6px', borderRadius: 4, fontWeight: 700, background: d.recipientRole === 'Admin' ? 'rgba(99, 102, 241, 0.15)' : 'rgba(245, 158, 11, 0.15)', color: d.recipientRole === 'Admin' ? '#818cf8' : '#fbbf24' }}>
+                                                {d.recipientRole}
+                                            </span>
+                                            <code style={{ fontSize: 10, color: 'var(--text-tertiary)', background: 'rgba(255,255,255,0.05)', padding: '2px 4px', borderRadius: 3 }}>
+                                                ID: {d._id?.slice(-6)}
+                                            </code>
+                                        </div>
+                                    </div>
+                                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                                        <strong>Recipient:</strong> {d.recipientName} ({d.recipientEmail})
+                                    </div>
+                                    <div className="fi-tamper-alert-message">{d.message}</div>
+                                    <div className="fi-tamper-alert-time" style={{ marginTop: 6 }}>
+                                        <Clock size={12} />
+                                        {new Date(d.createdAt).toLocaleString()}
+                                    </div>
+                                </div>
+                            </div>
+                        ))
+                    )}
                 </div>
             )}
         </div>
@@ -897,6 +1268,422 @@ function RecentCommitmentsTable({ commitments, loading, onVerify }) {
 }
 
 // ---------------------------------------------------------------------------
+// Outbox Re-commit & Sync Panel
+// ---------------------------------------------------------------------------
+function OutboxRecommitPanel({ token, fabricStatus, ledgerHeight, onRefreshStatus, onNavigateTab }) {
+    const [stats, setStats] = useState(null);
+    const [loadingStats, setLoadingStats] = useState(true);
+    const [job, setJob] = useState(null);
+    const [actionLoading, setActionLoading] = useState(false);
+    const [actionError, setActionError] = useState(null);
+    const [reconnectLoading, setReconnectLoading] = useState(false);
+    const [reconnectMsg, setReconnectMsg] = useState(null);
+    const [selectedMode, setSelectedMode] = useState('core');
+    const [confirmModal, setConfirmModal] = useState(false);
+
+    const loadStats = useCallback(async () => {
+        try {
+            const data = await apiFetch('/outbox/stats', token);
+            setStats(data);
+            if (data.recommitJob) setJob(data.recommitJob);
+        } catch (err) {
+            console.error('[OutboxRecommitPanel] Failed to load outbox stats:', err.message);
+        } finally {
+            setLoadingStats(false);
+        }
+    }, [token]);
+
+    const pollJobStatus = useCallback(async () => {
+        try {
+            const data = await apiFetch('/outbox/recommit-status', token);
+            setJob(data.job);
+            if (data.job?.status !== 'running') {
+                loadStats();
+                if (onRefreshStatus) onRefreshStatus();
+            }
+        } catch (_) { }
+    }, [token, loadStats, onRefreshStatus]);
+
+    useEffect(() => {
+        loadStats();
+    }, [loadStats]);
+
+    // Live polling when job is running
+    useEffect(() => {
+        if (job?.status === 'running') {
+            const timer = setInterval(pollJobStatus, 1200);
+            return () => clearInterval(timer);
+        }
+    }, [job?.status, pollJobStatus]);
+
+    const handleStart = async (mode) => {
+        setActionLoading(true);
+        setActionError(null);
+        setConfirmModal(false);
+        try {
+            const res = await apiFetch('/outbox/recommit', token, {
+                method: 'POST',
+                body: JSON.stringify({ mode, resetDb: true }),
+            });
+            if (res.job) setJob(res.job);
+            loadStats();
+        } catch (err) {
+            setActionError(err.message || 'Failed to start recommit.');
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleStop = async () => {
+        try {
+            await apiFetch('/outbox/recommit-stop', token, { method: 'POST' });
+            pollJobStatus();
+        } catch (err) {
+            setActionError(err.message);
+        }
+    };
+
+    const handleReconnect = async () => {
+        setReconnectLoading(true);
+        setReconnectMsg(null);
+        setActionError(null);
+        try {
+            await apiFetch('/fabric/reconnect', token, { method: 'POST' });
+            setReconnectMsg('Fabric Gateway successfully reconnected with fresh TLS credentials!');
+            if (onRefreshStatus) onRefreshStatus();
+            loadStats();
+        } catch (err) {
+            setActionError(`Reconnection failed: ${err.message}`);
+        } finally {
+            setReconnectLoading(false);
+        }
+    };
+
+    const isRunning = job?.status === 'running';
+    const percent = job && job.total > 0 ? Math.min(100, Math.round((job.processed / job.total) * 100)) : 0;
+    const currentHeight = ledgerHeight?.height ?? stats?.ledgerHeight ?? 0;
+    const isOutOfSync = currentHeight === 0 && (stats?.confirmed > 0 || stats?.total > 0);
+
+    return (
+        <div className="fi-recommit-panel">
+            {/* Hero */}
+            <div className="fi-recommit-hero">
+                <div className="fi-recommit-hero-icon">
+                    <RefreshCw size={28} className={isRunning ? 'spin' : ''} />
+                </div>
+                <div className="fi-recommit-hero-text">
+                    <h2>Ledger Re-Commit & Outbox Synchronizer</h2>
+                    <p>
+                        When Hyperledger Fabric is taken down and restarted (<code>npm run fabric:down</code> → <code>npm run fabric:up</code>),
+                        its blockchain ledger resets to block height 0. Use this manager to re-anchor historical question batches,
+                        exam papers, and student results from MongoDB back onto the newly deployed Fabric network.
+                    </p>
+                </div>
+            </div>
+
+            {/* Out of Sync Warning Alert */}
+            {isOutOfSync && (
+                <div className="fi-sync-banner">
+                    <div className="fi-sync-banner-left">
+                        <AlertTriangle size={24} className="fi-icon-warning" style={{ flexShrink: 0 }} />
+                        <div className="fi-sync-banner-text">
+                            <strong>Blockchain Reset Detected (Ledger Height: 0)</strong>
+                            <span>
+                                Fabric ledger contains 0 blocks, but MongoDB has {stats?.total || 0} stored commitments.
+                                All prior records are currently unanchored on the new blockchain. Click <b>Re-commit Core State</b> or <b>Re-commit All Data</b> below.
+                            </span>
+                        </div>
+                    </div>
+                    <button
+                        className="fi-btn fi-btn-warning fi-btn-sm"
+                        onClick={() => { setSelectedMode('core'); setConfirmModal(true); }}
+                        disabled={isRunning || actionLoading}
+                    >
+                        <Zap size={14} /> Quick Sync Core
+                    </button>
+                </div>
+            )}
+
+            {/* Error / Success Notifications */}
+            {actionError && (
+                <div className="fi-notice fi-notice-danger">
+                    <AlertCircle size={16} />
+                    <span>{actionError}</span>
+                </div>
+            )}
+            {reconnectMsg && (
+                <div className="fi-notice fi-notice-success">
+                    <CheckCircle size={16} />
+                    <span>{reconnectMsg}</span>
+                </div>
+            )}
+
+            {/* Stats Matrix */}
+            <div className="fi-recommit-stats-grid">
+                <div className="fi-recommit-stat-card">
+                    <div className="fi-recommit-stat-icon">
+                        <Layers size={22} />
+                    </div>
+                    <div>
+                        <div className="fi-recommit-stat-val">{currentHeight}</div>
+                        <div className="fi-recommit-stat-lbl">Fabric Ledger Height</div>
+                    </div>
+                </div>
+
+                <div className="fi-recommit-stat-card">
+                    <div className="fi-recommit-stat-icon" style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1' }}>
+                        <Database size={22} />
+                    </div>
+                    <div>
+                        <div className="fi-recommit-stat-val">{stats?.total ?? '—'}</div>
+                        <div className="fi-recommit-stat-lbl">MongoDB Outbox Total</div>
+                    </div>
+                </div>
+
+                <div className="fi-recommit-stat-card">
+                    <div className="fi-recommit-stat-icon" style={{ background: 'rgba(34, 197, 94, 0.1)', color: '#22c55e' }}>
+                        <CheckCircle size={22} />
+                    </div>
+                    <div>
+                        <div className="fi-recommit-stat-val">{stats?.confirmed ?? '—'}</div>
+                        <div className="fi-recommit-stat-lbl">Confirmed in DB</div>
+                    </div>
+                </div>
+
+                <div className="fi-recommit-stat-card">
+                    <div className="fi-recommit-stat-icon" style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
+                        <Clock size={22} />
+                    </div>
+                    <div>
+                        <div className="fi-recommit-stat-val">{stats?.pending ?? '—'}</div>
+                        <div className="fi-recommit-stat-lbl">Pending Anchor</div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Entity Breakdown Pills */}
+            <div className="fi-entity-breakdown">
+                <span className="fi-entity-breakdown-title">Entities in Outbox Queue:</span>
+                <div className="fi-entity-pills-row">
+                    <span className="fi-entity-pill">
+                        <Box size={14} /> Batches (Merkle Roots):
+                        <span className="fi-entity-pill-count">{stats?.byType?.Batch || 0}</span>
+                    </span>
+                    <span className="fi-entity-pill">
+                        <Shield size={14} /> Exam Papers:
+                        <span className="fi-entity-pill-count">{stats?.byType?.Exam || 0}</span>
+                    </span>
+                    <span className="fi-entity-pill">
+                        <Activity size={14} /> Student Results:
+                        <span className="fi-entity-pill-count">{stats?.byType?.Result || 0}</span>
+                    </span>
+                    <span className="fi-entity-pill">
+                        <Lock size={14} /> Security Events:
+                        <span className="fi-entity-pill-count">{stats?.byType?.SecurityEvent || 0}</span>
+                    </span>
+                </div>
+            </div>
+
+            {/* Active Recommit Job Monitor Card */}
+            {job && job.status !== 'idle' && (
+                <div className="fi-job-monitor-card">
+                    <div className="fi-job-monitor-header">
+                        <div className="fi-job-title-row">
+                            <StatusBadge status={job.status === 'running' ? 'PROCESSING' : job.status === 'completed' ? 'CONFIRMED' : job.status === 'stopped' ? 'PENDING' : 'FAILED'} />
+                            <h3>
+                                {job.status === 'running' && 'Blockchain Anchor in Progress...'}
+                                {job.status === 'completed' && 'Recommit Completed Successfully'}
+                                {job.status === 'stopped' && 'Recommit Job Halted by User'}
+                                {job.status === 'failed' && 'Recommit Job Encountered an Error'}
+                            </h3>
+                        </div>
+                        <div className="fi-job-counters">
+                            <span className="fi-counter-tag fi-counter-success">
+                                <CheckCircle size={14} /> {job.succeeded} Succeeded
+                            </span>
+                            {job.failed > 0 && (
+                                <span className="fi-counter-tag fi-counter-fail">
+                                    <XCircle size={14} /> {job.failed} Failed
+                                </span>
+                            )}
+                            <span className="fi-data-label">
+                                Mode: <strong>{job.mode?.toUpperCase()}</strong>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="fi-progress-track">
+                        <div
+                            className={`fi-progress-fill ${job.status === 'running' ? 'running' : ''}`}
+                            style={{ width: `${percent}%` }}
+                        />
+                    </div>
+
+                    <div className="fi-job-meta-row">
+                        <div>
+                            <strong>{job.processed}</strong> of <strong>{job.total}</strong> commitments processed ({percent}%)
+                        </div>
+                        <div>
+                            {isRunning && (
+                                <button className="fi-btn fi-btn-danger fi-btn-sm" onClick={handleStop}>
+                                    <Square size={12} /> Stop / Pause Sync
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    {isRunning && job.currentCommitment && (
+                        <div className="fi-current-item-ticker">
+                            <Loader2 size={14} className="spin fi-icon-brand" />
+                            <span>
+                                Committing item #{job.currentCommitment.count}: <code>{job.currentCommitment.id}</code> ({job.currentCommitment.entityType})
+                            </span>
+                        </div>
+                    )}
+
+                    {job.status === 'completed' && (
+                        <div className="fi-sync-completed-card">
+                            <div className="fi-sync-completed-left">
+                                <CheckCircle size={24} className="fi-icon-success" />
+                                <div>
+                                    <strong>All requested commitments anchored!</strong>
+                                    <p>The new Hyperledger Fabric ledger has been populated. Ledger Height is now <b>{currentHeight}</b>.</p>
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: 10 }}>
+                                <button className="fi-btn fi-btn-secondary fi-btn-sm" onClick={() => onNavigateTab('commitments')}>
+                                    <Database size={13} /> View Ledger
+                                </button>
+                                <button className="fi-btn fi-btn-primary fi-btn-sm" onClick={() => onNavigateTab('verify-ledger')}>
+                                    <ScanLine size={13} /> Run Ledger Verification
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Recommit Action Cards Grid */}
+            <div className="fi-recommit-actions-grid">
+                {/* Card 1: Core State (Fastest) */}
+                <div className="fi-recommit-action-card fi-recommit-action-card-highlight">
+                    <div className="fi-action-badge">Recommended for Dev</div>
+                    <div className="fi-action-card-top">
+                        <div className="fi-action-card-icon">
+                            <Zap size={22} />
+                        </div>
+                        <h3>Re-commit Core State</h3>
+                        <p>
+                            Re-anchors all Question Batches (Merkle roots), Exam papers, Security Events, and the 100 most recent student results.
+                            Completes in ~1-2 minutes. Perfect when developing and testing.
+                        </p>
+                    </div>
+                    <button
+                        className="fi-btn fi-btn-primary fi-action-card-btn"
+                        onClick={() => { setSelectedMode('core'); setConfirmModal(true); }}
+                        disabled={isRunning || actionLoading || !fabricStatus?.connected}
+                    >
+                        {actionLoading && selectedMode === 'core' ? <Loader2 size={16} className="spin" /> : <Zap size={16} />}
+                        Re-commit Core State
+                    </button>
+                </div>
+
+                {/* Card 2: Full Sync (All Commitments) */}
+                <div className="fi-recommit-action-card">
+                    <div className="fi-action-badge" style={{ background: 'rgba(99, 102, 241, 0.12)', color: '#818cf8', borderColor: 'rgba(99, 102, 241, 0.25)' }}>Full Ledger</div>
+                    <div className="fi-action-card-top">
+                        <div className="fi-action-card-icon" style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1' }}>
+                            <Database size={22} />
+                        </div>
+                        <h3>Re-commit All Data</h3>
+                        <p>
+                            Iterates through every single Question Batch, Exam, and all {stats?.byType?.Result || 0} student results in MongoDB in chronological order.
+                            Ensures 100% full historical ledger recreation.
+                        </p>
+                    </div>
+                    <button
+                        className="fi-btn fi-btn-secondary fi-action-card-btn"
+                        onClick={() => { setSelectedMode('all'); setConfirmModal(true); }}
+                        disabled={isRunning || actionLoading || !fabricStatus?.connected}
+                    >
+                        {actionLoading && selectedMode === 'all' ? <Loader2 size={16} className="spin" /> : <Database size={16} />}
+                        Re-commit All ({stats?.total || 0} items)
+                    </button>
+                </div>
+
+                {/* Card 3: Sync Pending Only */}
+                <div className="fi-recommit-action-card">
+                    <div className="fi-action-badge" style={{ background: 'rgba(245, 158, 11, 0.12)', color: '#fbbf24', borderColor: 'rgba(245, 158, 11, 0.25)' }}>Incremental</div>
+                    <div className="fi-action-card-top">
+                        <div className="fi-action-card-icon" style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
+                            <Clock size={22} />
+                        </div>
+                        <h3>Sync Pending Only</h3>
+                        <p>
+                            Pushes records that are currently in PENDING or FAILED status without resetting previously confirmed documents.
+                            Useful for draining backlog or retrying failed commits.
+                        </p>
+                    </div>
+                    <button
+                        className="fi-btn fi-btn-secondary fi-action-card-btn"
+                        onClick={() => handleStart('pending')}
+                        disabled={isRunning || actionLoading || !fabricStatus?.connected || (stats?.pending === 0 && stats?.failed === 0)}
+                    >
+                        {actionLoading && selectedMode === 'pending' ? <Loader2 size={16} className="spin" /> : <Play size={16} />}
+                        Sync Pending ({stats?.pending || 0})
+                    </button>
+                </div>
+            </div>
+
+            {/* Utility Row */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, marginTop: 8 }}>
+                <span className="fi-text-secondary" style={{ fontSize: '0.85rem' }}>
+                    Need fresh gRPC credentials after Fabric restart?
+                </span>
+                <button
+                    className="fi-btn fi-btn-outline fi-btn-sm"
+                    onClick={handleReconnect}
+                    disabled={reconnectLoading || isRunning}
+                >
+                    <Network size={14} className={reconnectLoading ? 'spin' : ''} />
+                    {reconnectLoading ? 'Reconnecting Gateway...' : 'Force Reconnect Gateway'}
+                </button>
+            </div>
+
+            {/* Confirmation Modal */}
+            {confirmModal && (
+                <div className="fi-modal-overlay" onClick={() => setConfirmModal(false)}>
+                    <div className="fi-modal-box" onClick={e => e.stopPropagation()}>
+                        <div className="fi-modal-title">
+                            <RefreshCw size={22} className="fi-icon-brand" />
+                            Confirm Ledger Re-Commit
+                        </div>
+                        <div className="fi-modal-desc">
+                            You are about to start a <strong>{selectedMode === 'core' ? 'Core State Re-commit' : 'Full Ledger Re-commit'}</strong>.
+                            <br /><br />
+                            This will:
+                            <ul>
+                                <li>Reset outbox tracking state for {selectedMode === 'core' ? 'all Batches, Exams, Security Events, and the latest 100 Results' : `all ${stats?.total || 0} MongoDB commitments`} to <code>PENDING</code>.</li>
+                                <li>Re-submit and anchor each cryptographic hash to the newly deployed Hyperledger Fabric blockchain.</li>
+                                <li>Update each document with its new Fabric Transaction ID and Block Height.</li>
+                            </ul>
+                        </div>
+                        <div className="fi-modal-actions">
+                            <button className="fi-btn fi-btn-secondary" onClick={() => setConfirmModal(false)}>
+                                Cancel
+                            </button>
+                            <button className="fi-btn fi-btn-primary" onClick={() => handleStart(selectedMode)}>
+                                Yes, Start Re-Commit
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
 // Verification Panel (single entity)
 // ---------------------------------------------------------------------------
 function VerificationPanel({ token, entityType, setEntityType, entityId, setEntityId }) {
@@ -1071,6 +1858,7 @@ export default function FabricIntegrityCenter({ token }) {
     const [fabricStatus, setFabricStatus] = useState(null);
     const [ledgerHeight, setLedgerHeight] = useState(null);
     const [recentCommitments, setRecentCommitments] = useState(null);
+    const [outboxStats, setOutboxStats] = useState(null);
     const [activeTab, setActiveTab] = useState('overview');
     const [loading, setLoading] = useState(true);
     const [loadingCommitments, setLoadingCommitments] = useState(false);
@@ -1119,11 +1907,40 @@ export default function FabricIntegrityCenter({ token }) {
         }
     }, [token]);
 
+    const [dismissingBanner, setDismissingBanner] = useState(false);
+
     // Load alert count for badge
     const loadAlertCount = useCallback(async () => {
         try {
             const data = await apiFetch('/alerts', token);
-            setAlertCount((data.alerts || []).length);
+            const active = data.activeIncidents !== undefined
+                ? data.activeIncidents
+                : (data.alerts || []).filter(a => !a.isAcknowledged).length;
+            setAlertCount(active);
+        } catch (_) { }
+    }, [token]);
+
+    const handleDismissBanner = async (e) => {
+        if (e) e.stopPropagation();
+        try {
+            setDismissingBanner(true);
+            await apiFetch('/alerts/dismiss', token, {
+                method: 'POST',
+                body: JSON.stringify({ dismissAll: true })
+            });
+            await loadAlertCount();
+        } catch (err) {
+            console.error('Failed to dismiss tamper alerts banner:', err);
+        } finally {
+            setDismissingBanner(false);
+        }
+    };
+
+    // Load outbox stats
+    const loadOutboxStats = useCallback(async () => {
+        try {
+            const data = await apiFetch('/outbox/stats', token);
+            setOutboxStats(data);
         } catch (_) { }
     }, [token]);
 
@@ -1131,13 +1948,15 @@ export default function FabricIntegrityCenter({ token }) {
         loadStatus();
         loadAlertCount();
         loadCommitments();
+        loadOutboxStats();
         // Auto-poll network status and alerts every 15s
         const interval = setInterval(() => {
             loadStatus();
             loadAlertCount();
+            loadOutboxStats();
         }, 15_000);
         return () => clearInterval(interval);
-    }, [loadStatus, loadAlertCount, loadCommitments]);
+    }, [loadStatus, loadAlertCount, loadCommitments, loadOutboxStats]);
 
     useEffect(() => {
         if (activeTab === 'commitments') {
@@ -1145,9 +1964,19 @@ export default function FabricIntegrityCenter({ token }) {
         }
     }, [activeTab, loadCommitments]);
 
+    const isOutOfSync = (ledgerHeight?.height === 0 || ledgerHeight?.height === undefined) &&
+        ((outboxStats?.confirmed || 0) > 0 || (outboxStats?.total || 0) > 0);
+
     const tabs = [
         { id: 'overview', label: 'Overview', icon: <Activity size={14} /> },
         { id: 'visualizer', label: 'Blockchain Visualizer', icon: <Layers size={14} />, highlight: true },
+        {
+            id: 'recommit',
+            label: 'Outbox & Re-commit',
+            icon: <RefreshCw size={14} />,
+            badge: isOutOfSync ? 'SYNC NEEDED' : null,
+            highlight: isOutOfSync,
+        },
         { id: 'verify-ledger', label: 'Verify Ledger', icon: <ScanLine size={14} /> },
         { id: 'verify', label: 'Verify Entity', icon: <ShieldCheck size={14} /> },
         { id: 'commitments', label: 'Ledger', icon: <Database size={14} /> },
@@ -1206,12 +2035,43 @@ export default function FabricIntegrityCenter({ token }) {
                             </div>
                         </div>
                     </div>
-                    <button
-                        className="fi-btn fi-btn-danger fi-btn-sm"
-                        onClick={(e) => { e.stopPropagation(); setActiveTab('alerts'); }}
-                    >
-                        View Tamper Log →
-                    </button>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }} onClick={(e) => e.stopPropagation()}>
+                        <button
+                            type="button"
+                            className="fi-btn fi-btn-danger fi-btn-sm"
+                            onClick={() => setActiveTab('alerts')}
+                        >
+                            View Tamper Log →
+                        </button>
+                        <button
+                            type="button"
+                            className="fi-btn fi-btn-ghost fi-btn-sm"
+                            style={{
+                                background: 'rgba(239, 68, 68, 0.25)',
+                                border: '1px solid rgba(239, 68, 68, 0.45)',
+                                color: '#fca5a5',
+                                cursor: 'pointer',
+                                padding: '6px 12px',
+                                borderRadius: 6,
+                                fontWeight: 600,
+                                fontSize: 12,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4
+                            }}
+                            disabled={dismissingBanner}
+                            onClick={handleDismissBanner}
+                            title="Acknowledge and dismiss active tamper alert banner"
+                        >
+                            {dismissingBanner ? (
+                                <>
+                                    <Loader2 size={12} className="spin" /> Dismissing...
+                                </>
+                            ) : (
+                                <>Dismiss Alert ✕</>
+                            )}
+                        </button>
+                    </div>
                 </div>
             )}
 
@@ -1236,6 +2096,33 @@ export default function FabricIntegrityCenter({ token }) {
                 {/* Overview Tab */}
                 {activeTab === 'overview' && (
                     <div className="fi-overview">
+
+                        {/* Out of Sync Callout Banner on Overview */}
+                        {isOutOfSync && (
+                            <div
+                                className="fi-sync-overview-callout"
+                                onClick={() => setActiveTab('recommit')}
+                                role="button"
+                                tabIndex={0}
+                                title="Click to go to Outbox Re-commit"
+                            >
+                                <div className="fi-sync-overview-callout-left">
+                                    <RefreshCw size={22} className="fi-icon-warning" />
+                                    <div>
+                                        <strong>Blockchain Reset Detected (Ledger Height: 0)</strong>
+                                        <p>
+                                            Hyperledger Fabric was recreated with an empty ledger. MongoDB contains {outboxStats?.total || 1363} commitments that need to be re-anchored.
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    className="fi-btn fi-btn-warning fi-btn-sm"
+                                    onClick={(e) => { e.stopPropagation(); setActiveTab('recommit'); }}
+                                >
+                                    Re-commit to Blockchain →
+                                </button>
+                            </div>
+                        )}
 
                         <LedgerStatsRow
                             height={ledgerHeight}
@@ -1304,6 +2191,21 @@ export default function FabricIntegrityCenter({ token }) {
                     />
                 )}
 
+                {/* Outbox & Re-commit Tab */}
+                {activeTab === 'recommit' && (
+                    <OutboxRecommitPanel
+                        token={token}
+                        fabricStatus={fabricStatus}
+                        ledgerHeight={ledgerHeight}
+                        onRefreshStatus={() => {
+                            loadStatus();
+                            loadCommitments();
+                            loadOutboxStats();
+                        }}
+                        onNavigateTab={(tab) => setActiveTab(tab)}
+                    />
+                )}
+
                 {/* Verify Ledger Tab */}
                 {activeTab === 'verify-ledger' && (
                     <VerifyLedgerPanel token={token} />
@@ -1362,7 +2264,7 @@ export default function FabricIntegrityCenter({ token }) {
                                 when it detects an unauthorized direct database modification whose hash no longer
                                 matches the Fabric ledger commitment. Alerts auto-refresh every 30 seconds.
                             </p>
-                            <TamperAlertsPanel token={token} />
+                            <TamperAlertsPanel token={token} onAlertsUpdated={loadAlertCount} />
                         </div>
                     </div>
                 )}

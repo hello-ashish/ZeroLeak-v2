@@ -80,6 +80,12 @@ export const verifyAdminJWT = async (req, res, next) => {
         req.admin = admin
         next()
     } catch (error) {
+        if (error.message === "SESSION_REPLACED") {
+            return res.status(401).json({ message: "This session has been replaced by a new login.", code: "SESSION_REPLACED" })
+        }
+        if (error.message === "BLOCKED") {
+            return res.status(403).json({ message: "Account is blocked.", code: "BLOCKED" })
+        }
         return res.status(401).json({ message: "Invalid or Expired Access Token", code: "TOKEN_EXPIRED" })
     }
 }
@@ -99,6 +105,12 @@ export const verifyProfessorJWT = async (req, res, next) => {
         req.professor = professor
         next()
     } catch (error) {
+        if (error.message === "SESSION_REPLACED") {
+            return res.status(401).json({ message: "This session has been replaced by a new login.", code: "SESSION_REPLACED" })
+        }
+        if (error.message === "BLOCKED") {
+            return res.status(403).json({ message: "Account is blocked.", code: "BLOCKED" })
+        }
         return res.status(401).json({ message: "Invalid or Expired Access Token", code: "TOKEN_EXPIRED" })
     }
 }
@@ -118,6 +130,12 @@ export const verifyStudentJWT = async (req, res, next) => {
         req.student = student
         next()
     } catch (error) {
+        if (error.message === "SESSION_REPLACED") {
+            return res.status(401).json({ message: "This session has been replaced by a new login.", code: "SESSION_REPLACED" })
+        }
+        if (error.message === "BLOCKED") {
+            return res.status(403).json({ message: "Account is blocked.", code: "BLOCKED" })
+        }
         return res.status(401).json({ message: "Invalid or Expired Access Token", code: "TOKEN_EXPIRED" })
     }
 }

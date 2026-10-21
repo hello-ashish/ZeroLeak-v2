@@ -66,7 +66,7 @@ export default function AdminCheatingDetection() {
     const LIMIT = 10;
 
     // 1. Fetch Incidents
-    const fetchIncidents = useCallback(async (p = 1) => {
+    const fetchIncidents = useCallback(async (p = 1, showLoading = false) => {
         const token = getToken();
         if (!token) {
             navigate('/admin/login');
@@ -74,7 +74,7 @@ export default function AdminCheatingDetection() {
         }
 
         try {
-            setIncidentsLoading(true);
+            if (showLoading) setIncidentsLoading(true);
             let url = `${API}/anti-cheating/incidents?page=${p}&limit=${LIMIT}`;
             if (severityFilter) url += `&severity=${severityFilter}`;
             if (statusFilter) url += `&reviewStatus=${statusFilter}`;
@@ -101,12 +101,12 @@ export default function AdminCheatingDetection() {
             }
             console.error("Failed to fetch cheating incidents:", err);
         } finally {
-            setIncidentsLoading(false);
+            if (showLoading) setIncidentsLoading(false);
         }
     }, [navigate, severityFilter, statusFilter]);
 
     // 2. Fetch Blocked Students
-    const fetchBlockedStudents = useCallback(async (p = 1) => {
+    const fetchBlockedStudents = useCallback(async (p = 1, showLoading = false) => {
         const token = getToken();
         if (!token) {
             navigate('/admin/login');
@@ -114,7 +114,7 @@ export default function AdminCheatingDetection() {
         }
 
         try {
-            setBlockedLoading(true);
+            if (showLoading) setBlockedLoading(true);
             let url = `${API}/anti-cheating/blocked-students?page=${p}&limit=${LIMIT}`;
             if (searchQuery) url += `&search=${encodeURIComponent(searchQuery)}`;
 
@@ -139,12 +139,12 @@ export default function AdminCheatingDetection() {
             }
             console.error("Failed to fetch blocked students:", err);
         } finally {
-            setBlockedLoading(false);
+            if (showLoading) setBlockedLoading(false);
         }
     }, [navigate, searchQuery]);
 
     // 3. Fetch Unblocked Students
-    const fetchUnblockedStudents = useCallback(async (p = 1) => {
+    const fetchUnblockedStudents = useCallback(async (p = 1, showLoading = false) => {
         const token = getToken();
         if (!token) {
             navigate('/admin/login');
@@ -152,7 +152,7 @@ export default function AdminCheatingDetection() {
         }
 
         try {
-            setUnblockedLoading(true);
+            if (showLoading) setUnblockedLoading(true);
             let url = `${API}/anti-cheating/unblocked-students?page=${p}&limit=${LIMIT}`;
             if (unblockedSearchQuery) url += `&search=${encodeURIComponent(unblockedSearchQuery)}`;
 
@@ -172,21 +172,21 @@ export default function AdminCheatingDetection() {
             }
             console.error("Failed to fetch unblocked students:", err);
         } finally {
-            setUnblockedLoading(false);
+            if (showLoading) setUnblockedLoading(false);
         }
     }, [navigate, unblockedSearchQuery]);
 
     // Initial Load & Filter Triggers
     useEffect(() => {
-        fetchIncidents(1);
+        fetchIncidents(1, true);
     }, [fetchIncidents]);
 
     useEffect(() => {
-        fetchBlockedStudents(1);
+        fetchBlockedStudents(1, true);
     }, [fetchBlockedStudents]);
 
     useEffect(() => {
-        fetchUnblockedStudents(1);
+        fetchUnblockedStudents(1, true);
     }, [fetchUnblockedStudents]);
 
     const handleRefreshAll = () => {
@@ -575,7 +575,7 @@ export default function AdminCheatingDetection() {
                                         <div style={{ display: 'flex', gap: 8 }}>
                                             <button
                                                 disabled={incidentsPage <= 1}
-                                                onClick={() => fetchIncidents(incidentsPage - 1)}
+                                                onClick={() => fetchIncidents(incidentsPage - 1, false)}
                                                 className="btn btn-secondary"
                                                 style={{ padding: '6px 12px', fontSize: 12, borderRadius: 6 }}
                                             >
@@ -583,7 +583,7 @@ export default function AdminCheatingDetection() {
                                             </button>
                                             <button
                                                 disabled={incidentsPage >= incidentsTotalPages}
-                                                onClick={() => fetchIncidents(incidentsPage + 1)}
+                                                onClick={() => fetchIncidents(incidentsPage + 1, false)}
                                                 className="btn btn-secondary"
                                                 style={{ padding: '6px 12px', fontSize: 12, borderRadius: 6 }}
                                             >
@@ -691,7 +691,7 @@ export default function AdminCheatingDetection() {
                                         <div style={{ display: 'flex', gap: 8 }}>
                                             <button
                                                 disabled={blockedPage <= 1}
-                                                onClick={() => fetchBlockedStudents(blockedPage - 1)}
+                                                onClick={() => fetchBlockedStudents(blockedPage - 1, false)}
                                                 className="btn btn-secondary"
                                                 style={{ padding: '6px 12px', fontSize: 12, borderRadius: 6 }}
                                             >
@@ -699,7 +699,7 @@ export default function AdminCheatingDetection() {
                                             </button>
                                             <button
                                                 disabled={blockedPage >= blockedTotalPages}
-                                                onClick={() => fetchBlockedStudents(blockedPage + 1)}
+                                                onClick={() => fetchBlockedStudents(blockedPage + 1, false)}
                                                 className="btn btn-secondary"
                                                 style={{ padding: '6px 12px', fontSize: 12, borderRadius: 6 }}
                                             >
@@ -809,7 +809,7 @@ export default function AdminCheatingDetection() {
                                         <div style={{ display: 'flex', gap: 8 }}>
                                             <button
                                                 disabled={unblockedPage <= 1}
-                                                onClick={() => fetchUnblockedStudents(unblockedPage - 1)}
+                                                onClick={() => fetchUnblockedStudents(unblockedPage - 1, false)}
                                                 className="btn btn-secondary"
                                                 style={{ padding: '6px 12px', fontSize: 12, borderRadius: 6 }}
                                             >
@@ -817,7 +817,7 @@ export default function AdminCheatingDetection() {
                                             </button>
                                             <button
                                                 disabled={unblockedPage >= unblockedTotalPages}
-                                                onClick={() => fetchUnblockedStudents(unblockedPage + 1)}
+                                                onClick={() => fetchUnblockedStudents(unblockedPage + 1, false)}
                                                 className="btn btn-secondary"
                                                 style={{ padding: '6px 12px', fontSize: 12, borderRadius: 6 }}
                                             >

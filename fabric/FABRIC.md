@@ -76,10 +76,11 @@ Restart the ZeroLeak backend. The `IntegrityOutbox` worker will automatically st
 ## Integrity Center UI
 
 The ZeroLeak frontend includes a dedicated **Fabric Integrity Center** for Admins and Auditors. It provides:
-- Live Fabric network connection status.
-- Real-time ledger height and a list of recent immutable commitments.
-- An Integrity Verification tool to check if a MongoDB document matches its Fabric commitment (detecting any unauthorized tampering).
-- A clearly separated "Mock Lab" for educational demonstrations, distinct from the real production ledger.
+- **Live Fabric Network Status**: Real-time connection indicator, peer endpoints, channel, and chaincode health.
+- **Outbox & Re-commit Manager**: When the network is torn down (`npm run fabric:down`) and recreated (`npm run fabric:up`), Fabric starts with an empty ledger. The Admin UI detects this state and allows one-click re-anchoring of historical question batches, exams, and results from MongoDB into the new blockchain with live progress tracking.
+- **Ledger Block Visualizer**: Interactive block-by-block visual explorer of mined blocks and cryptographic hashes.
+- **Bulk Ledger Integrity Verification**: Scans every block on Fabric, recomputes live MongoDB hashes, and detects any unauthorized tampering.
+- **Real-Time Tamper Alerts**: Watches MongoDB change streams for unauthorized writes and immediately alerts admins.
 
 ## Disabling Fabric
 

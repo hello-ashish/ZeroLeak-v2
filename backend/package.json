@@ -9,7 +9,8 @@
     "start": "DOTENV_CONFIG_QUIET=true node -r dotenv/config src/index.js",
     "dev": "DOTENV_CONFIG_QUIET=true nodemon -r dotenv/config src/index.js",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
-    "test:fabric": "node scripts/test-fabric.js"
+    "test:fabric": "node scripts/test-fabric.js",
+    "commit:outbox": "node scripts/commit-outbox-to-fabric.js"
   },
   "dependencies": {
     "@grpc/grpc-js": "^1.14.5",

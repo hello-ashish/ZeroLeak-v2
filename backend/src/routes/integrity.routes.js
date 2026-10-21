@@ -28,8 +28,15 @@ import {
     getLedgerHeight,
     getFabricBlocks,
     getIntegrityAlerts,
+    dismissIntegrityAlerts,
+    clearIntegrityAlerts,
     verifyAllCommitments,
     triggerReconciliation,
+    getOutboxStats,
+    startRecommit,
+    getRecommitStatus,
+    stopRecommit,
+    reconnectFabric,
 } from '../controllers/integrity.controllers.js';
 import { verifyAdminOrAuditorJWT } from '../middlewares/auth.middleware.js';
 
@@ -46,10 +53,19 @@ router.use(verifyAdminOrAuditorJWT);
 router.get('/recent', getRecentCommitments);
 router.get('/blocks', getFabricBlocks);
 router.get('/alerts', getIntegrityAlerts);
+router.post('/alerts/dismiss', dismissIntegrityAlerts);
+router.delete('/alerts', clearIntegrityAlerts);
 
 // Outbox reconciliation & bulk ledger verification
 router.post('/reconcile', triggerReconciliation);
 router.post('/verify-ledger', verifyAllCommitments);
+
+// Outbox stats & Recommit engine
+router.get('/outbox/stats', getOutboxStats);
+router.post('/outbox/recommit', startRecommit);
+router.get('/outbox/recommit-status', getRecommitStatus);
+router.post('/outbox/recommit-stop', stopRecommit);
+router.post('/fabric/reconnect', reconnectFabric);
 
 // Entity verification
 router.get('/result/:resultId', verifyResult);

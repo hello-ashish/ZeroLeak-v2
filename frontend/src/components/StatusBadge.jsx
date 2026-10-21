@@ -52,8 +52,9 @@ export const DifficultyBadge = ({ level }) => {
 }
 
 export const ScorePill = ({ score, total }) => {
-    if (!total) return <span className="score-pill" style={{ color: 'var(--text-tertiary)' }}>—</span>
-    const pct = Math.round((score / total) * 100)
+    if (!total || total <= 0) return <span className="score-pill" style={{ color: 'var(--text-tertiary)' }}>—</span>
+    const validScore = Math.max(0, Math.min(score ?? 0, total))
+    const pct = Math.min(100, Math.max(0, Math.round((validScore / total) * 100)))
     const cls = pct >= 70 ? 'score-high' : pct >= 50 ? 'score-mid' : 'score-low'
     return <span className={`score-pill ${cls}`}>{pct}%</span>
 }

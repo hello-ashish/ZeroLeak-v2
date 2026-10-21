@@ -1,9 +1,10 @@
-import React, { useEffect, useState, useMemo } from 'react'
+import React, { useEffect, useState, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { AdminLayout } from './AdminLayout.jsx'
 import { DifficultyBadge } from '../../components/StatusBadge.jsx'
 import { SkeletonTable, EmptyState } from '../../components/SkeletonLoader.jsx'
+import { Pagination } from '../../components/Pagination.jsx'
 import { useToast } from '../../components/Toast.jsx'
 import { Database, CircleDot, Search, PackageOpen, X, BarChart3, Clock, AlertTriangle, CheckCircle2, Trash2 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
@@ -25,6 +26,9 @@ export default function AdminQuestionsPage() {
     const navigate = useNavigate()
     const toast = useToast()
 
+    const isFirstMount = useRef(true)
+    const prevFiltersRef = useRef({ search: debouncedSearch, diff: filterDiff, subject: filterSubject })
+
     const [stats, setStats] = useState({ total: 0, easy: 0, medium: 0, hard: 0, highSuccess: 0, lowSuccess: 0, flagged: 0 })
     const [subjects, setSubjects] = useState([])
     const [chartDataAll, setChartDataAll] = useState([])
@@ -36,12 +40,12 @@ export default function AdminQuestionsPage() {
         return () => clearTimeout(t)
     }, [search])
 
-    const fetchQuestions = async () => {
+    const fetchQuestions = async (showLoading = false) => {
         const token = getToken()
         if (!token) { navigate('/admin/login'); return }
         try {
-            setLoading(true)
-            const res = await axios.get(`${API}/questions`, { 
+            if (showLoading) setLoading(true)
+            const res = await axios.get(`${API}/questions`, {
                 headers: { Authorization: `Bearer ${token}` },
                 params: { page, limit: ITEMS_PER_PAGE, search: debouncedSearch, difficulty: filterDiff, subject: filterSubject }
             })
@@ -55,11 +59,25 @@ export default function AdminQuestionsPage() {
         } catch {
             toast.error('Failed to load question bank')
         } finally {
-            setLoading(false)
+            if (showLoading) setLoading(false)
         }
     }
 
-    useEffect(() => { fetchQuestions() }, [page, debouncedSearch, filterDiff, filterSubject])
+    useEffect(() => {
+        const filtersChanged =
+            prevFiltersRef.current.search !== debouncedSearch ||
+            prevFiltersRef.current.diff !== filterDiff ||
+            prevFiltersRef.current.subject !== filterSubject
+
+        prevFiltersRef.current = { search: debouncedSearch, diff: filterDiff, subject: filterSubject }
+
+        // Only show loading animation on initial page mount or when search/filters change
+        // NEVER show loading animation when jumping between pages in pagination
+        const showLoading = isFirstMount.current || filtersChanged
+        isFirstMount.current = false
+
+        fetchQuestions(showLoading)
+    }, [page, debouncedSearch, filterDiff, filterSubject])
 
     useEffect(() => {
         setPage(1)
@@ -128,7 +146,7 @@ export default function AdminQuestionsPage() {
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-subtle)" />
                                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-secondary)' }} dy={10} />
                                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-secondary)' }} />
-                                <Tooltip 
+                                <Tooltip
                                     cursor={{ fill: 'var(--bg-active)' }}
                                     contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: '12px', boxShadow: '0 8px 30px rgba(0,0,0,0.12)' }}
                                     itemStyle={{ fontSize: 13, fontWeight: 600 }}
@@ -251,29 +269,15 @@ export default function AdminQuestionsPage() {
                                 </tbody>
                             )}
                         </table>
-                        
-                        {!loading && totalFiltered > ITEMS_PER_PAGE && (
-                            <div style={{ padding: '16px 20px', borderTop: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                                    Showing {(page - 1) * ITEMS_PER_PAGE + 1} to {Math.min(page * ITEMS_PER_PAGE, totalFiltered)} of {totalFiltered} questions
-                                </span>
-                                <div style={{ display: 'flex', gap: 8 }}>
-                                    <button 
-                                        className="btn btn-outline btn-sm" 
-                                        onClick={() => setPage(p => Math.max(1, p - 1))} 
-                                        disabled={page === 1}
-                                    >
-                                        Previous
-                                    </button>
-                                    <button 
-                                        className="btn btn-outline btn-sm" 
-                                        onClick={() => setPage(p => Math.min(Math.ceil(totalFiltered / ITEMS_PER_PAGE), p + 1))} 
-                                        disabled={page >= Math.ceil(totalFiltered / ITEMS_PER_PAGE)}
-                                    >
-                                        Next
-                                    </button>
-                                </div>
-                            </div>
+
+                        {!loading && (
+                            <Pagination
+                                currentPage={page}
+                                totalItems={totalFiltered}
+                                itemsPerPage={ITEMS_PER_PAGE}
+                                onPageChange={setPage}
+                                itemLabel="questions"
+                            />
                         )}
                     </div>
                 </div>

@@ -355,7 +355,7 @@ export async function reconcileUncommittedEntities() {
         // 3. Reconcile Accepted Batches
         const { Batch } = await import('../models/batch.models.js');
         const acceptedBatches = await Batch.find({
-            status: 'Accept',
+            status: 'Accepted',
             merkleRoot: { $exists: true, $ne: '' },
         }).select('_id merkleRoot title').lean();
 
@@ -449,3 +449,289 @@ export function startIntegrityReconciler() {
         }
     }, RECONCILE_INTERVAL_MS);
 }
+
+// ─── Recommit & Outbox Management Engine ────────────────────────────────────
+
+let _recommitJob = {
+    status: 'idle', // 'idle' | 'running' | 'completed' | 'failed' | 'stopped'
+    mode: null,
+    total: 0,
+    processed: 0,
+    succeeded: 0,
+    failed: 0,
+    startedAt: null,
+    completedAt: null,
+    currentCommitment: null,
+    error: null,
+    stopRequested: false,
+};
+
+export function getRecommitJobStatus() {
+    return { ..._recommitJob };
+}
+
+export function stopRecommitJob() {
+    if (_recommitJob && _recommitJob.status === 'running') {
+        _recommitJob.stopRequested = true;
+        return { message: 'Recommit job stop requested.', job: getRecommitJobStatus() };
+    }
+    return { message: 'No recommit job currently running.', job: getRecommitJobStatus() };
+}
+
+export async function getOutboxStats() {
+    const counts = await IntegrityOutbox.aggregate([
+        {
+            $group: {
+                _id: {
+                    status: '$status',
+                    entityType: '$entityType',
+                },
+                count: { $sum: 1 },
+            },
+        },
+    ]);
+
+    const stats = {
+        total: 0,
+        confirmed: 0,
+        pending: 0,
+        processing: 0,
+        failed: 0,
+        byType: {
+            Batch: 0,
+            Exam: 0,
+            Result: 0,
+            SecurityEvent: 0,
+            Question: 0,
+        },
+        recommitJob: getRecommitJobStatus(),
+    };
+
+    for (const item of counts) {
+        const { status, entityType } = item._id || {};
+        const c = item.count || 0;
+        if (entityType !== 'Question') {
+            stats.total += c;
+            if (status === 'CONFIRMED') stats.confirmed += c;
+            else if (status === 'PENDING') stats.pending += c;
+            else if (status === 'PROCESSING') stats.processing += c;
+            else if (status === 'FAILED') stats.failed += c;
+        }
+        if (entityType && stats.byType[entityType] !== undefined) {
+            stats.byType[entityType] += c;
+        }
+    }
+
+    return stats;
+}
+
+export async function startRecommitJob({ mode = 'all', resetDb = true } = {}) {
+    if (_recommitJob && _recommitJob.status === 'running') {
+        const err = new Error('A recommit job is already running.');
+        err.code = 'JOB_ALREADY_RUNNING';
+        throw err;
+    }
+
+    // Ensure Fabric connection
+    try {
+        await fabricService.forceReconnect();
+    } catch (connErr) {
+        console.warn('[RECOMMIT] Fabric reconnect warning:', connErr.message);
+    }
+
+    const fabricStatus = await fabricService.getFabricStatus();
+    if (!fabricStatus.enabled) {
+        const err = new Error('Fabric integration is disabled (FABRIC_ENABLED=false). Cannot recommit.');
+        err.code = 'FABRIC_DISABLED';
+        throw err;
+    }
+    if (!fabricStatus.connected) {
+        const err = new Error(`Fabric peer is not connected (${fabricStatus.error || 'Network offline'}). Ensure network is running.`);
+        err.code = 'FABRIC_NOT_CONNECTED';
+        throw err;
+    }
+
+    // Reconcile entities from MongoDB first to make sure outbox has everything
+    try {
+        await reconcileUncommittedEntities();
+    } catch (recErr) {
+        console.warn('[RECOMMIT] Pre-reconciliation warning:', recErr.message);
+    }
+
+    // Reset database status if requested
+    if (resetDb) {
+        const resetFields = {
+            status: 'PENDING',
+            attemptCount: 0,
+            fabricTxId: null,
+            fabricHeight: null,
+            fabricBlockTimestamp: null,
+            confirmedAt: null,
+            lastError: null,
+            lastErrorCode: null,
+            processingWorker: null,
+            leaseExpiresAt: null,
+        };
+
+        if (mode === 'all') {
+            await IntegrityOutbox.updateMany(
+                { entityType: { $ne: 'Question' } },
+                { $set: resetFields }
+            );
+        } else if (mode === 'core') {
+            // Reset all structural commitments (Batch, Exam, SecurityEvent)
+            await IntegrityOutbox.updateMany(
+                { entityType: { $in: ['Batch', 'Exam', 'SecurityEvent'] } },
+                { $set: resetFields }
+            );
+
+            // Reset only recent 100 results so they commit fast
+            const recentResults = await IntegrityOutbox.find({ entityType: 'Result' })
+                .sort({ createdAt: -1 })
+                .limit(100)
+                .select('_id')
+                .lean();
+
+            if (recentResults.length > 0) {
+                const ids = recentResults.map(r => r._id);
+                await IntegrityOutbox.updateMany(
+                    { _id: { $in: ids } },
+                    { $set: resetFields }
+                );
+            }
+        } else if (mode === 'pending') {
+            // Reset any failed or stuck processing records
+            await IntegrityOutbox.updateMany(
+                {
+                    status: { $in: ['PROCESSING', 'FAILED'] },
+                    entityType: { $ne: 'Question' },
+                },
+                { $set: resetFields }
+            );
+        }
+    }
+
+    // Find all records to commit
+    const pendingRecords = await IntegrityOutbox.find({
+        status: 'PENDING',
+        entityType: { $ne: 'Question' },
+    }).lean();
+
+    // Priority ordering: Batch -> Exam -> SecurityEvent -> Result (oldest to newest)
+    const priorityMap = { Batch: 1, Exam: 2, SecurityEvent: 3, Result: 4 };
+    pendingRecords.sort((a, b) => {
+        const pA = priorityMap[a.entityType] || 5;
+        const pB = priorityMap[b.entityType] || 5;
+        if (pA !== pB) return pA - pB;
+        return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
+    });
+
+    _recommitJob = {
+        status: 'running',
+        mode,
+        total: pendingRecords.length,
+        processed: 0,
+        succeeded: 0,
+        failed: 0,
+        startedAt: new Date().toISOString(),
+        completedAt: null,
+        currentCommitment: null,
+        error: null,
+        stopRequested: false,
+    };
+
+    console.info(`[RECOMMIT] Starting recommit job (mode=${mode}, total=${pendingRecords.length})`);
+
+    // Run async in background
+    (async () => {
+        const RUNNER_ID = `RECOMMIT-${Date.now()}`;
+        for (const rec of pendingRecords) {
+            if (_recommitJob.stopRequested) {
+                console.info('[RECOMMIT] Stop requested. Halting recommit job.');
+                _recommitJob.status = 'stopped';
+                _recommitJob.completedAt = new Date().toISOString();
+                _recommitJob.currentCommitment = null;
+                break;
+            }
+
+            _recommitJob.currentCommitment = {
+                id: rec.commitmentId,
+                entityType: rec.entityType,
+                count: _recommitJob.processed + 1,
+            };
+
+            try {
+                // Claim record
+                await IntegrityOutbox.updateOne({ _id: rec._id }, {
+                    $set: {
+                        status: 'PROCESSING',
+                        processingWorker: RUNNER_ID,
+                        leaseExpiresAt: new Date(Date.now() + 60000),
+                    },
+                });
+
+                const res = await fabricService.createCommitment({
+                    id: rec.commitmentId,
+                    eventType: rec.eventType,
+                    entityType: rec.entityType,
+                    entityId: rec.entityId,
+                    dataHash: rec.dataHash,
+                    previousCommitmentHash: rec.previousCommitmentHash || '',
+                    version: rec.version || 1,
+                    timestamp: rec.eventTimestamp,
+                });
+
+                await IntegrityOutbox.updateOne({ _id: rec._id }, {
+                    $set: {
+                        status: 'CONFIRMED',
+                        fabricTxId: res.txId || null,
+                        fabricBlockTimestamp: res.blockTimestamp || null,
+                        fabricHeight: res.height || null,
+                        lastError: null,
+                        lastErrorCode: null,
+                        confirmedAt: new Date(),
+                        processingWorker: null,
+                        leaseExpiresAt: null,
+                    },
+                });
+
+                _recommitJob.succeeded++;
+            } catch (err) {
+                const errMsg = err?.message || String(err);
+                console.error(`[RECOMMIT] Failed commitment ${rec.commitmentId}:`, errMsg);
+
+                await IntegrityOutbox.updateOne({ _id: rec._id }, {
+                    $set: {
+                        status: 'FAILED',
+                        lastError: errMsg.substring(0, 500),
+                        lastErrorCode: err?.code || 'UNKNOWN',
+                        processingWorker: null,
+                        leaseExpiresAt: null,
+                    },
+                });
+
+                _recommitJob.failed++;
+            } finally {
+                _recommitJob.processed++;
+            }
+        }
+
+        if (_recommitJob.status === 'running') {
+            _recommitJob.status = 'completed';
+            _recommitJob.completedAt = new Date().toISOString();
+            _recommitJob.currentCommitment = null;
+            console.info(`[RECOMMIT] Recommit job completed: ${_recommitJob.succeeded} succeeded, ${_recommitJob.failed} failed.`);
+        }
+    })().catch(unhandledErr => {
+        console.error('[RECOMMIT] Fatal unhandled error in recommit loop:', unhandledErr.message);
+        _recommitJob.status = 'failed';
+        _recommitJob.error = unhandledErr.message;
+        _recommitJob.completedAt = new Date().toISOString();
+    });
+
+    return {
+        message: 'Recommit job initiated successfully.',
+        job: getRecommitJobStatus(),
+    };
+}
+
