@@ -16,61 +16,64 @@ import MockBlockchainDashboard from './MockBlockchainDashboard';
 
 export default function BlockchainCenter({ token }) {
     const [activeSection, setActiveSection] = useState('fabric');
+    const [visitedSections, setVisitedSections] = useState(() => new Set(['fabric']));
 
     const handleSwitchSection = (section) => {
         setActiveSection(section);
-        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+        setVisitedSections(prev => {
+            if (prev.has(section)) return prev;
+            const next = new Set(prev);
+            next.add(section);
+            return next;
+        });
     };
 
     return (
         <div className="blockchain-center">
-            <div className="page-header">
-                <div className="page-header-top">
-                    <div>
-                        <h1 className="page-title">Integrity Center</h1>
-                        <div className="page-subtitle">
-                            Hyperledger Fabric integrity ledger · Verification · Commitment history
-                        </div>
-                    </div>
-
-                    {/* Section switcher */}
-                    <div className="bc-section-tabs" style={{ display: 'flex', gap: '8px' }}>
-                        <button
-                            type="button"
-                            className={`btn ${activeSection === 'fabric' ? 'btn-primary' : 'btn-secondary'}`}
-                            onClick={() => handleSwitchSection('fabric')}
-                        >
-                            Fabric Integrity Center
-                        </button>
-                        <button
-                            type="button"
-                            className={`btn ${activeSection === 'mock' ? 'btn-primary' : 'btn-secondary'}`}
-                            onClick={() => handleSwitchSection('mock')}
-                        >
-                            Mock Lab
-                            <span className="bc-sim-badge">SIMULATION</span>
-                        </button>
-                    </div>
-                </div>
+            {/* ── Real Fabric Integrity Center ─────────────────────── */}
+            <div
+                className="bc-section-panel"
+                style={{ display: activeSection === 'fabric' ? 'block' : 'none' }}
+            >
+                <FabricIntegrityCenter
+                    token={token}
+                    onOpenMockLab={() => handleSwitchSection('mock')}
+                />
             </div>
 
-            {/* ── Real Fabric Integrity Center ─────────────────────── */}
-            {activeSection === 'fabric' && (
-                <FabricIntegrityCenter token={token} />
-            )}
-
             {/* ── Mock Lab (educational / demo only) ───────────────── */}
-            {activeSection === 'mock' && (
-                <div>
+            {visitedSections.has('mock') && (
+                <div
+                    className="bc-section-panel bc-mock-container"
+                    style={{ display: activeSection === 'mock' ? 'block' : 'none' }}
+                >
+                    <div className="bc-mock-header">
+                        <div>
+                            <div className="bc-mock-title-row">
+                                <h1 className="bc-mock-title">Mock Blockchain Lab</h1>
+                                <span className="bc-sim-pill">EDUCATIONAL SIMULATION</span>
+                            </div>
+                            <p className="bc-mock-subtitle">
+                                Interactive consensus simulator — does not interact with the immutable Hyperledger Fabric ledger.
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            className="fi-btn fi-btn-primary"
+                            onClick={() => handleSwitchSection('fabric')}
+                        >
+                            ← Return to Fabric Integrity Center
+                        </button>
+                    </div>
+
                     <div className="bc-mock-warning">
                         <span className="bc-mock-warning-icon">⚠</span>
                         <span>
-                            <strong>SIMULATION MODE</strong> — The Mock Blockchain Lab below is a purely educational
-                            demonstration. It does NOT represent real Fabric transactions, real commitments,
-                            or real ZeroLeak data. Use the <strong>Fabric Integrity Center</strong> tab to
-                            verify real integrity on the Hyperledger Fabric ledger.
+                            <strong>SIMULATION ACTIVE</strong> — This sandbox operates independently with local simulated blocks.
+                            It does not reflect live blockchain commitments or change-stream tamper detection.
                         </span>
                     </div>
+
                     <MockBlockchainDashboard />
                 </div>
             )}

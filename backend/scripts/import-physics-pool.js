@@ -14,8 +14,10 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const CSV_PATH = process.env.CSV_PATH || path.resolve(__dirname, '../../JEE_NEET_Physics_Question_Bank_100001.csv');
-const MONGO_URI = process.env.MONGODB_URI || 'mongodb+srv://zeroleak:Zeroleak@cluster0.mcnxzcb.mongodb.net/test';
-const BATCH_SIZE = 2500;
+const MONGO_URI = process.env.MONGODB_URI;
+const PROFESSOR_EMAIL = process.env.PROFESSOR_EMAIL;
+const BATCH_SIZE = parseInt(process.env.BATCH_SIZE || '2500', 10);
+const SUBJECT_NAME = 'Physics';
 
 function parseCSVLine(line) {
     const result = [];
@@ -43,10 +45,21 @@ function parseCSVLine(line) {
 
 async function runImport() {
     console.log('================================================================');
-    console.log(' ZeroLeak High-Speed Question Ingestion Engine');
-    console.log(' Target Pool: Physics (JEE / NEET)');
-    console.log(' Professor:   ashish@zeroleak.com');
+    console.log(` ZeroLeak High-Speed Question Ingestion Engine`);
+    console.log(` Target Pool: ${SUBJECT_NAME} (JEE / NEET)`);
+    console.log(` Professor:   ${PROFESSOR_EMAIL}`);
+    console.log(` Source File: ${CSV_PATH}`);
     console.log('================================================================');
+
+    if (!MONGO_URI) {
+        console.error('[ERROR] MONGODB_URI not found in environment.');
+        process.exit(1);
+    }
+
+    if (!PROFESSOR_EMAIL) {
+        console.error('[ERROR] PROFESSOR_EMAIL not found in environment.');
+        process.exit(1);
+    }
 
     if (!fs.existsSync(CSV_PATH)) {
         console.error(`[ERROR] CSV file not found at: ${CSV_PATH}`);
@@ -70,9 +83,9 @@ async function runImport() {
     const questionsCollection = db.collection('questions');
     const auditLogsCollection = db.collection('auditlogs');
 
-    const professor = await professorsCollection.findOne({ email: 'ashish@zeroleak.com' });
+    const professor = await professorsCollection.findOne({ email: PROFESSOR_EMAIL });
     if (!professor) {
-        console.error('[ERROR] Professor ashish@zeroleak.com not found in database!');
+        console.error(`[ERROR] Professor ${PROFESSOR_EMAIL} not found in database!`);
         await mongoose.disconnect();
         process.exit(1);
     }
@@ -244,7 +257,7 @@ async function runImport() {
     // Record Audit Log
     try {
         await auditLogsCollection.insertOne({
-            actor: 'ashish@zeroleak.com',
+            actor: PROFESSOR_EMAIL,
             actorRole: 'Professor',
             action: 'QUESTION_BATCH_IMPORT',
             targetType: 'QuestionPool',
