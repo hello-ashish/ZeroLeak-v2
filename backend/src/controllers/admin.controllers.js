@@ -1142,8 +1142,9 @@ export const broadcastAnnouncement = async (req, res) => {
             type: "INFO"
         }));
 
-        if (notifications.length > 0) {
-            await Notification.insertMany(notifications);
+        const CHUNK_SIZE = 500;
+        for (let i = 0; i < notifications.length; i += CHUNK_SIZE) {
+            await Notification.insertMany(notifications.slice(i, i + CHUNK_SIZE));
         }
 
         res.status(200).json({ message: "Broadcast successful", count: notifications.length });

@@ -9,7 +9,10 @@ export default defineConfig({
   server: {
     allowedHosts: true,
     proxy: {
-      '/api': backendTarget,
+      '/api': {
+        target: backendTarget,
+        changeOrigin: true
+      },
       '/proctoring': {
         target: backendTarget,
         ws: true,
