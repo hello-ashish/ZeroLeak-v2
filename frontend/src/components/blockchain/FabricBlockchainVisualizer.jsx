@@ -295,7 +295,7 @@ export default function FabricBlockchainVisualizer({ token, onVerifyEntity }) {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    fontSize: '0.8125rem'
+                    fontSize: '13px'
                 }}>
                     <span>Failed to sync recent blocks: {error}</span>
                     <button className="fi-btn fi-btn-secondary fi-btn-sm" onClick={() => load(true)}>Retry</button>
@@ -353,11 +353,11 @@ export default function FabricBlockchainVisualizer({ token, onVerifyEntity }) {
                     </div>
                     <div className="fbv-stat-item">
                         <span className="fbv-stat-lbl">Consensus</span>
-                        <span className="fbv-stat-val" style={{ fontSize: '0.9375rem' }}>Raft (etcdraft)</span>
+                        <span className="fbv-stat-val" style={{ fontSize: '15px' }}>Raft (etcdraft)</span>
                     </div>
                     <div className="fbv-stat-item">
                         <span className="fbv-stat-lbl">Endorsing Peers</span>
-                        <span className="fbv-stat-val" style={{ fontSize: '0.9375rem' }}>Org1 + Org2</span>
+                        <span className="fbv-stat-val" style={{ fontSize: '15px' }}>Org1 + Org2</span>
                     </div>
                 </div>
             </div>
@@ -365,7 +365,7 @@ export default function FabricBlockchainVisualizer({ token, onVerifyEntity }) {
             {/* ─── Consortium Topology Panel (Expandable) ────────────────────── */}
             {showNetworkNodes && (
                 <div className="fbv-topology-panel">
-                    <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', color: 'var(--fi-text-muted)' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', color: 'var(--fi-text-muted)' }}>
                         Fabric Consortium Topology & Endorsement
                     </div>
                     <div className="fbv-topology-grid">
@@ -437,16 +437,6 @@ export default function FabricBlockchainVisualizer({ token, onVerifyEntity }) {
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <button
-                        type="button"
-                        className="fi-btn fi-btn-secondary fi-btn-sm"
-                        onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
-                        title={sortOrder === 'desc' ? 'Currently: Newest First. Click for Oldest First (Genesis → Latest)' : 'Currently: Oldest First. Click for Newest First (Latest → Genesis)'}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 500 }}
-                    >
-                        <ArrowUpDown size={13} style={{ color: 'var(--brand-primary)' }} />
-                        <span>{sortOrder === 'desc' ? 'Newest First' : 'Oldest First'}</span>
-                    </button>
 
                     <div className="fi-search-box">
                         <Search size={13} className="fi-search-icon" />
@@ -555,7 +545,7 @@ export default function FabricBlockchainVisualizer({ token, onVerifyEntity }) {
                                                         <span style={{ color: 'var(--fi-text-muted)' }}>—</span>
                                                     )}
                                                 </td>
-                                                <td style={{ fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
+                                                <td style={{ fontSize: '12px', whiteSpace: 'nowrap' }}>
                                                     {b.timestamp ? new Date(b.timestamp).toLocaleTimeString() : '—'}
                                                 </td>
                                                 <td style={{ textAlign: 'right' }}>
@@ -581,7 +571,7 @@ export default function FabricBlockchainVisualizer({ token, onVerifyEntity }) {
                                 <span>
                                     Showing <strong>{((validCurrentPage - 1) * pageSize) + 1}</strong> – <strong>{Math.min(validCurrentPage * pageSize, totalRecords)}</strong> of <strong>{totalRecords}</strong> blocks
                                 </span>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.75rem', color: 'var(--fi-text-muted)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '12px', color: 'var(--fi-text-muted)' }}>
                                     <span>Per page:</span>
                                     <select
                                         value={pageSize}
@@ -592,7 +582,7 @@ export default function FabricBlockchainVisualizer({ token, onVerifyEntity }) {
                                             color: 'var(--fi-text-primary)',
                                             borderRadius: 'var(--fi-radius-xs)',
                                             padding: '2px 6px',
-                                            fontSize: '0.75rem',
+                                            fontSize: '12px',
                                             cursor: 'pointer'
                                         }}
                                     >
@@ -613,7 +603,7 @@ export default function FabricBlockchainVisualizer({ token, onVerifyEntity }) {
                                 >
                                     ‹ Prev
                                 </button>
-                                <span style={{ fontSize: '0.75rem', padding: '0 8px' }}>
+                                <span style={{ fontSize: '13px', padding: '0 8px' }}>
                                     {validCurrentPage} / {totalPages}
                                 </span>
                                 <button
@@ -984,19 +974,19 @@ export default function FabricBlockchainVisualizer({ token, onVerifyEntity }) {
                                         <div className="fi-meta-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
                                             <div className="fi-meta-item">
                                                 <span className="fi-meta-label">Commitment ID</span>
-                                                <span className="fi-meta-val" style={{ fontFamily: 'var(--fi-font-mono)', fontSize: '0.75rem' }}>
+                                                <span className="fi-meta-val" style={{ fontFamily: 'var(--fi-font-mono)', fontSize: '12px' }}>
                                                     {selectedBlock.commitment.id || selectedBlock.commitment.commitmentId || '—'}
                                                 </span>
                                             </div>
                                             <div className="fi-meta-item">
                                                 <span className="fi-meta-label">Entity Type & ID</span>
-                                                <span className="fi-meta-val" style={{ fontFamily: 'var(--fi-font-mono)', fontSize: '0.75rem' }}>
+                                                <span className="fi-meta-val" style={{ fontFamily: 'var(--fi-font-mono)', fontSize: '12px' }}>
                                                     {selectedBlock.commitment.eventType?.replace('_COMMITMENT', '') || selectedBlock.type} · {selectedBlock.commitment.entityId || '—'}
                                                 </span>
                                             </div>
                                             <div className="fi-meta-item" style={{ gridColumn: 'span 2' }}>
                                                 <span className="fi-meta-label">Cryptographic Digest</span>
-                                                <span className="fi-meta-val" style={{ fontFamily: 'var(--fi-font-mono)', fontSize: '0.75rem', wordBreak: 'break-all' }}>
+                                                <span className="fi-meta-val" style={{ fontFamily: 'var(--fi-font-mono)', fontSize: '12px', wordBreak: 'break-all' }}>
                                                     {selectedBlock.commitment.dataHash || '—'}
                                                 </span>
                                             </div>
@@ -1052,7 +1042,7 @@ export default function FabricBlockchainVisualizer({ token, onVerifyEntity }) {
                                             World State Read/Write Set (RWSet)
                                         </div>
                                         <div className="fi-table-wrapper" style={{ maxHeight: 180, overflowY: 'auto' }}>
-                                            <table className="fi-table" style={{ fontSize: '0.75rem' }}>
+                                            <table className="fi-table" style={{ fontSize: '12px' }}>
                                                 <thead>
                                                     <tr>
                                                         <th style={{ width: 70 }}>Action</th>

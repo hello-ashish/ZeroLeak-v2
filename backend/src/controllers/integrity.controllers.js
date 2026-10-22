@@ -282,7 +282,7 @@ export const dismissIntegrityAlerts = async (req, res) => {
         const result = await Notification.updateMany(filter, { $set: { isRead: true } });
 
         try {
-            const { AuditLog } = await import('../models/auditLog.models.js');
+            const { AuditLog } = await import('../models/auditlog.models.js');
             await AuditLog.create({
                 actor: req.admin?.name || req.auditor?.name || "Admin",
                 actorRole: req.admin ? "Admin" : "Auditor",
@@ -293,7 +293,7 @@ export const dismissIntegrityAlerts = async (req, res) => {
                     : `Tamper incident (${deliveryIds?.length || 0} deliveries) acknowledged`,
                 status: "success"
             });
-        } catch (_) {}
+        } catch (_) { }
 
         res.json({
             success: true,
@@ -319,7 +319,7 @@ export const clearIntegrityAlerts = async (req, res) => {
         const result = await Notification.deleteMany(filter);
 
         try {
-            const { AuditLog } = await import('../models/auditLog.models.js');
+            const { AuditLog } = await import('../models/auditlog.models.js');
             await AuditLog.create({
                 actor: req.admin?.name || req.auditor?.name || "Admin",
                 actorRole: req.admin ? "Admin" : "Auditor",
@@ -330,7 +330,7 @@ export const clearIntegrityAlerts = async (req, res) => {
                     : `Tamper incident (${deliveryIds?.length || 0} deliveries) cleared from logs`,
                 status: "success"
             });
-        } catch (_) {}
+        } catch (_) { }
 
         res.json({
             success: true,
@@ -346,17 +346,44 @@ export const clearIntegrityAlerts = async (req, res) => {
 // ─── POST /api/integrity/verify-ledger ───────────────────────────────────────
 // Bulk verification: fetches all CONFIRMED outbox records and re-verifies each
 // entity's recomputed MongoDB hash against the immutable Fabric commitment.
+// Supports both standard JSON responses and real-time SSE streaming (?stream=true).
 export const verifyAllCommitments = async (req, res) => {
+    const isStream = req.query.stream === 'true' || req.headers.accept?.includes('text/event-stream');
+
+    if (isStream) {
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache, no-transform');
+        res.setHeader('Connection', 'keep-alive');
+        res.setHeader('X-Accel-Buffering', 'no');
+        res.flushHeaders?.();
+    }
+
+    const sendEvent = (data) => {
+        if (isStream) {
+            res.write(`data: ${JSON.stringify(data)}\n\n`);
+        }
+    };
+
+    let aborted = false;
+    req.on('close', () => {
+        aborted = true;
+    });
+
     try {
         const fabricEnabled = process.env.FABRIC_ENABLED === 'true';
         if (!fabricEnabled) {
-            return res.status(200).json({
+            const emptyPayload = {
                 fabricEnabled: false,
                 summary: { total: 0, verified: 0, tampered: 0, skipped: 0 },
                 results: [],
                 verifiedAt: new Date().toISOString(),
                 message: 'Fabric is disabled. Enable FABRIC_ENABLED=true to run ledger verification.',
-            });
+            };
+            if (isStream) {
+                sendEvent({ type: 'done', ...emptyPayload });
+                return res.end();
+            }
+            return res.status(200).json(emptyPayload);
         }
 
         // Fetch all confirmed commitments from the outbox (strictly excluding legacy mock transactions)
@@ -380,12 +407,35 @@ export const verifyAllCommitments = async (req, res) => {
         }
         const activeRecords = Array.from(latestByEntity.values());
 
+        sendEvent({
+            type: 'init',
+            total: activeRecords.length,
+            message: `Found ${activeRecords.length} commitments to verify`,
+        });
+
+        if (activeRecords.length === 0) {
+            const emptyDone = {
+                fabricEnabled: true,
+                summary: { total: 0, verified: 0, tampered: 0, skipped: 0 },
+                results: [],
+                verifiedAt: new Date().toISOString(),
+            };
+            if (isStream) {
+                sendEvent({ type: 'done', ...emptyDone });
+                return res.end();
+            }
+            return res.status(200).json(emptyDone);
+        }
+
         const results = [];
         let verified = 0;
         let tampered = 0;
         let skipped = 0;
+        let processed = 0;
 
         for (const record of activeRecords) {
+            if (aborted) break;
+
             const { entityType, entityId, commitmentId, version } = record;
             let verResult = null;
 
@@ -400,13 +450,32 @@ export const verifyAllCommitments = async (req, res) => {
                     verResult = await verificationService.verifySecurityEvent(entityId);
                 } else {
                     skipped++;
-                    results.push({
+                    processed++;
+                    const skippedItem = {
                         commitmentId,
                         entityType,
                         entityId,
                         status: 'SKIPPED',
                         reason: 'UNSUPPORTED_ENTITY_TYPE',
                         message: `Verification not supported for entity type: ${entityType}`,
+                    };
+                    results.push(skippedItem);
+
+                    sendEvent({
+                        type: 'progress',
+                        total: activeRecords.length,
+                        processed,
+                        percent: Math.min(100, Math.round((processed / activeRecords.length) * 100)),
+                        entityType,
+                        entityId,
+                        status: 'SKIPPED',
+                        summary: {
+                            total: activeRecords.length,
+                            processed,
+                            verified,
+                            tampered,
+                            skipped,
+                        }
                     });
                     continue;
                 }
@@ -433,6 +502,8 @@ export const verifyAllCommitments = async (req, res) => {
                     }
                 } else skipped++;
 
+                processed++;
+
                 results.push({
                     commitmentId,
                     entityType,
@@ -446,8 +517,26 @@ export const verifyAllCommitments = async (req, res) => {
                     message: verResult?.message,
                     verifiedAt: verResult?.verifiedAt,
                 });
+
+                sendEvent({
+                    type: 'progress',
+                    total: activeRecords.length,
+                    processed,
+                    percent: Math.min(100, Math.round((processed / activeRecords.length) * 100)),
+                    entityType,
+                    entityId,
+                    status: isVerified ? 'VERIFIED' : isTampered ? 'TAMPERED' : 'UNVERIFIABLE',
+                    summary: {
+                        total: activeRecords.length,
+                        processed,
+                        verified,
+                        tampered,
+                        skipped,
+                    }
+                });
             } catch (err) {
                 skipped++;
+                processed++;
                 results.push({
                     commitmentId,
                     entityType,
@@ -456,10 +545,27 @@ export const verifyAllCommitments = async (req, res) => {
                     reason: 'VERIFICATION_EXCEPTION',
                     message: err.message,
                 });
+
+                sendEvent({
+                    type: 'progress',
+                    total: activeRecords.length,
+                    processed,
+                    percent: Math.min(100, Math.round((processed / activeRecords.length) * 100)),
+                    entityType,
+                    entityId,
+                    status: 'ERROR',
+                    summary: {
+                        total: activeRecords.length,
+                        processed,
+                        verified,
+                        tampered,
+                        skipped,
+                    }
+                });
             }
         }
 
-        return res.status(200).json({
+        const finalPayload = {
             fabricEnabled: true,
             summary: {
                 total: activeRecords.length,
@@ -469,9 +575,26 @@ export const verifyAllCommitments = async (req, res) => {
             },
             results,
             verifiedAt: new Date().toISOString(),
-        });
+        };
+
+        if (isStream) {
+            sendEvent({
+                type: 'done',
+                ...finalPayload,
+            });
+            return res.end();
+        }
+
+        return res.status(200).json(finalPayload);
     } catch (e) {
         console.error('[INTEGRITY] Error running bulk ledger verification:', e.message);
+        if (isStream) {
+            sendEvent({
+                type: 'error',
+                message: e.message || 'Bulk ledger verification failed.',
+            });
+            return res.end();
+        }
         return res.status(500).json({ message: 'Bulk ledger verification failed.', error: e.message });
     }
 };

@@ -39,13 +39,13 @@ export default function MockMerkleTreeLab({ block }) {
             <div className="card-header" style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-default)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <GitMerge size={16} style={{ color: 'var(--brand-primary)' }}/>
-                    <h3 className="card-title" style={{ fontSize: '0.9rem' }}>MERKLE TREE LAB</h3>
+                    <h3 className="card-title" style={{ fontSize: '15px' }}>MERKLE TREE LAB</h3>
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                    <button className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: '0.75rem' }} onClick={handleGenerate}>
+                    <button className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: '12px' }} onClick={handleGenerate}>
                         <Play size={12} style={{ marginRight: '4px' }} /> Generate Tree
                     </button>
-                    <button className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: '0.75rem' }} onClick={handleVerify} disabled={step < 2}>
+                    <button className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: '12px' }} onClick={handleVerify} disabled={step < 2}>
                         <ShieldCheck size={12} style={{ marginRight: '4px' }} /> Verify Proof
                     </button>
                 </div>
@@ -83,19 +83,19 @@ export default function MockMerkleTreeLab({ block }) {
                         </div>
                     </div>
                 ) : (
-                    <div style={{ height: '58px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', fontSize: '0.85rem' }}>
+                    <div style={{ height: '58px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', fontSize: '13px' }}>
                         Click "Generate Tree" to compute hashes
                     </div>
                 )}
                 
                 {verified !== null && (
-                    <div style={{ marginTop: '16px', fontSize: '0.85rem', fontWeight: 600, color: verified ? 'var(--success)' : 'var(--danger)' }}>
+                    <div style={{ marginTop: '16px', fontSize: '13px', fontWeight: 600, color: verified ? 'var(--success)' : 'var(--danger)' }}>
                         {verified ? '✓ Merkle Proof Verified (Leaves match root)' : '✗ Merkle Proof Failed (Hash mismatch)'}
                     </div>
                 )}
 
                 {!verified && (
-                    <div style={{ marginTop: '24px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                    <div style={{ marginTop: '24px', fontSize: '12px', color: 'var(--text-secondary)' }}>
                         Visualizing how multiple payload events roll up into a single cryptographic root hash inside this block.
                     </div>
                 )}

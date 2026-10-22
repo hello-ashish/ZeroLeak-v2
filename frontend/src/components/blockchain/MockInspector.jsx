@@ -11,15 +11,15 @@ export default function MockInspector({ block }) {
         <div className="card mock-inspector">
             <div className="card-header" style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--border-default)' }}>
                 <Search size={16} style={{ color: 'var(--brand-primary)' }}/>
-                <h3 className="card-title" style={{ fontSize: '0.9rem' }}>BLOCK INSPECTOR</h3>
+                <h3 className="card-title" style={{ fontSize: '15px' }}>BLOCK INSPECTOR</h3>
             </div>
             <div className="card-body" style={{ paddingTop: '16px' }}>
                 <div style={{ marginBottom: '20px', paddingBottom: '16px', borderBottom: '1px solid var(--border-default)' }}>
                     <h4 style={{ margin: '0 0 4px 0', color: 'var(--text-primary)' }}>BLOCK #{block.height - 1}</h4>
                     {isInvalid ? (
-                        <div style={{ color: 'var(--danger)', fontSize: '0.85rem', fontWeight: 600 }}>⚠ VALIDATION FAILED</div>
+                        <div style={{ color: 'var(--danger)', fontSize: '13px', fontWeight: 600 }}>⚠ VALIDATION FAILED</div>
                     ) : (
-                        <div style={{ color: 'var(--success)', fontSize: '0.85rem', fontWeight: 600 }}>✓ VERIFIED</div>
+                        <div style={{ color: 'var(--success)', fontSize: '13px', fontWeight: 600 }}>✓ VERIFIED</div>
                     )}
                 </div>
 
@@ -50,7 +50,7 @@ export default function MockInspector({ block }) {
                     <span className={`block-hash ${isInvalid ? 'text-danger' : 'highlight'}`} style={{ wordBreak: 'break-all', display: 'block', width: '100%' }}>{block.canonicalHash}</span>
                 </div>
                 
-                <div style={{ marginTop: '16px', padding: '12px', background: 'var(--bg-card)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)', fontSize: '0.8rem' }}>
+                <div style={{ marginTop: '16px', padding: '12px', background: 'var(--bg-card)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)', fontSize: '12px' }}>
                     <div style={{ color: 'var(--text-secondary)', marginBottom: '4px' }}>Simulated Payload:</div>
                     <code style={{ color: 'var(--text-primary)', wordBreak: 'break-all' }}>
                         {block.payloadString}

@@ -25,6 +25,7 @@
     background: transparent;
     color: var(--text-secondary);
     cursor: pointer;
+    font-size: 13px;
     font-weight: 600;
     transition: all var(--transition-fast);
 }
@@ -65,7 +66,7 @@
 .status-badge {
     padding: 4px 8px;
     border-radius: var(--radius-sm);
-    font-size: 0.75rem;
+    font-size: 12px;
     font-weight: bold;
 }
 
@@ -123,7 +124,7 @@
 .block-header {
     display: flex;
     justify-content: space-between;
-    font-size: 0.85rem;
+    font-size: 13px;
     color: var(--text-primary);
     font-weight: 600;
     margin-bottom: 8px;
@@ -131,7 +132,7 @@
 
 .block-hash {
     font-family: var(--font-mono);
-    font-size: 0.8rem;
+    font-size: 12px;
     color: var(--text-secondary);
     word-break: break-all;
 }
@@ -139,7 +140,7 @@
 .arrow-down {
     text-align: center;
     color: var(--text-tertiary);
-    font-size: 1.2rem;
+    font-size: 16px;
     margin: -4px 0;
 }
 
@@ -167,7 +168,7 @@
     justify-content: space-between;
     padding: 12px 0;
     border-bottom: 1px solid var(--border-default);
-    font-size: 0.9rem;
+    font-size: 13px;
 }
 .data-row:last-child {
     border-bottom: none;
@@ -219,7 +220,7 @@
     border: 1px solid var(--border-default);
     border-radius: var(--radius-sm);
     color: var(--text-primary);
-    font-size: 0.9rem;
+    font-size: 13px;
     cursor: pointer;
 }
 
@@ -239,7 +240,7 @@
 }
 
 .stat-label {
-    font-size: 0.75rem;
+    font-size: 12px;
     font-weight: 700;
     color: var(--text-tertiary);
     letter-spacing: 0.05em;
@@ -247,7 +248,7 @@
 }
 
 .stat-value {
-    font-size: 1.5rem;
+    font-size: 24px;
     font-weight: 700;
     color: var(--text-primary);
 }
@@ -363,13 +364,13 @@
 
 .block-number {
     font-weight: 800;
-    font-size: 0.95rem;
+    font-size: 14px;
     color: #e2e8f0;
     letter-spacing: 0.05em;
 }
 
 .block-type {
-    font-size: 0.75rem;
+    font-size: 12px;
     font-weight: 700;
     color: #38bdf8;
     margin-bottom: 16px;
@@ -390,7 +391,7 @@
 }
 
 .hash-label {
-    font-size: 0.65rem;
+    font-size: 11px;
     font-weight: 800;
     color: #94a3b8;
     letter-spacing: 0.1em;
@@ -399,7 +400,7 @@
 
 .hash-value {
     font-family: var(--font-mono);
-    font-size: 0.85rem;
+    font-size: 12px;
     color: #cbd5e1;
     background: rgba(0, 0, 0, 0.2);
     padding: 6px 8px;
@@ -482,7 +483,7 @@
     background: #0f172a;
     color: #38bdf8;
     font-family: var(--font-mono);
-    font-size: 0.85rem;
+    font-size: 12px;
     padding: 16px;
     height: 300px;
     overflow-y: auto;
@@ -521,7 +522,7 @@
 }
 
 .node-label {
-    font-size: 0.7rem;
+    font-size: 11px;
     font-weight: 700;
     color: var(--text-secondary);
     margin-bottom: 4px;
@@ -529,7 +530,7 @@
 
 .node-hash {
     font-family: var(--font-mono);
-    font-size: 0.8rem;
+    font-size: 12px;
     color: var(--brand-primary);
 }
 
@@ -625,14 +626,14 @@
 }
 
 .bc-mock-title {
-    font-size: 1.25rem;
+    font-size: 22px;
     font-weight: 700;
     color: var(--text-primary, #f4f4f5);
     margin: 0;
 }
 
 .bc-sim-pill {
-    font-size: 0.68rem;
+    font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -645,7 +646,7 @@
 
 .bc-mock-subtitle {
     margin: 4px 0 0;
-    font-size: 0.85rem;
+    font-size: 13px;
     color: var(--text-secondary, #a1a1aa);
 }
 
@@ -658,12 +659,12 @@
     background: var(--warning-subtle, rgba(245, 158, 11, 0.08));
     border: 1px solid var(--warning-border, rgba(245, 158, 11, 0.25));
     color: var(--text-primary, #f4f4f5);
-    font-size: 0.85rem;
+    font-size: 13px;
     line-height: 1.5;
     margin-bottom: 24px;
 }
 
 .bc-mock-warning-icon {
-    font-size: 1rem;
+    font-size: 16px;
     color: var(--warning, #f59e0b);
 }

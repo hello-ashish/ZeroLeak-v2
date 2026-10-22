@@ -227,7 +227,7 @@ function TamperAlertsPanel({ token, onAlertsUpdated }) {
                     <BellRing size={16} style={{ color: activeIncidents.length > 0 ? 'var(--fi-red)' : 'var(--fi-text-muted)' }} />
                     <h3>
                         Security Incident Log
-                        <span style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--fi-text-muted)', marginLeft: 8 }}>
+                        <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--fi-text-muted)', marginLeft: 8 }}>
                             {activeIncidents.length} Active · {alerts.length - activeIncidents.length} Acknowledged
                         </span>
                     </h3>
@@ -294,12 +294,12 @@ function TamperAlertsPanel({ token, onAlertsUpdated }) {
                             </div>
                             <div style={{ flexGrow: 1 }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, flexWrap: 'wrap', gap: 6 }}>
-                                    <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--fi-text-primary)' }}>
+                                    <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--fi-text-primary)' }}>
                                         {alert.title}
                                     </div>
                                     <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                                         {alert.isAcknowledged ? (
-                                            <span className="fi-status-badge status-connected" style={{ fontSize: '0.6875rem', padding: '2px 8px' }}>
+                                            <span className="fi-status-badge status-connected" style={{ fontSize: '12px', padding: '2px 8px' }}>
                                                 <CheckCircle size={10} /> Acknowledged
                                             </span>
                                         ) : (
@@ -324,10 +324,10 @@ function TamperAlertsPanel({ token, onAlertsUpdated }) {
                                         </button>
                                     </div>
                                 </div>
-                                <div style={{ fontSize: '0.78125rem', color: 'var(--fi-text-secondary)', lineHeight: 1.45 }}>
+                                <div style={{ fontSize: '13px', color: 'var(--fi-text-secondary)', lineHeight: 1.45 }}>
                                     {alert.message}
                                 </div>
-                                <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 8, fontSize: '0.71875rem', color: 'var(--fi-text-muted)' }}>
+                                <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 8, fontSize: '12px', color: 'var(--fi-text-muted)' }}>
                                     <span><Clock size={11} style={{ display: 'inline', marginRight: 4 }} />{new Date(alert.createdAt).toLocaleString()}</span>
                                     <span>Recipients: {alert.recipients?.length || 0}</span>
                                 </div>
@@ -344,13 +344,13 @@ function TamperAlertsPanel({ token, onAlertsUpdated }) {
                             </div>
                             <div style={{ flexGrow: 1 }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-                                    <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>{d.title}</span>
+                                    <span style={{ fontSize: '13px', fontWeight: 600 }}>{d.title}</span>
                                     <span className="fi-type-badge">{d.recipientRole}</span>
                                 </div>
-                                <div style={{ fontSize: '0.75rem', color: 'var(--fi-text-muted)', marginBottom: 4 }}>
+                                <div style={{ fontSize: '12px', color: 'var(--fi-text-muted)', marginBottom: 4 }}>
                                     Recipient: <strong>{d.recipientName}</strong> ({d.recipientEmail})
                                 </div>
-                                <div style={{ fontSize: '0.78125rem', color: 'var(--fi-text-secondary)' }}>
+                                <div style={{ fontSize: '13px', color: 'var(--fi-text-secondary)' }}>
                                     {d.message}
                                 </div>
                             </div>
@@ -513,7 +513,7 @@ function RecentCommitmentsTable({ commitments, loading, onVerify }) {
                                             </code>
                                         </td>
                                         <td><HashDisplay hash={c.dataHash} /></td>
-                                        <td style={{ fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
+                                        <td style={{ fontSize: '12px', whiteSpace: 'nowrap' }}>
                                             {c.blockTimestamp ? new Date(c.blockTimestamp).toLocaleString() : '—'}
                                         </td>
                                         <td>v{c.version ?? 1}</td>
@@ -550,7 +550,7 @@ function RecentCommitmentsTable({ commitments, loading, onVerify }) {
                         >
                             ‹ Prev
                         </button>
-                        <span style={{ fontSize: '0.75rem', padding: '0 8px' }}>
+                        <span style={{ fontSize: '13px', padding: '0 8px' }}>
                             {validCurrentPage} / {totalPages}
                         </span>
                         <button
@@ -577,16 +577,168 @@ function VerifyLedgerPanel({ token }) {
     const [errorMsg, setErrorMsg] = useState(null);
     const [statusFilter, setStatusFilter] = useState('ALL');
     const [searchQuery, setSearchQuery] = useState('');
+    const [progress, setProgress] = useState(0);
+    const [stageText, setStageText] = useState('');
+    const [realStats, setRealStats] = useState({
+        total: 0,
+        processed: 0,
+        percent: 0,
+        entityType: '',
+        entityId: '',
+        verified: 0,
+        tampered: 0,
+        skipped: 0,
+    });
+    const abortControllerRef = useRef(null);
+    const isMountedRef = useRef(true);
+
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+            if (abortControllerRef.current) {
+                abortControllerRef.current.abort();
+            }
+        };
+    }, []);
 
     const handleVerify = async () => {
+        if (state === 'running') return;
         setState('running');
         setReport(null);
         setErrorMsg(null);
+        setProgress(0);
+        setStageText('Connecting to Hyperledger Fabric and retrieving outbox commitments...');
+        setRealStats({
+            total: 0,
+            processed: 0,
+            percent: 0,
+            entityType: '',
+            entityId: '',
+            verified: 0,
+            tampered: 0,
+            skipped: 0,
+        });
+
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
         try {
-            const data = await apiFetch('/verify-ledger', token, { method: 'POST' });
-            setReport(data);
-            setState('done');
+            const effectiveToken = token || localStorage.getItem('adminToken') || localStorage.getItem('auditorToken') || localStorage.getItem('token');
+            const headers = {
+                'Content-Type': 'application/json',
+                'Accept': 'text/event-stream'
+            };
+            if (effectiveToken && effectiveToken !== 'undefined' && effectiveToken !== 'null') {
+                headers['Authorization'] = `Bearer ${effectiveToken}`;
+            }
+
+            const res = await fetch(`${API_BASE}/api/integrity/verify-ledger?stream=true`, {
+                method: 'POST',
+                headers,
+                signal: abortControllerRef.current.signal,
+            });
+
+            if (!res.ok) {
+                let errData;
+                try { errData = await res.json(); } catch (_) { }
+                throw new Error(errData?.message || `Verification failed with HTTP ${res.status}`);
+            }
+
+            const contentType = res.headers.get('content-type') || '';
+            if (!contentType.includes('text/event-stream') || !res.body) {
+                // Fallback if not streaming
+                const data = await res.json();
+                if (!isMountedRef.current) return;
+                setProgress(100);
+                setReport(data);
+                setState('done');
+                return;
+            }
+
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder('utf-8');
+            let buffer = '';
+            let receivedReport = null;
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed.startsWith('data:')) continue;
+                    const jsonStr = trimmed.slice(5).trim();
+                    if (!jsonStr) continue;
+
+                    try {
+                        const evt = JSON.parse(jsonStr);
+                        if (!isMountedRef.current) return;
+
+                        if (evt.type === 'init') {
+                            setStageText(`Identified ${evt.total} unique commitments. Starting cryptographic audit...`);
+                            setRealStats(prev => ({ ...prev, total: evt.total }));
+                        } else if (evt.type === 'progress') {
+                            const pct = evt.percent ?? Math.min(100, Math.round((evt.processed / (evt.total || 1)) * 100));
+                            setProgress(pct);
+                            setStageText(`Auditing ${evt.entityType} (${evt.entityId})...`);
+                            setRealStats({
+                                total: evt.total,
+                                processed: evt.processed,
+                                percent: pct,
+                                entityType: evt.entityType,
+                                entityId: evt.entityId,
+                                verified: evt.summary?.verified || 0,
+                                tampered: evt.summary?.tampered || 0,
+                                skipped: evt.summary?.skipped || 0,
+                            });
+                        } else if (evt.type === 'done') {
+                            receivedReport = {
+                                fabricEnabled: evt.fabricEnabled,
+                                summary: evt.summary,
+                                results: evt.results,
+                                verifiedAt: evt.verifiedAt,
+                                message: evt.message,
+                            };
+                            setProgress(100);
+                            setStageText('Audit complete');
+                            setRealStats(prev => ({
+                                ...prev,
+                                processed: evt.summary?.total || prev.total,
+                                total: evt.summary?.total || prev.total,
+                                percent: 100,
+                                verified: evt.summary?.verified || 0,
+                                tampered: evt.summary?.tampered || 0,
+                                skipped: evt.summary?.skipped || 0,
+                            }));
+                        } else if (evt.type === 'error') {
+                            throw new Error(evt.message || 'Verification stream error');
+                        }
+                    } catch (parseErr) {
+                        if (parseErr.message && !parseErr.message.includes('Unexpected token')) {
+                            throw parseErr;
+                        }
+                    }
+                }
+            }
+
+            if (!isMountedRef.current) return;
+
+            if (receivedReport) {
+                setReport(receivedReport);
+                setState('done');
+            } else {
+                throw new Error('Connection closed before audit completion.');
+            }
         } catch (err) {
+            if (err.name === 'AbortError') return;
+            if (!isMountedRef.current) return;
             setErrorMsg(err.message || 'Verification failed.');
             setState('error');
         }
@@ -620,19 +772,119 @@ function VerifyLedgerPanel({ token }) {
                     disabled={state === 'running'}
                 >
                     {state === 'running' ? <Loader2 size={13} className="spin" /> : <Play size={13} />}
-                    {state === 'running' ? 'Scanning Blockchain...' : 'Run Ledger Verification'}
+                    {state === 'running' ? (
+                        realStats.total > 0
+                            ? `Verifying... ${progress}% (${realStats.processed}/${realStats.total})`
+                            : `Verifying... ${progress}%`
+                    ) : 'Run Ledger Verification'}
                 </button>
             </div>
 
             <div className="fi-card-body">
-                <p style={{ fontSize: '0.8125rem', color: 'var(--fi-text-secondary)', lineHeight: 1.5, margin: '0 0 16px' }}>
+                <p style={{ fontSize: '13px', color: 'var(--fi-text-secondary)', lineHeight: 1.5, margin: '0 0 16px' }}>
                     Recomputes the SHA-256 digest of every stored MongoDB entity and compares it against the immutable Hyperledger Fabric ledger block commitment.
                 </p>
 
                 {errorMsg && (
-                    <div style={{ padding: '10px 14px', borderRadius: 'var(--fi-radius-sm)', background: 'var(--fi-red-subtle)', border: '1px solid var(--fi-red-border)', color: '#fca5a5', fontSize: '0.8125rem', marginBottom: 16 }}>
+                    <div style={{ padding: '10px 14px', borderRadius: 'var(--fi-radius-sm)', background: 'var(--fi-red-subtle)', border: '1px solid var(--fi-red-border)', color: '#fca5a5', fontSize: '13px', marginBottom: 16 }}>
                         <AlertTriangle size={14} style={{ display: 'inline', marginRight: 6 }} />
                         {errorMsg}
+                    </div>
+                )}
+
+                {(state === 'running' || (state === 'done' && report)) && (
+                    <div className={`fi-verify-progress-card ${state === 'done' ? 'is-complete' : 'is-running'}`}>
+                        <div className="fi-verify-progress-header">
+                            <div className="fi-verify-progress-info">
+                                <div className={`fi-verify-progress-icon ${state === 'done' ? 'completed' : ''}`}>
+                                    {state === 'running' ? (
+                                        <Loader2 size={16} className="spin" />
+                                    ) : (
+                                        <CheckCircle size={16} />
+                                    )}
+                                </div>
+                                <div>
+                                    <div className="fi-verify-progress-title">
+                                        {state === 'running' ? 'Scanning Blockchain & Cross-Verifying SHA-256 Hashes...' : 'Ledger Verification Complete'}
+                                    </div>
+                                    <div className="fi-verify-progress-stage">
+                                        {state === 'running' ? (
+                                            <>
+                                                <span className="fi-verify-pulse" />
+                                                {realStats.entityType ? (
+                                                    <span>
+                                                        Auditing <strong>{realStats.entityType}</strong> <code className="fi-code">{realStats.entityId}</code>
+                                                    </span>
+                                                ) : (
+                                                    <span>{stageText}</span>
+                                                )}
+                                            </>
+                                        ) : (
+                                            <>
+                                                <span className="fi-status-dot" style={{ background: 'var(--fi-green)' }} />
+                                                <span>Audit complete — verified {report?.summary?.total || 0} entities against Fabric blockchain</span>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                            <div className={`fi-verify-progress-pct ${state === 'done' ? 'completed' : ''}`}>
+                                {progress}<span>%</span>
+                            </div>
+                        </div>
+
+                        <div className="fi-verify-progress-track" role="progressbar" aria-valuenow={progress} aria-valuemin="0" aria-valuemax="100">
+                            <div
+                                className={`fi-verify-progress-bar ${state === 'done' ? 'completed' : ''}`}
+                                style={{ width: `${progress}%` }}
+                            />
+                        </div>
+
+                        <div className="fi-verify-progress-footer">
+                            <span>
+                                {state === 'running' ? (
+                                    realStats.total > 0 ? (
+                                        <>
+                                            <strong>{realStats.processed}</strong> of <strong>{realStats.total}</strong> commitments verified ({progress}%)
+                                            <span style={{ marginLeft: 10, color: 'var(--fi-green)' }}>
+                                                · {realStats.verified} Matches
+                                            </span>
+                                            {realStats.tampered > 0 && (
+                                                <span style={{ marginLeft: 8, color: 'var(--fi-red)', fontWeight: 600 }}>
+                                                    · {realStats.tampered} Tampered
+                                                </span>
+                                            )}
+                                            {realStats.skipped > 0 && (
+                                                <span style={{ marginLeft: 8, color: 'var(--fi-text-muted)' }}>
+                                                    · {realStats.skipped} Skipped
+                                                </span>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <>Live SHA-256 cross-check · Channel: <code className="fi-code">zeroleak-channel</code></>
+                                    )
+                                ) : (
+                                    <>
+                                        <span style={{ color: 'var(--fi-green)', fontWeight: 600 }}>
+                                            ✓ {report?.summary?.verified || 0} Matches Verified
+                                        </span>
+                                        {(report?.summary?.tampered || 0) > 0 && (
+                                            <span style={{ color: 'var(--fi-red)', fontWeight: 600, marginLeft: 12 }}>
+                                                ⚠ {report.summary.tampered} Tampered
+                                            </span>
+                                        )}
+                                        {(report?.summary?.skipped || 0) > 0 && (
+                                            <span style={{ color: 'var(--fi-text-muted)', marginLeft: 12 }}>
+                                                · {report.summary.skipped} Skipped
+                                            </span>
+                                        )}
+                                    </>
+                                )}
+                            </span>
+                            <span className="fi-verify-progress-pct-label">
+                                {realStats.processed || 0} / {realStats.total || 0} ({progress}%)
+                            </span>
+                        </div>
                     </div>
                 )}
 
@@ -761,7 +1013,7 @@ function VerificationPanel({ token, entityType, setEntityType, entityId, setEnti
             </div>
 
             <div className="fi-card-body">
-                <p style={{ fontSize: '0.8125rem', color: 'var(--fi-text-secondary)', margin: '0 0 16px' }}>
+                <p style={{ fontSize: '13px', color: 'var(--fi-text-secondary)', margin: '0 0 16px' }}>
                     Select an entity type and enter its 24-character hexadecimal MongoDB ObjectId to verify live hash against the Fabric commitment.
                 </p>
 
@@ -799,7 +1051,7 @@ function VerificationPanel({ token, entityType, setEntityType, entityId, setEnti
                 </div>
 
                 {error && (
-                    <div style={{ padding: '10px 14px', borderRadius: 'var(--fi-radius-sm)', background: 'var(--fi-red-subtle)', border: '1px solid var(--fi-red-border)', color: '#fca5a5', fontSize: '0.8125rem' }}>
+                    <div style={{ padding: '10px 14px', borderRadius: 'var(--fi-radius-sm)', background: 'var(--fi-red-subtle)', border: '1px solid var(--fi-red-border)', color: '#fca5a5', fontSize: '13px' }}>
                         <AlertTriangle size={14} style={{ display: 'inline', marginRight: 6 }} />
                         {error}
                     </div>
@@ -810,7 +1062,7 @@ function VerificationPanel({ token, entityType, setEntityType, entityId, setEnti
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                 <StatusBadge status={status} />
-                                <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>{result.entityType} · {result.entityId}</span>
+                                <span style={{ fontSize: '13px', fontWeight: 600 }}>{result.entityType} · {result.entityId}</span>
                             </div>
                         </div>
 
@@ -954,7 +1206,7 @@ function OutboxRecommitPanel({ token, fabricStatus, ledgerHeight, onRefreshStatu
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <StatusBadge status={isRunning ? 'PROCESSING' : job.status === 'completed' ? 'CONFIRMED' : 'FAILED'} />
-                            <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>
+                            <span style={{ fontSize: '13px', fontWeight: 600 }}>
                                 {isRunning ? 'Anchor synchronization in progress...' : job.status === 'completed' ? 'Recommit completed' : 'Job stopped'}
                             </span>
                         </div>
@@ -969,7 +1221,7 @@ function OutboxRecommitPanel({ token, fabricStatus, ledgerHeight, onRefreshStatu
                         <div className="fi-progress-bar" style={{ width: `${percent}%` }} />
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--fi-text-muted)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--fi-text-muted)' }}>
                         <span>{job.processed} of {job.total} commitments processed ({percent}%)</span>
                         <span>Success: {job.succeeded} · Failures: {job.failed}</span>
                     </div>
@@ -1036,7 +1288,7 @@ function OutboxRecommitPanel({ token, fabricStatus, ledgerHeight, onRefreshStatu
 
             {/* Reconnect Gateway Action */}
             <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 10, marginTop: 12 }}>
-                <span style={{ fontSize: '0.8125rem', color: 'var(--fi-text-muted)' }}>Need fresh gRPC TLS credentials after network restart?</span>
+                <span style={{ fontSize: '13px', color: 'var(--fi-text-muted)' }}>Need fresh gRPC TLS credentials after network restart?</span>
                 <button
                     type="button"
                     className="fi-btn fi-btn-secondary fi-btn-sm"
@@ -1240,8 +1492,8 @@ export default function FabricIntegrityCenter({ token, onOpenMockLab }) {
 
                     <StatusBadge status={
                         !fabricStatus ? 'LOADING' :
-                        !isEnabled ? 'FABRIC_DISABLED' :
-                        isConnected ? 'CONNECTED' : 'DISCONNECTED'
+                            !isEnabled ? 'FABRIC_DISABLED' :
+                                isConnected ? 'CONNECTED' : 'DISCONNECTED'
                     } />
 
                     {onOpenMockLab && (
@@ -1353,9 +1605,6 @@ export default function FabricIntegrityCenter({ token, onOpenMockLab }) {
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                     <StatusBadge status={(!fabricStatus || loading) ? 'LOADING' : isConnected ? 'CONNECTED' : isEnabled ? 'DISCONNECTED' : 'FABRIC_DISABLED'} />
-                                    <button className="fi-refresh-btn" onClick={loadStatus} disabled={loading} title="Refresh Network Status">
-                                        <RefreshCw size={12} className={loading ? 'spin' : ''} />
-                                    </button>
                                 </div>
                             </div>
 

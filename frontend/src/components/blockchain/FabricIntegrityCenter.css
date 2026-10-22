@@ -105,16 +105,16 @@
 }
 
 .fi-page-title {
-    font-size: 1.15rem;
-    font-weight: 600;
+    font-size: 22px;
+    font-weight: 700;
     color: var(--fi-text-primary);
     margin: 0;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.5px;
 }
 
 .fi-page-subtitle {
-    margin: 2px 0 0;
-    font-size: 0.8125rem;
+    margin: 3px 0 0;
+    font-size: 13px;
     color: var(--fi-text-secondary);
 }
 
@@ -132,7 +132,7 @@
     gap: 6px;
     padding: 4px 10px;
     border-radius: var(--fi-radius-full);
-    font-size: 0.6875rem;
+    font-size: 12px;
     font-weight: 600;
     letter-spacing: 0.04em;
     text-transform: uppercase;
@@ -142,8 +142,8 @@
 }
 
 .fi-sim-badge {
-    font-size: 0.625rem;
-    padding: 1px 6px;
+    font-size: 11px;
+    padding: 2px 7px;
     border-radius: 3px;
     background: rgba(245, 158, 11, 0.15);
     color: var(--fi-amber);
@@ -158,7 +158,7 @@
     gap: 6px;
     padding: 4px 10px;
     border-radius: var(--fi-radius-full);
-    font-size: 0.75rem;
+    font-size: 12px;
     font-weight: 500;
     line-height: 1;
     background: var(--fi-surface-subtle);
@@ -239,14 +239,14 @@
 }
 
 .fi-critical-tamper-title {
-    font-size: 0.875rem;
+    font-size: 14px;
     font-weight: 600;
     color: #fca5a5;
     letter-spacing: -0.01em;
 }
 
 .fi-critical-tamper-desc {
-    font-size: 0.78125rem;
+    font-size: 13px;
     color: #cbd5e1;
     margin-top: 2px;
 }
@@ -281,9 +281,9 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    padding: 7px 14px;
+    padding: 8px 16px;
     border-radius: var(--fi-radius-sm);
-    font-size: 0.8125rem;
+    font-size: 13px;
     font-weight: 500;
     color: var(--fi-text-secondary);
     background: transparent;
@@ -302,13 +302,13 @@
     color: var(--fi-text-primary);
     background: var(--fi-surface);
     box-shadow: var(--shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.3));
-    font-weight: 500; /* Preserve font-weight to prevent sibling tab width shifts */
+    font-weight: 600;
 }
 
 .fi-tab-badge {
-    padding: 1px 6px;
+    padding: 1px 7px;
     border-radius: var(--fi-radius-full);
-    font-size: 0.6875rem;
+    font-size: 11px;
     font-weight: 700;
     line-height: 1.2;
     background: var(--fi-surface-subtle);
@@ -380,8 +380,8 @@
 }
 
 .fi-metric-value {
-    font-size: 1.75rem;
-    font-weight: 600;
+    font-size: 24px;
+    font-weight: 700;
     letter-spacing: -0.02em;
     color: var(--fi-text-primary);
     line-height: 1.1;
@@ -389,8 +389,8 @@
 }
 
 .fi-metric-label {
-    font-size: 0.75rem;
-    font-weight: 500;
+    font-size: 12px;
+    font-weight: 600;
     color: var(--fi-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -428,7 +428,7 @@
 
 .fi-card-title-row h3 {
     margin: 0;
-    font-size: 0.875rem;
+    font-size: 15px;
     font-weight: 600;
     color: var(--fi-text-primary);
     letter-spacing: -0.01em;
@@ -455,14 +455,14 @@
 }
 
 .fi-meta-label {
-    font-size: 0.8125rem;
+    font-size: 13px;
     color: var(--fi-text-secondary);
     font-weight: 500;
 }
 
 .fi-meta-val {
     font-family: var(--fi-font-mono);
-    font-size: 0.8125rem;
+    font-size: 13px;
     color: var(--fi-text-primary);
     background: var(--fi-surface-subtle);
     padding: 2px 6px;
@@ -479,7 +479,7 @@
 }
 
 .fi-arch-title {
-    font-size: 0.75rem;
+    font-size: 12px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -506,7 +506,7 @@
 }
 
 .fi-arch-node-title {
-    font-size: 0.8125rem;
+    font-size: 13px;
     font-weight: 600;
     color: var(--fi-text-primary);
     display: flex;
@@ -515,7 +515,7 @@
 }
 
 .fi-arch-node-desc {
-    font-size: 0.71875rem;
+    font-size: 12px;
     color: var(--fi-text-muted);
     line-height: 1.35;
 }
@@ -536,14 +536,14 @@
 .fi-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.8125rem;
+    font-size: 13px;
     text-align: left;
 }
 
 .fi-table th {
     background: var(--fi-surface-subtle);
     color: var(--fi-text-muted);
-    font-size: 0.6875rem;
+    font-size: 12px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -557,6 +557,7 @@
     border-bottom: 1px solid var(--fi-border-subtle);
     color: var(--fi-text-secondary);
     vertical-align: middle;
+    font-size: 13px;
 }
 
 .fi-table tr:last-child td {
@@ -570,9 +571,9 @@
 
 .fi-code {
     font-family: var(--fi-font-mono);
-    font-size: 0.75rem;
+    font-size: 12px;
     background: var(--fi-surface-subtle);
-    padding: 2px 5px;
+    padding: 2px 6px;
     border-radius: var(--fi-radius-xs);
     border: 1px solid var(--fi-border-subtle);
     color: var(--fi-text-primary);
@@ -580,16 +581,16 @@
 
 .fi-code-hash {
     font-family: var(--fi-font-mono);
-    font-size: 0.71875rem;
+    font-size: 12px;
     color: #93c5fd;
     word-break: break-all;
 }
 
 .fi-type-badge {
     display: inline-block;
-    padding: 2px 7px;
+    padding: 2px 8px;
     border-radius: var(--fi-radius-xs);
-    font-size: 0.6875rem;
+    font-size: 12px;
     font-weight: 600;
     letter-spacing: 0.03em;
     background: var(--fi-surface-subtle);
@@ -605,8 +606,8 @@
     gap: 6px;
     padding: 7px 14px;
     border-radius: var(--fi-radius-sm);
-    font-size: 0.8125rem;
-    font-weight: 500;
+    font-size: 13px;
+    font-weight: 600;
     line-height: 1;
     cursor: pointer;
     transition: var(--fi-transition);
@@ -664,7 +665,7 @@
 
 .fi-btn-sm {
     padding: 5px 10px;
-    font-size: 0.75rem;
+    font-size: 12px;
     border-radius: var(--fi-radius-sm);
 }
 
@@ -708,7 +709,7 @@
 .fi-filter-pill {
     padding: 4px 10px;
     border-radius: var(--fi-radius-sm);
-    font-size: 0.75rem;
+    font-size: 12px;
     font-weight: 500;
     color: var(--fi-text-secondary);
     background: var(--fi-surface-subtle);
@@ -733,7 +734,7 @@
 }
 
 .fi-filter-count {
-    font-size: 0.6875rem;
+    font-size: 11px;
     opacity: 0.75;
 }
 
@@ -757,7 +758,7 @@
     background: var(--fi-surface);
     border: 1px solid var(--fi-border);
     border-radius: var(--fi-radius-sm);
-    font-size: 0.8125rem;
+    font-size: 13px;
     color: var(--fi-text-primary);
     outline: none;
     transition: var(--fi-transition);
@@ -787,7 +788,7 @@
     border-top: 1px solid var(--fi-border);
     background: var(--fi-surface);
     flex-wrap: wrap;
-    font-size: 0.8125rem;
+    font-size: 13px;
     color: var(--fi-text-secondary);
 }
 
@@ -814,7 +815,7 @@
     background: var(--fi-surface-subtle);
     border: 1px solid var(--fi-border);
     color: var(--fi-text-secondary);
-    font-size: 0.75rem;
+    font-size: 12px;
     cursor: pointer;
     transition: var(--fi-transition);
 }
@@ -843,7 +844,7 @@
     border: 1px solid var(--fi-border);
     border-radius: var(--fi-radius-sm);
     color: var(--fi-text-primary);
-    font-size: 0.8125rem;
+    font-size: 13px;
     outline: none;
     transition: var(--fi-transition);
 }
@@ -871,13 +872,14 @@
 }
 
 .fi-outbox-stat-val {
-    font-size: 1.35rem;
-    font-weight: 600;
+    font-size: 22px;
+    font-weight: 700;
     color: var(--fi-text-primary);
 }
 
 .fi-outbox-stat-lbl {
-    font-size: 0.75rem;
+    font-size: 12px;
+    font-weight: 500;
     color: var(--fi-text-muted);
 }
 
@@ -909,14 +911,14 @@
 }
 
 .fi-op-title {
-    font-size: 0.9375rem;
+    font-size: 15px;
     font-weight: 600;
     color: var(--fi-text-primary);
     margin: 0 0 6px;
 }
 
 .fi-op-desc {
-    font-size: 0.8125rem;
+    font-size: 13px;
     color: var(--fi-text-secondary);
     line-height: 1.45;
     margin: 0 0 16px;
@@ -938,6 +940,186 @@
     background: var(--fi-blue);
     border-radius: var(--fi-radius-full);
     transition: width 0.3s ease;
+}
+
+/* ─── Bulk Ledger Verification Progress Bar ───────────────────────────────── */
+.fi-verify-progress-card {
+    background: var(--fi-surface-subtle);
+    border: 1px solid var(--fi-border);
+    border-radius: var(--fi-radius);
+    padding: 16px 18px;
+    margin-bottom: 20px;
+    transition: var(--fi-transition);
+}
+
+.fi-verify-progress-card.is-running {
+    border-color: var(--fi-blue-border);
+    box-shadow: 0 4px 20px rgba(59, 130, 246, 0.08);
+}
+
+.fi-verify-progress-card.is-complete {
+    border-color: var(--fi-green-border);
+    box-shadow: 0 4px 20px rgba(16, 185, 129, 0.06);
+}
+
+.fi-verify-progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    gap: 12px;
+}
+
+.fi-verify-progress-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.fi-verify-progress-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--fi-radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--fi-blue-subtle);
+    border: 1px solid var(--fi-blue-border);
+    color: var(--fi-blue);
+    flex-shrink: 0;
+    transition: var(--fi-transition);
+}
+
+.fi-verify-progress-icon.completed {
+    background: var(--fi-green-subtle);
+    border-color: var(--fi-green-border);
+    color: var(--fi-green);
+}
+
+.fi-verify-progress-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--fi-text-primary);
+    line-height: 1.3;
+}
+
+.fi-verify-progress-stage {
+    font-size: 13px;
+    color: var(--fi-text-secondary);
+    margin-top: 3px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.fi-verify-pulse {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--fi-blue);
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+    animation: fi-blue-pulse 1.8s infinite;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+@keyframes fi-blue-pulse {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+    70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(59, 130, 246, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+}
+
+.fi-verify-progress-pct {
+    font-family: var(--fi-font-mono);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--fi-blue);
+    line-height: 1;
+    display: flex;
+    align-items: baseline;
+    gap: 2px;
+    flex-shrink: 0;
+    transition: color 0.3s ease;
+}
+
+.fi-verify-progress-pct span {
+    font-size: 13px;
+    font-weight: 600;
+    opacity: 0.85;
+}
+
+.fi-verify-progress-pct.completed {
+    color: var(--fi-green);
+}
+
+.fi-verify-progress-track {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: var(--fi-radius-full);
+    overflow: hidden;
+    position: relative;
+    border: 1px solid var(--fi-border-subtle);
+}
+
+[data-theme="light"] .fi-verify-progress-track {
+    background: rgba(0, 0, 0, 0.06);
+}
+
+.fi-verify-progress-bar {
+    height: 100%;
+    border-radius: var(--fi-radius-full);
+    transition: width 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    background: linear-gradient(90deg, #3b82f6 0%, #60a5fa 50%, #38bdf8 100%);
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+    position: relative;
+}
+
+.fi-verify-progress-bar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+    animation: fi-progress-shimmer 1.8s infinite;
+}
+
+@keyframes fi-progress-shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.fi-verify-progress-bar.completed {
+    background: linear-gradient(90deg, #10b981 0%, #34d399 100%);
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+}
+
+.fi-verify-progress-bar.completed::after {
+    display: none;
+}
+
+.fi-verify-progress-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--fi-text-muted);
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.fi-verify-progress-pct-label {
+    font-family: var(--fi-font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--fi-text-secondary);
 }
 
 /* ─── Modals ──────────────────────────────────────────────────────────────── */
@@ -964,7 +1146,7 @@
 }
 
 .fi-modal-title {
-    font-size: 1rem;
+    font-size: 16px;
     font-weight: 600;
     color: var(--fi-text-primary);
     margin-bottom: 8px;
@@ -974,7 +1156,7 @@
 }
 
 .fi-modal-desc {
-    font-size: 0.8125rem;
+    font-size: 13px;
     color: var(--fi-text-secondary);
     line-height: 1.5;
     margin-bottom: 20px;
@@ -1051,7 +1233,7 @@
     justify-content: space-between;
     padding: 18px 20px;
     color: #34d399;
-    font-size: 0.8125rem;
+    font-size: 13px;
     background: var(--fi-surface);
     border: 1px solid var(--fi-green-border);
     border-radius: var(--fi-radius);
@@ -1079,7 +1261,7 @@
 
 .fi-empty p {
     margin: 8px 0 0;
-    font-size: 0.8125rem;
+    font-size: 13px;
 }
 
 /* ─── Responsive Layout Rules ────────────────────────────────────────────── */

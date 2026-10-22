@@ -14,7 +14,7 @@ export default function MockSimulationLog({ logs }) {
         <div className="card mock-simulation-log">
             <div className="card-header" style={{ borderBottom: '1px solid var(--border-default)', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <ScrollText size={16} style={{ color: 'var(--text-tertiary)' }}/>
-                <h3 className="card-title" style={{ fontSize: '0.9rem' }}>SIMULATION LOG</h3>
+                <h3 className="card-title" style={{ fontSize: '15px' }}>SIMULATION LOG</h3>
             </div>
             <div className="card-body terminal-body" ref={terminalRef}>
                 {logs.map((log, i) => (
