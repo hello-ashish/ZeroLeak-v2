@@ -69,7 +69,7 @@ export default function AdminActivityPage() {
             setAiSummaryResult(res.data)
             toast.success("AI Daily Summary complete")
         } catch (error) {
-            toast.error("AI Summary failed")
+            toast.error(error.response?.data?.message || "AI Summary failed")
         } finally {
             setAiSummarizing(false)
         }

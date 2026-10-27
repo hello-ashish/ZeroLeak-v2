@@ -68,11 +68,7 @@ export const getMyNotifications = async (req, res) => {
         // we need to determine the user dynamically or pass it.
         // A better approach is to have the middleware inject a common `req.user` and `req.userRole`.
         // Let's resolve the user from the req object (based on existing middlewares)
-        let userId;
-        if (req.admin) userId = req.admin._id;
-        else if (req.student) userId = req.student._id;
-        else if (req.professor) userId = req.professor._id;
-        else if (req.auditor) userId = req.auditor._id;
+        const userId = req.user?._id || req.admin?._id || req.student?._id || req.professor?._id || req.auditor?._id;
 
         if (!userId) {
             return res.status(401).json({ message: "Unauthorized: User not found in request" });
@@ -95,11 +91,7 @@ export const getMyNotifications = async (req, res) => {
 export const markAsRead = async (req, res) => {
     try {
         const { id } = req.params;
-        let userId;
-        if (req.admin) userId = req.admin._id;
-        else if (req.student) userId = req.student._id;
-        else if (req.professor) userId = req.professor._id;
-        else if (req.auditor) userId = req.auditor._id;
+        const userId = req.user?._id || req.admin?._id || req.student?._id || req.professor?._id || req.auditor?._id;
 
         const notification = await Notification.findOneAndUpdate(
             { _id: id, userId },
@@ -121,11 +113,7 @@ export const markAsRead = async (req, res) => {
 // Mark all notifications as read for the user
 export const markAllAsRead = async (req, res) => {
     try {
-        let userId;
-        if (req.admin) userId = req.admin._id;
-        else if (req.student) userId = req.student._id;
-        else if (req.professor) userId = req.professor._id;
-        else if (req.auditor) userId = req.auditor._id;
+        const userId = req.user?._id || req.admin?._id || req.student?._id || req.professor?._id || req.auditor?._id;
 
         if (!userId) {
             return res.status(401).json({ message: "Unauthorized" });

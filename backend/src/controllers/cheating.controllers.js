@@ -133,10 +133,11 @@ export const recordIncident = async (req, res) => {
             incident.actionTaken = "STUDENT_BLOCKED";
             await incident.save();
 
-            // Block student at the account level
+            // Block student at the account level and invalidate active session
             const studentDoc = await Student.findById(student._id);
             if (studentDoc && !studentDoc.isBlocked) {
                 studentDoc.isBlocked = true;
+                studentDoc.sessionVersion = (studentDoc.sessionVersion || 0) + 1;
                 studentDoc.blockedAt = new Date();
                 studentDoc.blockedReason = `Exam "${exam.title}" — blocked after ${MAX_VIOLATIONS} security violations.`;
                 await studentDoc.save();
@@ -264,11 +265,12 @@ export const terminateAttempt = async (req, res) => {
 
         let isBlocked = student.isBlocked;
 
-        // Auto-block student on server if requested or rule breached
+        // Auto-block student on server if requested or rule breached, and invalidate active session
         if (autoBlockStudent) {
             const studentDoc = await Student.findById(student._id);
             if (studentDoc) {
                 studentDoc.isBlocked = true;
+                studentDoc.sessionVersion = (studentDoc.sessionVersion || 0) + 1;
                 studentDoc.blockedAt = new Date();
                 studentDoc.blockedReason = reason || "Blocked due to security policy violations.";
                 await studentDoc.save();

@@ -52,6 +52,7 @@ import redisClient from "../../redis/index.js";
 import { analyzeSupportTicket } from "../ai/ai.service.js";
 
 const PAGE_SIZE = 20;
+const SUPPORT_CACHE_PREFIX = "support:";
 
 // ─── Redis helpers ─────────────────────────────────────────────────────────────
 const redisOK = () => redisClient?.isOpen;

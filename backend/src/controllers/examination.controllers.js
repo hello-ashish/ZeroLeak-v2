@@ -225,14 +225,34 @@ export const deleteExamination = async (req, res) => {
         const examination = await Examination.findById(id);
         if (!examination) return res.status(404).json({ message: "Examination not found" });
 
-        // Get all child exam IDs first for cascade cleanup
-        const childExams = await Exam.find({ examinationId: id }).select("_id").lean();
+        // Get all child exams
+        const childExams = await Exam.find({ examinationId: id }).select("_id status").lean();
+        
+        // Guard: Prevent deletion if any child exam is currently Live or in GracePeriod
+        const activeChildExam = childExams.find(e => e.status === "Live" || e.status === "GracePeriod");
+        if (activeChildExam) {
+            return res.status(400).json({
+                message: `Cannot delete examination while child exam is active (status: ${activeChildExam.status}). End active exams first.`
+            });
+        }
+
         const childExamIds = childExams.map(e => e._id);
 
-        // Cascade: delete Results linked to child exams
+        // Cascade: delete Results, CheatingIncidents, and Proctoring telemetry linked to child exams
         if (childExamIds.length > 0) {
             const { Result } = await import("../models/result.models.js");
-            await Result.deleteMany({ exam: { $in: childExamIds } });
+            const { CheatingIncident } = await import("../models/cheatingIncident.models.js");
+            const { ProctoringSession } = await import("../models/proctoringSession.models.js");
+            const { ProctoringAIEvent } = await import("../models/proctoringAIEvent.models.js");
+            const { ProctoringIncident } = await import("../models/proctoringIncident.models.js");
+
+            await Promise.allSettled([
+                Result.deleteMany({ exam: { $in: childExamIds } }),
+                CheatingIncident.deleteMany({ examId: { $in: childExamIds } }),
+                ProctoringSession.deleteMany({ examId: { $in: childExamIds } }),
+                ProctoringAIEvent.deleteMany({ examId: { $in: childExamIds } }),
+                ProctoringIncident.deleteMany({ examId: { $in: childExamIds } })
+            ]);
         }
 
         // Delete child exams

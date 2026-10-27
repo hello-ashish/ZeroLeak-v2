@@ -43,15 +43,13 @@ async function callLLM(systemPrompt, userPrompt, jsonSchema) {
 
     try {
         let jsonContent = content.trim()
-        if (jsonContent.startsWith("```json")) {
-            jsonContent = jsonContent.substring(7).trim()
-            if (jsonContent.endsWith("```")) {
-                jsonContent = jsonContent.slice(0, -3).trim()
-            }
-        } else if (jsonContent.startsWith("```")) {
-            jsonContent = jsonContent.substring(3).trim()
-            if (jsonContent.endsWith("```")) {
-                jsonContent = jsonContent.slice(0, -3).trim()
+        const codeBlockMatch = jsonContent.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
+        if (codeBlockMatch) {
+            jsonContent = codeBlockMatch[1].trim()
+        } else {
+            const jsonObjectMatch = jsonContent.match(/(\{[\s\S]*\}|\[[\s\S]*\])/)
+            if (jsonObjectMatch) {
+                jsonContent = jsonObjectMatch[1].trim()
             }
         }
         return JSON.parse(jsonContent)
@@ -62,13 +60,14 @@ async function callLLM(systemPrompt, userPrompt, jsonSchema) {
 
 async function logAiAction({ professorId, actorId, actorRole = "Professor", action, promptVersion, requestData, responseData, status }) {
     try {
-        const finalActorId = actorId || professorId;
-        const requestHash = crypto.createHash("sha256").update(JSON.stringify(requestData)).digest("hex")
-        const responseHash = crypto.createHash("sha256").update(JSON.stringify(responseData)).digest("hex")
+        const finalActorId = (actorId || professorId || "SYSTEM").toString();
+        const finalRole = (actorId || professorId) ? actorRole : "System";
+        const requestHash = crypto.createHash("sha256").update(JSON.stringify(requestData || {})).digest("hex")
+        const responseHash = crypto.createHash("sha256").update(JSON.stringify(responseData || {})).digest("hex")
 
         await AuditLog.create({
-            actor: finalActorId.toString(),
-            actorRole: actorRole,
+            actor: finalActorId,
+            actorRole: finalRole,
             action,
             targetType: "AI",
             details: JSON.stringify({
@@ -515,12 +514,12 @@ export async function adminCohortReport(gradebookData, adminId) {
     }
 }
 
-export async function adminExamCopilot(prompt, adminId) {
+export async function adminExamCopilot(prompt, adminId, availableSubjects = []) {
     try {
         const { ADMIN_EXAM_COPILOT_PROMPT } = await import('./ai.prompts.js');
         const raw = await callLLM(
             ADMIN_EXAM_COPILOT_PROMPT.system,
-            ADMIN_EXAM_COPILOT_PROMPT.user(prompt),
+            ADMIN_EXAM_COPILOT_PROMPT.user(prompt, availableSubjects),
             {
                 name: "admin_exam_copilot",
                 strict: true,

@@ -27,7 +27,7 @@ export const loginProfessor = async (req, res) => {
         }
 
         if (professor.isBlocked) {
-            return res.status(403).json({ message: "BLOCKED" })
+            return res.status(403).json({ message: "Account is blocked.", code: "BLOCKED" })
         }
 
         // check if password is correct using custom method
@@ -37,7 +37,8 @@ export const loginProfessor = async (req, res) => {
             return res.status(401).json({ message: "Invalid Password" })
         }
 
-        if (professor.isLoggedIn && req.body.forceLogout !== true) {
+        const forceLogout = req.body.forceLogout === true || req.body.forceLogout === "true";
+        if (professor.isLoggedIn && !forceLogout) {
             return res.status(409).json({ message: "You're logged in at some other place too. Wish to continue?", code: "ALREADY_LOGGED_IN" });
         }
 

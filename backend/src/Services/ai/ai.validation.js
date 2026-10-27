@@ -145,6 +145,12 @@ export function validateCsvRepairResponse(data, originalRow, missingFields) {
                     fixedFields.push("difficultyLevel")
                 }
                 break
+            case "options":
+                if (Array.isArray(data.options) && data.options.length === 4 && data.options.every(o => typeof o === "string" && o.trim())) {
+                    result.options = data.options.map(o => o.trim())
+                    fixedFields.push("options")
+                }
+                break
             case "correctAnswerIndex": {
                 const idx = parseInt(data.correctAnswerIndex)
                 if (!isNaN(idx) && idx >= 0 && idx <= 3) {
@@ -178,13 +184,22 @@ export function validateCsvRepairResponse(data, originalRow, missingFields) {
                         }
 
                         if (newOpt) {
-                            if (!result.options) result.options = [...originalRow.options]
+                            if (!result.options || !Array.isArray(result.options)) {
+                                result.options = Array.isArray(originalRow.options) ? [...originalRow.options] : ["", "", "", ""]
+                            }
                             result.options[optIdx] = newOpt
                             fixedFields.push(field)
                         }
                     }
                 }
                 break
+        }
+    }
+
+    // Ensure correctAnswer matches the option at correctAnswerIndex if both are known
+    if (result.correctAnswerIndex !== undefined && result.correctAnswerIndex >= 0 && Array.isArray(result.options) && result.options[result.correctAnswerIndex]) {
+        if (!result.correctAnswer || result.correctAnswer !== result.options[result.correctAnswerIndex]) {
+            result.correctAnswer = result.options[result.correctAnswerIndex]
         }
     }
 
@@ -240,6 +255,10 @@ export function validateStudentPerformanceResponse(data) {
     if (typeof data.averagePerformance !== "string") errors.push("Missing or invalid averagePerformance")
     
     const validTrends = ["Improving", "Declining", "Stable", "Inconsistent", "Insufficient Data"]
+    if (typeof data.performanceTrend === "string") {
+        const matched = validTrends.find(t => t.toLowerCase() === data.performanceTrend.trim().toLowerCase())
+        if (matched) data.performanceTrend = matched
+    }
     if (!validTrends.includes(data.performanceTrend)) {
         errors.push("Invalid performanceTrend")
     }
@@ -267,6 +286,10 @@ export function validateStudentSelfPerformanceResponse(data) {
     if (typeof data.averagePerformance !== "string") errors.push("Missing or invalid averagePerformance")
     
     const validTrends = ["Improving", "Declining", "Stable", "Inconsistent", "Insufficient Data"]
+    if (typeof data.performanceTrend === "string") {
+        const matched = validTrends.find(t => t.toLowerCase() === data.performanceTrend.trim().toLowerCase())
+        if (matched) data.performanceTrend = matched
+    }
     if (!validTrends.includes(data.performanceTrend)) {
         errors.push("Invalid performanceTrend")
     }

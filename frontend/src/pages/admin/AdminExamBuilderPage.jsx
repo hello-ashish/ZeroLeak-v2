@@ -25,7 +25,7 @@ export const AdminExamBuilderPage = () => {
         setAiCopilotLoading(true)
         try {
             const token = getToken()
-            const res = await axios.post(`${API}/ai/admin/exam-copilot`, { prompt: aiCopilotPrompt }, {
+            const res = await axios.post(`${API}/ai/admin/exam-copilot`, { prompt: aiCopilotPrompt, availableSubjects }, {
                 headers: { Authorization: `Bearer ${token}` }
             })
             const result = res.data
@@ -42,7 +42,10 @@ export const AdminExamBuilderPage = () => {
                         subject: s.subject,
                         numQuestions: s.numQuestions || 10,
                         durationMinutes: s.durationMinutes || Math.round((s.numQuestions || 10) * 1.5),
-                        passingPercentage: s.passingPercentage || 50
+                        passingPercentage: s.passingPercentage || 50,
+                        easy: 30,
+                        medium: 50,
+                        hard: 20
                     })))
                 }
                 toast.success('AI Copilot successfully configured the exam!')

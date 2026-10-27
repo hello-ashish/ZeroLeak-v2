@@ -1,6 +1,6 @@
 import React, { useState } from "react"
 import axios from "axios"
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, LogIn, Loader2, AlertTriangle } from 'lucide-react';
 import AuthShell from '../../components/auth/AuthShell';
 
@@ -157,6 +157,28 @@ const AdminLogin = () => {
                 </>
               )}
             </button>
+
+            <div style={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              marginTop: '16px',
+              fontSize: '0.9rem',
+              color: 'var(--text-secondary)'
+            }}>
+              <span>Initial deployment?</span>
+              <Link
+                to="/admin/register"
+                style={{
+                  color: 'var(--brand-primary)',
+                  fontWeight: '600',
+                  marginLeft: '6px',
+                  textDecoration: 'none'
+                }}
+              >
+                Register Root Admin
+              </Link>
+            </div>
           </form>
         </AuthShell>
     )

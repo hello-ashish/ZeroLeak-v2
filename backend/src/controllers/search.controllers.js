@@ -44,8 +44,11 @@ export const globalSearch = async (req, res) => {
                 }).select("title subject status").limit(10).lean()
             ]);
         } else if (role === "Student") {
-            exams = await Exam.find({ $text: { $search: q } })
-                .select("title subject status").limit(10).lean();
+            // Students can only discover non-draft exams (Live, Scheduled, Completed)
+            exams = await Exam.find({
+                $text: { $search: q },
+                status: { $in: ["Live", "Scheduled", "Completed"] }
+            }).select("title subject status").limit(10).lean();
         }
 
         res.status(200).json({ students, professors, batches, exams });

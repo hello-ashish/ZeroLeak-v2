@@ -210,7 +210,10 @@ async function _processRecord(record) {
 export async function enqueueResultCommitment(result) {
 
     const entityId = result._id.toString();
-    const version = 1;
+    // Derive commitment version from result.__v or result.version to support result revisions
+    const version = (typeof result.version === 'number' && result.version > 0)
+        ? result.version
+        : (typeof result.__v === 'number' ? result.__v + 1 : 1);
 
     const canonical = {
         _id: entityId,

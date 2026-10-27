@@ -407,11 +407,12 @@ export const supportLogin = async (req, res) => {
         const admin = await Admin.findOne({ email, isSupport: true });
         if (admin) {
             if (admin.isBlocked) {
-                return res.status(403).json({ success: false, message: "Your account is blocked" });
+                return res.status(403).json({ success: false, message: "Your account is blocked", code: "BLOCKED" });
             }
             const isMatch = await admin.isPasswordCorrect(password);
             if (isMatch) {
-                if (admin.isLoggedIn && req.body.forceLogout !== true) {
+                const forceLogout = req.body.forceLogout === true || req.body.forceLogout === "true";
+                if (admin.isLoggedIn && !forceLogout) {
                     return res.status(409).json({ message: "You're logged in at some other place too. Wish to continue?", code: "ALREADY_LOGGED_IN" });
                 }
                 admin.isLoggedIn = true;

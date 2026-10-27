@@ -43,7 +43,8 @@ export const loginAuditor = async (req, res) => {
         const isPasswordCorrect = await auditor.isPasswordCorrect(password);
         if (!isPasswordCorrect) return res.status(401).json({ message: "Invalid credentials" });
 
-        if (auditor.isLoggedIn && req.body.forceLogout !== true) {
+        const forceLogout = req.body.forceLogout === true || req.body.forceLogout === "true";
+        if (auditor.isLoggedIn && !forceLogout) {
             return res.status(409).json({ message: "You're logged in at some other place too. Wish to continue?", code: "ALREADY_LOGGED_IN" });
         }
 

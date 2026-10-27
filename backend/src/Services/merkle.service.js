@@ -25,7 +25,9 @@ export function buildMerkleRoot(hashes) {
         );
     }
 
-    // Sort the initial hashes lexicographically to make the entire tree order-independent (Lexicographical Merkle Tree)
+    // Sort the initial leaf hashes lexicographically to make the tree order-independent of question order.
+    // Intermediate pairs are sorted within hashPair (left < right ? left+right : right+left) ensuring
+    // canonical, deterministic pairing throughout the tree.
     let level = [...hashes].sort();
 
     while (level.length > 1) {

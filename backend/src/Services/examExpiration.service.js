@@ -114,7 +114,7 @@ const finalizeResult = async (exam, existingResult) => {
             }
         }
 
-        const totalQuestions = decryptedQuestions.length;
+        const totalQuestions = examQuestions.length;
         existingResult.score = score;
         existingResult.totalQuestions = totalQuestions;
         existingResult.status = "Completed";

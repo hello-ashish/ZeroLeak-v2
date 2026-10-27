@@ -150,21 +150,21 @@ export const verifyAuditorJWT = async (req, res, next) => {
         }
 
         const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET)
-        const auditor = await Auditor.findById(decodedToken.id).select("-password")
-
-        if (!auditor) {
-            return res.status(401).json({ message: "Auditor not found" })
-        }
-        if (auditor.sessionVersion !== decodedToken.sessionVersion) {
-            return res.status(401).json({ message: "This session has been replaced by a new login.", code: "SESSION_REPLACED" })
-        }
-        if (auditor.isBlocked) {
-            return res.status(403).json({ message: "BLOCKED" })
-        }
+        // Use the shared validateSession helper for consistent error handling
+        const auditor = await validateSession(Auditor, decodedToken);
 
         req.auditor = auditor
         next()
     } catch (error) {
+        if (error.message === "SESSION_REPLACED") {
+            return res.status(401).json({ message: "This session has been replaced by a new login.", code: "SESSION_REPLACED" })
+        }
+        if (error.message === "BLOCKED") {
+            return res.status(403).json({ message: "Account is blocked.", code: "BLOCKED" })
+        }
+        if (error.message === "USER_NOT_FOUND") {
+            return res.status(401).json({ message: "Auditor not found", code: "TOKEN_EXPIRED" })
+        }
         return res.status(401).json({ message: "Invalid or Expired Access Token", code: "TOKEN_EXPIRED" })
     }
 }
@@ -266,20 +266,26 @@ export const verifySupportJWT = async (req, res, next) => {
 
         const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET)
 
-        if (decodedToken.role === "SupportAgent") {
-            const admin = await Admin.findById(decodedToken.id).select("-password")
-            if (admin && admin.isSupport && !admin.isBlocked) {
-                if (admin.sessionVersion !== decodedToken.sessionVersion) {
-                    return res.status(401).json({ message: "This session has been replaced by a new login.", code: "SESSION_REPLACED" })
-                }
-                req.userRole = "Support"
-                req.user = admin
-                return next()
-            }
+        if (decodedToken.role !== "SupportAgent") {
+            return res.status(403).json({ message: "Forbidden: Support access only" })
         }
 
-        return res.status(403).json({ message: "Forbidden: Support access only" })
+        // Use the shared validateSession helper for consistent error handling
+        const admin = await validateSession(Admin, decodedToken);
+        if (!admin.isSupport) {
+            return res.status(403).json({ message: "Forbidden: Support access only" })
+        }
+
+        req.userRole = "Support"
+        req.user = admin
+        return next()
     } catch (error) {
+        if (error.message === "SESSION_REPLACED") {
+            return res.status(401).json({ message: "This session has been replaced by a new login.", code: "SESSION_REPLACED" })
+        }
+        if (error.message === "BLOCKED") {
+            return res.status(403).json({ message: "Account is blocked.", code: "BLOCKED" })
+        }
         return res.status(401).json({ message: "Invalid or Expired Access Token", code: "TOKEN_EXPIRED" })
     }
 }

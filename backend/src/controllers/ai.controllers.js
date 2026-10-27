@@ -217,8 +217,8 @@ export const reviewBatchAdmin = async (req, res) => {
 export const auditSummaryAdmin = async (req, res) => {
     try {
         const { logs } = req.body
-        if (!logs) {
-            return res.status(400).json({ message: "logs array is required" })
+        if (!logs || !Array.isArray(logs) || logs.length === 0) {
+            return res.status(400).json({ message: "No audit logs provided for summarization." })
         }
 
         const { adminAuditSummary } = await import('../Services/ai/ai.service.js')
@@ -241,8 +241,8 @@ export const auditSummaryAdmin = async (req, res) => {
 export const cohortReportAdmin = async (req, res) => {
     try {
         const { gradebookData } = req.body
-        if (!gradebookData) {
-            return res.status(400).json({ message: "gradebookData is required" })
+        if (!gradebookData || !Array.isArray(gradebookData) || gradebookData.length === 0) {
+            return res.status(400).json({ message: "No gradebook data provided for analysis." })
         }
 
         const { adminCohortReport } = await import('../Services/ai/ai.service.js')
@@ -264,13 +264,13 @@ export const cohortReportAdmin = async (req, res) => {
 
 export const examCopilotAdmin = async (req, res) => {
     try {
-        const { prompt } = req.body
-        if (!prompt) {
-            return res.status(400).json({ message: "prompt is required" })
+        const { prompt, availableSubjects } = req.body
+        if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
+            return res.status(400).json({ message: "A descriptive prompt is required." })
         }
 
         const { adminExamCopilot } = await import('../Services/ai/ai.service.js')
-        const result = await adminExamCopilot(prompt, req.admin._id)
+        const result = await adminExamCopilot(prompt.trim(), req.admin._id, availableSubjects)
 
         if (!result.success) {
             return res.status(400).json({
@@ -321,7 +321,11 @@ export const getStudentPerformanceAnalysis = async (req, res) => {
             return res.status(404).json({ message: "Student not found" });
         }
 
-        const results = await Result.find({ student: studentId })
+        const results = await Result.find({
+            student: studentId,
+            status: { $in: ["Completed", "Terminated"] },
+            resetByAdmin: { $ne: true }
+        })
             .populate("exam", "title subject passingPercentage")
             .sort({ createdAt: 1 });
 
@@ -379,7 +383,11 @@ export const getStudentSelfPerformanceAnalysis = async (req, res) => {
         const { Exam } = await import('../models/exam.models.js');
 
         // Fetch student's completed results
-        const results = await Result.find({ student: studentId, status: "Completed" })
+        const results = await Result.find({
+            student: studentId,
+            status: "Completed",
+            resetByAdmin: { $ne: true }
+        })
             .populate({
                 path: "exam",
                 select: "title subject isResultReleased examinationId",

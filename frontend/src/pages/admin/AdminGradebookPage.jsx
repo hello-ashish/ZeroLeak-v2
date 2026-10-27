@@ -166,7 +166,7 @@ export default function AdminGradebookPage() {
             setAiCohortResult(res.data);
             toast.success("AI Cohort Report generated");
         } catch (error) {
-            toast.error("Failed to generate AI report");
+            toast.error(error.response?.data?.message || "Failed to generate AI report");
         } finally {
             setAiCohortGenerating(false);
         }

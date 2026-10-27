@@ -242,14 +242,16 @@ export default function AdminSettingsPage() {
                                         className="btn btn-secondary"
                                         style={{ background: 'var(--brand-primary)', color: '#fff', border: 'none' }}
                                         onClick={async () => {
-                                            const draft = document.getElementById('draft-text').value;
-                                            if (!draft.trim()) return;
+                                            const draft = document.getElementById('draft-text')?.value;
+                                            if (!draft?.trim()) return;
+                                            const outputEl = document.getElementById('ai-rewrite-result');
                                             try {
-                                                document.getElementById('ai-rewrite-result').innerText = 'Generating...';
+                                                if (outputEl) outputEl.value = 'Generating...';
                                                 const res = await axios.post(`${API}/ai/admin/policy-rewrite`, { draft }, { headers: { Authorization: `Bearer ${getToken()}` } });
-                                                document.getElementById('ai-rewrite-result').innerText = res.data.rewrittenText;
-                                            } catch {
-                                                toast.error('AI Rewrite failed');
+                                                if (outputEl) outputEl.value = res.data.rewrittenText;
+                                            } catch (err) {
+                                                if (outputEl) outputEl.value = '';
+                                                toast.error(err.response?.data?.message || 'AI Rewrite failed');
                                             }
                                         }}
                                     >

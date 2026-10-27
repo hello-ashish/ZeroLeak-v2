@@ -173,7 +173,13 @@ Return a JSON object with:
 Rules:
 - ONLY output the JSON schema.
 - Guess the subjects and parameters based on context if not explicitly provided (e.g., "JEE Mains" -> Physics, Chemistry, Math).`,
-    user: (prompt) => `Admin Request: "${prompt}"\n\nGenerate the examination object.`
+    user: (prompt, availableSubjects) => {
+        let p = `Admin Request: "${prompt}"`
+        if (Array.isArray(availableSubjects) && availableSubjects.length > 0) {
+            p += `\nExisting Subjects in Question Bank: ${JSON.stringify(availableSubjects)}. Favor using these exact subject names when relevant.`
+        }
+        return p + `\n\nGenerate the examination object.`
+    }
 }
 
 export const ADMIN_POLICY_REWRITE_PROMPT = {

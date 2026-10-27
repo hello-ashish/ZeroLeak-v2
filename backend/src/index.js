@@ -40,11 +40,20 @@ connectDB()
         process.on('SIGTERM', async () => { await closeFabricGateway(); process.exit(0); });
         process.on('SIGINT', async () => { await closeFabricGateway(); process.exit(0); });
 
+        // Socket.IO CORS configuration mirroring app.js
+        const rawOrigins = process.env.ALLOWED_ORIGIN || "http://localhost:5173";
+        const allowedOrigins = rawOrigins.split(",").map(o => o.trim()).filter(Boolean);
+
         // Create HTTP server and initialize Socket.IO
         const server = http.createServer(app);
         const io = new Server(server, {
             cors: {
-                origin: true,
+                origin: (origin, callback) => {
+                    if (!origin || allowedOrigins.includes(origin)) {
+                        return callback(null, true);
+                    }
+                    return callback(new Error(`CORS policy: origin '${origin}' is not allowed`));
+                },
                 methods: ["GET", "POST"],
                 credentials: true
             }

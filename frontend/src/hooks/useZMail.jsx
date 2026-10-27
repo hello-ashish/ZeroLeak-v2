@@ -1,20 +1,22 @@
-/**
- * useZMail — Central ZMail state hook
- *
- * Provides:
- *   - ZMail account info
- *   - Unread count (updated via Socket.IO + polling fallback)
- *   - Draft count
- *   - Folder data fetching
- *   - Socket.IO connection lifecycle
- */
-
 import { useState, useEffect, useCallback, useRef, createContext, useContext } from 'react';
 import { useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { io as socketIO } from 'socket.io-client';
 
 const ZMailContext = createContext(null);
+
+function isTokenValid(token) {
+    if (!token) return false;
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        if (payload.exp && payload.exp * 1000 < Date.now()) {
+            return false;
+        }
+        return true;
+    } catch {
+        return Boolean(token);
+    }
+}
 
 function getAuthToken(locationObj = window.location) {
     const params = new URLSearchParams(locationObj.search);
@@ -33,14 +35,16 @@ function getAuthToken(locationObj = window.location) {
     if (path.startsWith('/professor') || path.startsWith('/prof')) return localStorage.getItem('profToken');
     if (path.startsWith('/auditor')) return localStorage.getItem('auditorToken');
 
-    return (
-        localStorage.getItem('adminToken') ||
-        localStorage.getItem('profToken') ||
-        localStorage.getItem('studentToken') ||
-        localStorage.getItem('auditorToken') ||
-        localStorage.getItem('supportToken') ||
-        null
-    );
+    // M-6 Fix: Verify candidate tokens are unexpired rather than returning first stale token found
+    const candidateKeys = ['adminToken', 'profToken', 'studentToken', 'auditorToken', 'supportToken'];
+    for (const key of candidateKeys) {
+        const token = localStorage.getItem(key);
+        if (token && isTokenValid(token)) {
+            return token;
+        }
+    }
+
+    return null;
 }
 
 function getAuthHeader() {
@@ -92,7 +96,7 @@ export function ZMailProvider({ children }) {
     useEffect(() => {
         if (!token) return;
 
-        const BACKEND_URL = import.meta.env.DEV ? "" : "https://zeroleak-v2.onrender.com";
+        // L-6 Fix: BACKEND_URL is already defined at module scope (line 51) — use it directly
         const socket = socketIO(`${BACKEND_URL}/zmail`, {
             auth: { token },
             reconnection: true,
@@ -293,40 +297,34 @@ export async function deleteDraft(draftId) {
 }
 
 export async function uploadAttachment(file) {
-    return new Promise(async (resolve, reject) => {
-        try {
-            const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
-            const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+    const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+    const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
 
-            if (!cloudName || !uploadPreset) {
-                throw new Error("Cloudinary credentials missing in .env");
-            }
+    if (!cloudName || !uploadPreset) {
+        throw new Error("Cloudinary credentials missing in .env");
+    }
 
-            const formData = new FormData();
-            formData.append("file", file);
-            formData.append("upload_preset", uploadPreset);
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", uploadPreset);
 
-            const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, {
-                method: "POST",
-                body: formData,
-            });
-
-            const data = await res.json();
-            
-            if (!res.ok) {
-                throw new Error(data.error?.message || 'Cloudinary upload failed');
-            }
-
-            resolve({
-                originalName: file.name,
-                storageName: file.name,
-                storageKey: data.secure_url,
-                mimeType: file.type || data.format,
-                sizeBytes: data.bytes,
-                uploadedAt: new Date()
-            });
-        } catch (err) {
-            reject(err);
-        }
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, {
+        method: "POST",
+        body: formData,
     });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+        throw new Error(data.error?.message || 'Cloudinary upload failed');
+    }
+
+    return {
+        originalName: file.name,
+        storageName: file.name,
+        storageKey: data.secure_url,
+        mimeType: file.type || data.format,
+        sizeBytes: data.bytes,
+        uploadedAt: new Date()
+    };
 }

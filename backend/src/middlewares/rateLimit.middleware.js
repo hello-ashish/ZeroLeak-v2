@@ -2,19 +2,25 @@ import redisClient from "../redis/index.js"
 
 /**
  * Creates a rate limit middleware.
- * @param {string} keyPrefix - Unique prefix for this endpoint (e.g., "ai:batch")
- * @param {number} maxRequests - Max requests per window
+ * @param {string} keyPrefix    - Unique prefix for this endpoint (e.g., "ai:batch")
+ * @param {number} maxRequests  - Max requests per window
  * @param {number} windowSeconds - Window size in seconds (default: 60)
+ * @param {string} [userField]  - req property that holds the user doc (default: auto-detect)
  */
-export function rateLimit(keyPrefix, maxRequests, windowSeconds = 60) {
+export function rateLimit(keyPrefix, maxRequests, windowSeconds = 60, userField = null) {
     return async (req, res, next) => {
         try {
-            const professorId = req.professor?._id?.toString()
-            if (!professorId) {
+            // Resolve the authenticated user from the request, regardless of role
+            const user = userField
+                ? req[userField]
+                : (req.user || req.professor || req.admin || req.student || req.auditor);
+
+            const userId = user?._id?.toString();
+            if (!userId) {
                 return res.status(401).json({ message: "Unauthorized" })
             }
 
-            const key = `ratelimit:${keyPrefix}:${professorId}`
+            const key = `ratelimit:${keyPrefix}:${userId}`
 
             // Check if redis is connected
             if (!redisClient.isOpen) {

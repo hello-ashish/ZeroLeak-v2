@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react'
+import React, { useEffect, useState, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { AdminLayout } from './AdminLayout.jsx'
@@ -25,6 +25,7 @@ export default function AdminBatchesPage() {
     const [batchLoading, setBatchLoading] = useState(false)
     const [aiReviewResult, setAiReviewResult] = useState(null)
     const [aiReviewing, setAiReviewing] = useState(false)
+    const batchCacheRef = useRef(new Map())
 
     const navigate = useNavigate()
     const toast = useToast()
@@ -51,11 +52,25 @@ export default function AdminBatchesPage() {
     }
 
     const openBatch = async (batch) => {
+        if (!batch?._id) return
+
+        // Instant Fast-Path: Use in-memory cache if batch was already fetched
+        if (batchCacheRef.current.has(batch._id)) {
+            setActiveBatch(batchCacheRef.current.get(batch._id))
+            setActionState(null)
+            setRejectReason('')
+            setMarkReason('')
+            setAiReviewResult(null)
+            return
+        }
+
         const token = getToken()
         setBatchLoading(true)
         try {
             const res = await axios.get(`${API}/admin/batches/${batch._id}`, { headers: { Authorization: `Bearer ${token}` } })
-            setActiveBatch(res.data.batch)
+            const fullBatch = res.data.batch
+            batchCacheRef.current.set(batch._id, fullBatch)
+            setActiveBatch(fullBatch)
             setActionState(null)
             setRejectReason('')
             setMarkReason('')
@@ -94,6 +109,7 @@ export default function AdminBatchesPage() {
             })
             const labels = { Accept: 'approved', Reject: 'rejected', MarkForReview: 'marked for review' }
             toast.success(`Batch ${labels[action]} successfully`)
+            batchCacheRef.current.delete(activeBatch._id)
             setActiveBatch(null)
             setActionState(null)
             fetchBatches()
@@ -147,6 +163,7 @@ export default function AdminBatchesPage() {
                 headers: { Authorization: `Bearer ${getToken()}` }
             })
             toast.success('Batch deleted successfully')
+            batchCacheRef.current.delete(activeBatch._id)
             setActiveBatch(null)
             setActionState(null)
             fetchBatches()

@@ -53,7 +53,9 @@ export const loginStudent = async (req, res) => {
         const isPasswordValid = await student.isPasswordCorrect(password);
         if (!isPasswordValid) return res.status(401).json({ message: "Invalid credentials" });
 
-        if (student.isLoggedIn && req.body.forceLogout !== true) {
+        // Parse forceLogout safely — some clients send the string "true" instead of boolean true
+        const forceLogout = req.body.forceLogout === true || req.body.forceLogout === "true";
+        if (student.isLoggedIn && !forceLogout) {
             return res.status(409).json({ message: "You're logged in at some other place too. Wish to continue?", code: "ALREADY_LOGGED_IN" });
         }
 
@@ -109,10 +111,16 @@ export const pingSession = async (req, res) => {
         // The verifyStudentJWT middleware will automatically reject this if the student is blocked.
         const student = req.student;
 
+        // M-3 Fix: Derive the violation count from the DB, not from the client-supplied warningCount.
+        // A malicious client could always send warningCount=0 to bypass enforcement.
         const MAX_VIOLATIONS = 5;
+        const serverViolationCount = await CheatingIncident.countDocuments({
+            studentId: student._id,
+            examId: currentExamId || null,
+        });
 
         // Happy Path Optimization: Atomic update, skip heavy logic and document saves
-        if (warningCount < MAX_VIOLATIONS) {
+        if (serverViolationCount < MAX_VIOLATIONS) {
             const updateFields = { lastActiveAt: new Date() };
             if (currentExamId) updateFields.currentExamId = currentExamId;
 
@@ -134,9 +142,8 @@ export const pingSession = async (req, res) => {
         }
 
         // Network Interception Bypass Protection
-        // If the client's warning count is >= 3, they might be blocking the /incident endpoint.
-        // We enforce termination here as a fallback.
-        if (warningCount >= MAX_VIOLATIONS && currentExamId) {
+        // Server-side violation count (from DB) is used — the client warningCount is advisory only.
+        if (serverViolationCount >= MAX_VIOLATIONS && currentExamId) {
             const exam = await Exam.findById(currentExamId);
 
             if (exam) {
@@ -169,29 +176,33 @@ export const pingSession = async (req, res) => {
                                     await result.save();
                                 }
                             } else {
-                                throw error;
+                                console.error("[Telemetry] Error creating terminated result:", error);
                             }
                         }
                     }
 
-                    // Create an incident record for audit
-                    const incident = await CheatingIncident.create({
-                        studentId: student._id,
-                        examId: currentExamId,
-                        attemptId: result._id,
-                        violationType: "EXAM_TERMINATION",
-                        severity: "Critical",
-                        description: "Exam attempt terminated via heartbeat telemetry due to missing incident logs.",
-                        detectedAt: new Date(),
-                        actionTaken: "STUDENT_BLOCKED",
-                        reviewStatus: "Pending"
-                    });
-
+                    // Create an incident record for audit safely
+                    try {
+                        await CheatingIncident.create({
+                            studentId: student._id,
+                            examId: currentExamId,
+                            attemptId: result?._id,
+                            violationType: "EXAM_TERMINATION",
+                            severity: "Critical",
+                            description: `Exam attempt auto-terminated via telemetry ping: exceeded ${MAX_VIOLATIONS} security violations.`,
+                            detectedAt: new Date(),
+                            actionTaken: "STUDENT_BLOCKED",
+                            reviewStatus: "Pending"
+                        });
+                    } catch (incErr) {
+                        console.error("[Telemetry] Failed to create cheating incident record:", incErr);
+                    }
                 }
 
-                // Block the student
+                // Block the student and invalidate active sessions
                 if (!student.isBlocked) {
                     student.isBlocked = true;
+                    student.sessionVersion = (student.sessionVersion || 1) + 1;
                     student.blockedAt = new Date();
                     student.blockedReason = `Exam "${exam.title}" — blocked via telemetry after ${MAX_VIOLATIONS} security violations.`;
 
@@ -380,6 +391,9 @@ export const getExamById = async (req, res) => {
             buildMerkleRoot(questionHashes)
 
         // Verify the complete exam
+        // Note (M-2): Standard exams include all questions, so calculatedMerkleRoot matches exam.questionMerkleRoot.
+        // Zeroleak mode assigns a randomized subset of pool questions to each student; individual question
+        // cryptographic integrity was already verified above via verifyQuestionIntegrity().
         if (exam.mode !== "Zeroleak") {
             if (
                 calculatedMerkleRoot !==
@@ -665,6 +679,7 @@ export const submitExamResult = async (req, res) => {
         existingResult.score = score;
         existingResult.totalQuestions = totalQuestions;
         existingResult.status = "Completed";
+        existingResult.latestAnswers = answers;
         const result = await existingResult.save();
 
         try {
@@ -761,7 +776,14 @@ export const updateStudentProfile = async (req, res) => {
         const student = await Student.findById(req.student._id)
 
         if (name) student.name = name
-        if (email) student.email = email
+        // H-6 Fix: Check email uniqueness before updating to return a clean 409 instead of raw 500
+        if (email && email !== student.email) {
+            const emailTaken = await Student.findOne({ email, _id: { $ne: student._id } }).lean();
+            if (emailTaken) {
+                return res.status(409).json({ message: "Email is already in use by another account." });
+            }
+            student.email = email;
+        }
         if (password) {
             student.password = password;
             student.sessionVersion = (student.sessionVersion || 0) + 1;
