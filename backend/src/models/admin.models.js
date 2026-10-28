@@ -16,6 +16,8 @@ const adminSchema = new Schema(
     }, { timestamps: true }
 )
 
+adminSchema.index({ isSupport: 1, createdAt: -1 });
+
 adminSchema.pre("save", async function () {
     if (!this.isModified("password")) return;
     this.password = await bcrypt.hash(this.password, 10)

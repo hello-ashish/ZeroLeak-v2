@@ -668,3 +668,70 @@
     font-size: 16px;
     color: var(--warning, #f59e0b);
 }
+
+/* ─── Light Mode Overrides ─────────────────────────────────────────────────── */
+[data-theme="light"] .mock-blockchain-canvas {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border: 1px solid var(--border-default);
+    background-image: radial-gradient(rgba(0, 0, 0, 0.06) 1px, transparent 1px);
+    box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.02), 0 4px 16px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .mock-block-card {
+    background: #ffffff;
+    border: 1px solid var(--border-default);
+    color: var(--text-primary);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .mock-block-card:hover {
+    border-color: var(--brand-primary);
+    box-shadow: 0 10px 24px rgba(99, 102, 241, 0.15);
+}
+
+[data-theme="light"] .mock-block-card.selected {
+    background: #ffffff;
+    border-color: #8b5cf6;
+    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.3), 0 10px 24px rgba(139, 92, 246, 0.15);
+}
+
+[data-theme="light"] .mock-block-header {
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+[data-theme="light"] .block-number {
+    color: var(--text-primary);
+}
+
+[data-theme="light"] .block-type {
+    color: #0284c7;
+    background: rgba(2, 132, 199, 0.08);
+    border-color: rgba(2, 132, 199, 0.2);
+}
+
+[data-theme="light"] .hash-label {
+    color: var(--text-tertiary);
+}
+
+[data-theme="light"] .hash-value {
+    color: var(--text-secondary);
+    background: #f1f5f9;
+    border: 1px solid var(--border-default);
+}
+
+[data-theme="light"] .hash-value.highlight {
+    color: #7c3aed;
+    background: rgba(124, 58, 237, 0.08);
+    border-color: rgba(124, 58, 237, 0.25);
+}
+
+[data-theme="light"] .invalid .hash-value.highlight {
+    color: #dc2626;
+    border-color: rgba(239, 68, 68, 0.3);
+    background: rgba(239, 68, 68, 0.1);
+}
+
+[data-theme="light"] .bc-mock-header {
+    border-bottom: 1px solid var(--border-default);
+}
+

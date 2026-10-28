@@ -393,7 +393,7 @@ export const verifyAllCommitments = async (req, res) => {
             commitmentId: { $exists: true, $ne: null }
         })
             .sort({ createdAt: -1 })
-            .limit(200)
+            .limit(500)
             .lean();
 
         // When multiple versions exist for the same entity, verify the latest version against live data

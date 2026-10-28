@@ -54,7 +54,7 @@ export function ZMailRail({ folder, setFolder, onCompose }) {
             <div className="zm-rail-header">
                 <div className="zm-rail-brand">
                     <div className="zm-rail-brand-icon">Z</div>
-                    <div className="zm-rail-brand-text">ZMail</div>
+                    <div className="zm-rail-brand-text">ZeroleakMail</div>
                 </div>
             </div>
 
@@ -103,7 +103,7 @@ export function ZMailRail({ folder, setFolder, onCompose }) {
                 <div className="zm-account-pill">
                     <div className="zm-account-avatar">{initial}</div>
                     <div className="zm-account-info">
-                        <div className="zm-account-name">{account?.displayName || 'ZMail User'}</div>
+                        <div className="zm-account-name">{account?.displayName || 'ZeroleakMail User'}</div>
                         <div className="zm-account-address">{account?.zmailAddress || '…'}</div>
                     </div>
                     <div className={`zm-connection-dot ${connected ? 'online' : 'offline'}`} title={connected ? 'Connected' : 'Disconnected'} />

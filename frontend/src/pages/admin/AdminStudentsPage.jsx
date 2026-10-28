@@ -63,9 +63,18 @@ export default function AdminStudentsPage() {
         }
     }
 
+    const fetchLiveStudents = async () => {
+        const token = getToken()
+        if (!token) return
+        try {
+            const liveRes = await axios.get(`${API}/admin/students/live`, { headers: { Authorization: `Bearer ${token}` } })
+            setLiveStudents(liveRes.data.liveStudents || [])
+        } catch (_) {}
+    }
+
     useEffect(() => {
         fetchData()
-        const interval = setInterval(() => fetchData(false), 5000);
+        const interval = setInterval(fetchLiveStudents, 10000);
         return () => clearInterval(interval);
     }, [])
 

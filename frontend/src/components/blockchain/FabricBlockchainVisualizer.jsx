@@ -36,52 +36,57 @@ async function fetchBlocks(token) {
 
 const BLOCK_THEMES = {
     GENESIS: {
-        accent: '#a855f7',
+        accent: '#9333ea',
         border: 'rgba(168, 85, 247, 0.35)',
         glow: 'rgba(168, 85, 247, 0.25)',
         bgTint: 'rgba(168, 85, 247, 0.08)',
         badgeBg: 'rgba(168, 85, 247, 0.18)',
         badgeColor: '#d8b4fe',
+        badgeColorLight: '#7e22ce',
         label: 'Genesis',
         icon: Key
     },
     EXAM: {
-        accent: '#38bdf8',
+        accent: '#0284c7',
         border: 'rgba(56, 189, 248, 0.35)',
         glow: 'rgba(56, 189, 248, 0.25)',
         bgTint: 'rgba(56, 189, 248, 0.08)',
         badgeBg: 'rgba(56, 189, 248, 0.18)',
         badgeColor: '#7dd3fc',
+        badgeColorLight: '#0369a1',
         label: 'Exam Paper',
         icon: FileCode
     },
     RESULT: {
-        accent: '#10b981',
+        accent: '#059669',
         border: 'rgba(16, 185, 129, 0.35)',
         glow: 'rgba(16, 185, 129, 0.25)',
         bgTint: 'rgba(16, 185, 129, 0.08)',
         badgeBg: 'rgba(16, 185, 129, 0.18)',
         badgeColor: '#6ee7b7',
+        badgeColorLight: '#047857',
         label: 'Exam Result',
         icon: CheckCircle
     },
     BATCH: {
-        accent: '#f59e0b',
+        accent: '#d97706',
         border: 'rgba(245, 158, 11, 0.35)',
         glow: 'rgba(245, 158, 11, 0.25)',
         bgTint: 'rgba(245, 158, 11, 0.08)',
         badgeBg: 'rgba(245, 158, 11, 0.18)',
         badgeColor: '#fcd34d',
+        badgeColorLight: '#b45309',
         label: 'Question Batch',
         icon: Box
     },
     SECURITY_EVENT: {
-        accent: '#ef4444',
+        accent: '#dc2626',
         border: 'rgba(239, 68, 68, 0.4)',
         glow: 'rgba(239, 68, 68, 0.3)',
         bgTint: 'rgba(239, 68, 68, 0.1)',
         badgeBg: 'rgba(239, 68, 68, 0.2)',
         badgeColor: '#fca5a5',
+        badgeColorLight: '#b91c1c',
         label: 'Security Alert',
         icon: AlertTriangle
     }
@@ -94,6 +99,7 @@ const DEFAULT_THEME = {
     bgTint: 'rgba(59, 130, 246, 0.08)',
     badgeBg: 'rgba(59, 130, 246, 0.18)',
     badgeColor: '#93c5fd',
+    badgeColorLight: '#1d4ed8',
     label: 'Commitment',
     icon: Box
 };
@@ -273,7 +279,7 @@ export default function FabricBlockchainVisualizer({ token, onVerifyEntity }) {
             <div className="fbv-container">
                 <div className="fi-empty" style={{ border: '1px solid var(--fi-red-border)', borderRadius: 'var(--fi-radius)' }}>
                     <AlertTriangle size={28} style={{ color: 'var(--fi-red)' }} />
-                    <p style={{ color: '#fca5a5' }}>Failed to load Fabric Blockchain: {error}</p>
+                    <p style={{ color: 'var(--fi-red)' }}>Failed to load Fabric Blockchain: {error}</p>
                     <button className="fi-btn fi-btn-secondary fi-btn-sm" onClick={load} style={{ marginTop: 12 }}>
                         <RefreshCw size={13} /> Retry Connection
                     </button>
@@ -291,7 +297,7 @@ export default function FabricBlockchainVisualizer({ token, onVerifyEntity }) {
                     borderRadius: 'var(--fi-radius-sm)',
                     background: 'rgba(239, 68, 68, 0.1)',
                     border: '1px solid var(--fi-red-border)',
-                    color: '#fca5a5',
+                    color: 'var(--fi-red)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
@@ -706,6 +712,7 @@ export default function FabricBlockchainVisualizer({ token, onVerifyEntity }) {
                                                 '--block-border': theme.border,
                                                 '--block-glow': theme.glow,
                                                 '--block-bg-tint': theme.bgTint,
+                                                '--block-badge-color-light': theme.badgeColorLight || theme.accent,
                                                 animationDelay: `${Math.min(idx * 8, 60)}ms`
                                             }}
                                             onClick={() => setSelectedBlock(b)}
@@ -840,7 +847,14 @@ export default function FabricBlockchainVisualizer({ token, onVerifyEntity }) {
 
                 return (
                     <div className="fi-modal-overlay" onClick={() => setSelectedBlock(null)}>
-                        <div className="fbv-detail-modal" onClick={e => e.stopPropagation()}>
+                        <div
+                            className="fbv-detail-modal"
+                            style={{
+                                '--block-accent': modalTheme.accent,
+                                '--block-badge-color-light': modalTheme.badgeColorLight || modalTheme.accent
+                            }}
+                            onClick={e => e.stopPropagation()}
+                        >
                             {/* Color Accent Bar */}
                             <div style={{ height: 3, width: '100%', background: modalTheme.accent }} />
 

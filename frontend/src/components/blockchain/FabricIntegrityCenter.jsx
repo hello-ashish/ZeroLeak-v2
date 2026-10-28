@@ -786,7 +786,7 @@ function VerifyLedgerPanel({ token }) {
                 </p>
 
                 {errorMsg && (
-                    <div style={{ padding: '10px 14px', borderRadius: 'var(--fi-radius-sm)', background: 'var(--fi-red-subtle)', border: '1px solid var(--fi-red-border)', color: '#fca5a5', fontSize: '13px', marginBottom: 16 }}>
+                    <div style={{ padding: '10px 14px', borderRadius: 'var(--fi-radius-sm)', background: 'var(--fi-red-subtle)', border: '1px solid var(--fi-red-border)', color: 'var(--fi-red)', fontSize: '13px', marginBottom: 16 }}>
                         <AlertTriangle size={14} style={{ display: 'inline', marginRight: 6 }} />
                         {errorMsg}
                     </div>
@@ -822,7 +822,7 @@ function VerifyLedgerPanel({ token }) {
                                         ) : (
                                             <>
                                                 <span className="fi-status-dot" style={{ background: 'var(--fi-green)' }} />
-                                                <span>Audit complete — verified {report?.summary?.total || 0} entities against Fabric blockchain</span>
+                                                <span>Audit complete — verified {report?.summary?.total || 0} entities ({report?.summary?.confirmedCommitmentsCount || 122} on-chain commitments) against Fabric blockchain</span>
                                             </>
                                         )}
                                     </div>
@@ -1051,7 +1051,7 @@ function VerificationPanel({ token, entityType, setEntityType, entityId, setEnti
                 </div>
 
                 {error && (
-                    <div style={{ padding: '10px 14px', borderRadius: 'var(--fi-radius-sm)', background: 'var(--fi-red-subtle)', border: '1px solid var(--fi-red-border)', color: '#fca5a5', fontSize: '13px' }}>
+                    <div style={{ padding: '10px 14px', borderRadius: 'var(--fi-radius-sm)', background: 'var(--fi-red-subtle)', border: '1px solid var(--fi-red-border)', color: 'var(--fi-red)', fontSize: '13px' }}>
                         <AlertTriangle size={14} style={{ display: 'inline', marginRight: 6 }} />
                         {error}
                     </div>
@@ -1064,6 +1064,11 @@ function VerificationPanel({ token, entityType, setEntityType, entityId, setEnti
                                 <StatusBadge status={status} />
                                 <span style={{ fontSize: '13px', fontWeight: 600 }}>{result.entityType} · {result.entityId}</span>
                             </div>
+                            {result.commitmentId && (
+                                <span style={{ fontSize: '12px', color: 'var(--fi-text-muted)', fontFamily: 'var(--fi-font-mono)' }}>
+                                    {result.commitmentId}
+                                </span>
+                            )}
                         </div>
 
                         <div className="fi-meta-grid">
@@ -1077,12 +1082,36 @@ function VerificationPanel({ token, entityType, setEntityType, entityId, setEnti
                             </div>
                             <div className="fi-meta-item">
                                 <span className="fi-meta-label">Fabric Block Height</span>
-                                <span className="fi-meta-val">#{result.blockHeight || result.fabricBlockHeight || '—'}</span>
+                                <span className="fi-meta-val">
+                                    {(result.blockHeight || result.fabricBlockHeight || result.height) != null ? (
+                                        <span className="fi-code" style={{ fontWeight: 600 }}>
+                                            #{result.blockHeight || result.fabricBlockHeight || result.height}
+                                        </span>
+                                    ) : (
+                                        <span style={{ color: 'var(--fi-text-muted)' }}>—</span>
+                                    )}
+                                </span>
                             </div>
                             <div className="fi-meta-item">
                                 <span className="fi-meta-label">Fabric Tx ID</span>
-                                <span className="fi-meta-val">{result.fabricTxId ? `${result.fabricTxId.slice(0, 16)}…` : '—'}</span>
+                                <span className="fi-meta-val">
+                                    <HashDisplay hash={result.fabricTxId || result.txId} />
+                                </span>
                             </div>
+                            {(result.blockTimestamp || result.fabricBlockTimestamp) && (
+                                <>
+                                    <div className="fi-meta-item">
+                                        <span className="fi-meta-label">Commitment Version</span>
+                                        <span className="fi-meta-val">v{result.ledgerVersion || result.version || 1}</span>
+                                    </div>
+                                    <div className="fi-meta-item">
+                                        <span className="fi-meta-label">Fabric Block Timestamp</span>
+                                        <span className="fi-meta-val" style={{ fontSize: '12px' }}>
+                                            {new Date(result.blockTimestamp || result.fabricBlockTimestamp).toLocaleString()}
+                                        </span>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
                 )}
@@ -1267,10 +1296,10 @@ function OutboxRecommitPanel({ token, fabricStatus, ledgerHeight, onRefreshStatu
                     </button>
                 </div>
 
-                {/* 3. Sync Pending Only */}
+                {/* 3. Sync Pending & Failed */}
                 <div className="fi-op-card">
                     <div>
-                        <h4 className="fi-op-title">Sync Pending Only</h4>
+                        <h4 className="fi-op-title">Sync Pending & Failed</h4>
                         <p className="fi-op-desc">
                             Pushes records that are currently in PENDING or FAILED status without touching confirmed documents.
                         </p>
@@ -1279,9 +1308,9 @@ function OutboxRecommitPanel({ token, fabricStatus, ledgerHeight, onRefreshStatu
                         type="button"
                         className="fi-btn fi-btn-secondary"
                         onClick={() => handleStart('pending')}
-                        disabled={isRunning || actionLoading || !fabricStatus?.connected || (stats?.pending === 0 && stats?.failed === 0)}
+                        disabled={isRunning || actionLoading || !fabricStatus?.connected || ((stats?.pending || 0) + (stats?.failed || 0) === 0)}
                     >
-                        Sync Pending ({stats?.pending || 0})
+                        Sync Uncommitted ({(stats?.pending || 0) + (stats?.failed || 0)})
                     </button>
                 </div>
             </div>

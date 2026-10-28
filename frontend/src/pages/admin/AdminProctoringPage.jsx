@@ -67,6 +67,25 @@ const styles = `
         border-color: rgba(100, 149, 237, 0.5);
         background: linear-gradient(135deg, rgba(100,149,237,0.08) 0%, rgba(10,15,30,0.95) 100%);
     }
+    [data-theme="light"] .alert-card {
+        background: #ffffff;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.05);
+    }
+    [data-theme="light"] .alert-card:hover {
+        box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+    }
+    [data-theme="light"] .alert-card.level-HIGH {
+        border-color: rgba(239, 68, 68, 0.35);
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.06) 0%, #ffffff 100%);
+    }
+    [data-theme="light"] .alert-card.level-SUSPICIOUS {
+        border-color: rgba(245, 158, 11, 0.35);
+        background: linear-gradient(135deg, rgba(245, 158, 11, 0.06) 0%, #ffffff 100%);
+    }
+    [data-theme="light"] .alert-card.level-MONITOR {
+        border-color: rgba(59, 130, 246, 0.35);
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.06) 0%, #ffffff 100%);
+    }
     .alert-card::before {
         content: '';
         position: absolute;
@@ -83,6 +102,9 @@ const styles = `
         border-radius: 2px;
         overflow: hidden;
         margin-top: 8px;
+    }
+    [data-theme="light"] .score-bar-track {
+        background: var(--border-default, rgba(0,0,0,0.1));
     }
     .score-bar-fill {
         height: 100%;
@@ -122,6 +144,9 @@ const styles = `
         z-index: 1000;
         display: flex; align-items: center; justify-content: center;
     }
+    [data-theme="light"] .monitor-modal {
+        background: rgba(15, 23, 42, 0.45);
+    }
     .monitor-panel {
         background: var(--bg-elevated);
         border: 1px solid var(--border-default);
@@ -130,6 +155,9 @@ const styles = `
         max-height: 92vh; overflow-y: auto;
         padding: 28px;
         box-shadow: 0 32px 64px rgba(0,0,0,0.6);
+    }
+    [data-theme="light"] .monitor-panel {
+        box-shadow: 0 24px 48px rgba(0,0,0,0.15);
     }
 
     /* Video containers */
@@ -159,6 +187,10 @@ const styles = `
     .level-badge.SUSPICIOUS { background: rgba(255,171,0,0.2); color: var(--warning); border: 1px solid rgba(255,171,0,0.3); }
     .level-badge.MONITOR    { background: rgba(100,149,237,0.2); color: #6495ed; border: 1px solid rgba(100,149,237,0.3); }
     .level-badge.NORMAL     { background: rgba(46,213,115,0.1); color: var(--success); border: 1px solid rgba(46,213,115,0.2); }
+    [data-theme="light"] .level-badge.SUSPICIOUS { color: #b45309; background: rgba(245, 158, 11, 0.12); border-color: rgba(245, 158, 11, 0.3); }
+    [data-theme="light"] .level-badge.MONITOR    { color: #2563eb; background: rgba(59, 130, 246, 0.12); border-color: rgba(59, 130, 246, 0.3); }
+    [data-theme="light"] .level-badge.HIGH       { color: #dc2626; background: rgba(239, 68, 68, 0.12); border-color: rgba(239, 68, 68, 0.3); }
+    [data-theme="light"] .level-badge.NORMAL     { color: #059669; background: rgba(16, 185, 129, 0.12); border-color: rgba(16, 185, 129, 0.3); }
 
     /* Section header */
     .section-hdr {
@@ -1078,7 +1110,7 @@ export const AdminProctoringPage = () => {
                         <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
                             <Users size={18} color="var(--brand-primary)" />
                             All Live Students
-                            <span style={{ fontSize: 12, padding: "2px 8px", background: "rgba(255,255,255,0.06)", color: "var(--text-secondary)", borderRadius: 4 }}>
+                            <span style={{ fontSize: 12, padding: "2px 8px", background: "var(--border-subtle)", color: "var(--text-secondary)", borderRadius: 4 }}>
                                 {sessionsList.length}
                             </span>
                         </span>

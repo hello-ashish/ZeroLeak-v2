@@ -15,7 +15,7 @@ export function ZMailUnreadBadge({ showIcon = true, className = '' }) {
             {unreadCount > 0 && (
                 <span
                     className="zmail-nav-badge"
-                    aria-label={`${unreadCount} unread ZMail messages`}
+                    aria-label={`${unreadCount} unread ZeroleakMail messages`}
                 >
                     {unreadCount > 99 ? '99+' : unreadCount}
                 </span>

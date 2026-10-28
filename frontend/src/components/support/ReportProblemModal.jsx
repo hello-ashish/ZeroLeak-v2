@@ -133,7 +133,7 @@ export function ReportProblemModal({ onClose, examId, sessionId, context }) {
                             </p>
                         )}
                         <p className="support-success-msg">
-                            The support team has been notified. You'll receive a response via ZMail.
+                            The support team has been notified. You'll receive a response via ZeroleakMail.
                             You can track your request under <em>My Support Requests</em>.
                         </p>
                         <button type="button" className="btn btn-primary" onClick={onClose}>

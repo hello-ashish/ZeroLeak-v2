@@ -805,3 +805,76 @@
         align-items: stretch;
     }
 }
+
+/* ─── Light Mode Overrides ─────────────────────────────────────────────────── */
+[data-theme="light"] .fbv-block-card {
+    background: #ffffff;
+    border-color: var(--fi-border);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .fbv-block-card:hover {
+    background: linear-gradient(180deg, var(--block-bg-tint) 0%, #ffffff 60%);
+    box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.12),
+                0 0 0 1px var(--block-border);
+}
+
+[data-theme="light"] .fbv-block-card.selected {
+    background: linear-gradient(180deg, var(--block-bg-tint) 0%, #ffffff 60%);
+    box-shadow: 0 0 0 2px var(--block-accent),
+                0 16px 32px -6px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="light"] .fbv-block-footer {
+    background: var(--fi-surface-subtle);
+}
+
+[data-theme="light"] .fbv-block-type-pill {
+    color: var(--block-badge-color-light, var(--block-accent)) !important;
+}
+
+[data-theme="light"] .fbv-modal-type-badge {
+    color: var(--block-badge-color-light, var(--block-accent)) !important;
+}
+
+[data-theme="light"] .fbv-connector-line {
+    background: linear-gradient(90deg, rgba(0, 0, 0, 0.08) 0%, rgba(59, 130, 246, 0.5) 50%, rgba(0, 0, 0, 0.08) 100%);
+}
+
+[data-theme="light"] .fbv-connector-node {
+    background: #ffffff;
+    border-color: var(--fi-border);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .fbv-hash-display {
+    background: #f8fafc;
+    border-color: var(--fi-border);
+    color: var(--brand-primary, #2563eb);
+}
+
+[data-theme="light"] .fbv-prev-hash-display {
+    background: #f8fafc;
+    border-color: var(--fi-border);
+}
+
+[data-theme="light"] .fbv-detail-modal {
+    background: #ffffff;
+    border-color: var(--fi-border);
+    box-shadow: 0 20px 48px rgba(0, 0, 0, 0.15), 0 0 0 1px var(--fi-border);
+}
+
+[data-theme="light"] .fbv-modal-header {
+    background: var(--fi-surface-subtle);
+}
+
+[data-theme="light"] .fbv-copy-box {
+    background: #f8fafc;
+    border-color: var(--fi-border);
+}
+
+[data-theme="light"] .fbv-modal-section-card {
+    background: #f8fafc;
+    border-color: var(--fi-border);
+}
+

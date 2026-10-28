@@ -8,7 +8,7 @@ export function ZMailNotifier() {
 
     useEffect(() => {
         registerToastCallback((notification) => {
-            toast.info(`New ZMail: ${notification.subject || 'No subject'}`);
+            toast.info(`New ZeroleakMail: ${notification.subject || 'No subject'}`);
         });
     }, [registerToastCallback, toast]);
 

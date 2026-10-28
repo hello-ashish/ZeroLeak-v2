@@ -34,7 +34,7 @@ const NAV = [
     {
         section: 'Messaging',
         items: [
-            { label: 'ZMail', icon: <Mail size={18} />, path: '/zmail?role=professor', zmailBadge: true },
+            { label: 'ZeroleakMail', icon: <Mail size={18} />, path: '/zmail?role=professor', zmailBadge: true },
         ]
     },
     {

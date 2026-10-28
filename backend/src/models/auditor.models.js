@@ -15,6 +15,9 @@ const auditorSchema = new Schema(
     }, { timestamps: true }
 )
 
+auditorSchema.index({ createdAt: -1 });
+auditorSchema.index({ isBlocked: 1 });
+
 auditorSchema.pre("save", async function () {
     if (!this.isModified("password")) return;
     this.password = await bcrypt.hash(this.password, 10)

@@ -41,12 +41,8 @@ export default function AdminAuditorsPage() {
         if (!token) { navigate('/admin/login'); return }
         try {
             setLoading(true)
-            const [audRes, statsRes] = await Promise.all([
-                axios.get(`${API}/admin/auditors`, { headers: { Authorization: `Bearer ${token}` } }),
-                axios.get(`${API}/admin/stats`, { headers: { Authorization: `Bearer ${token}` } })
-            ]);
+            const audRes = await axios.get(`${API}/admin/auditors`, { headers: { Authorization: `Bearer ${token}` } });
             setAuditors(audRes.data.auditors || [])
-            setStats(statsRes.data.stats || null)
         } catch {
             toast.error('Failed to load data')
         } finally {
@@ -323,31 +319,31 @@ export default function AdminAuditorsPage() {
             <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 24 }}>
                 <div className="kpi-card">
                     <div className="kpi-card-header">
-                        <span className="kpi-label">Total Faculty</span>
+                        <span className="kpi-label">Total Auditors</span>
                         <span className="kpi-icon" style={{ background: 'rgba(124,58,237,0.12)', color: 'var(--brand-secondary)' }}><Users size={20} /></span>
                     </div>
                     <div className="kpi-value">{loading ? '—' : auditors.length}</div>
                 </div>
                 <div className="kpi-card">
                     <div className="kpi-card-header">
-                        <span className="kpi-label">Active Content Creators</span>
+                        <span className="kpi-label">Active Auditors</span>
                         <span className="kpi-icon" style={{ background: 'var(--success-subtle)', color: 'var(--success)' }}><BookOpen size={20} /></span>
                     </div>
-                    <div className="kpi-value">{loading ? '—' : activeCreatorsCount}</div>
+                    <div className="kpi-value">{loading ? '—' : auditors.filter(a => !a.isBlocked).length}</div>
                 </div>
                 <div className="kpi-card">
                     <div className="kpi-card-header">
-                        <span className="kpi-label">Pending Reviews</span>
-                        <span className="kpi-icon" style={{ background: 'var(--warning-subtle)', color: 'var(--warning)' }}><Clock size={20} /></span>
+                        <span className="kpi-label">Blocked Auditors</span>
+                        <span className="kpi-icon" style={{ background: 'var(--danger-subtle)', color: 'var(--danger)' }}><AlertTriangle size={20} /></span>
                     </div>
-                    <div className="kpi-value">{loading ? '—' : (stats?.pendingBatches || 0)}</div>
+                    <div className="kpi-value">{loading ? '—' : auditors.filter(a => a.isBlocked).length}</div>
                 </div>
                 <div className="kpi-card">
                     <div className="kpi-card-header">
-                        <span className="kpi-label">Platform Activity</span>
+                        <span className="kpi-label">Recent Active (7d)</span>
                         <span className="kpi-icon" style={{ background: 'var(--info-subtle)', color: 'var(--info)' }}><Activity size={20} /></span>
                     </div>
-                    <div className="kpi-value">{loading ? '—' : `${stats?.batches || 0} Batches`}</div>
+                    <div className="kpi-value">{loading ? '—' : activeCreatorsCount}</div>
                 </div>
             </div>
 

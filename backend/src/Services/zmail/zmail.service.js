@@ -164,8 +164,8 @@ export async function sendMail({
 }) {
     // ── 1. Load sender account ────────────────────────────────────────────────
     const senderAccount = await ZMailAccount.findOne({ userId: senderUserId }).lean();
-    if (!senderAccount) throw new Error("Your ZMail account is not provisioned. Please contact an administrator.");
-    if (senderAccount.mailboxStatus !== "active") throw new Error("Your ZMail account is suspended.");
+    if (!senderAccount) throw new Error("Your ZeroleakMail account is not provisioned. Please contact an administrator.");
+    if (senderAccount.mailboxStatus !== "active") throw new Error("Your ZeroleakMail account is suspended.");
 
     // ── 2. Validate recipients ────────────────────────────────────────────────
     const resolvedTo  = await resolveAndValidateRecipients(to);
@@ -645,7 +645,7 @@ export async function getDraftCount(userId) {
  */
 export async function createDraft({ senderUserId, to = [], cc = [], bcc = [], subject = "", body = "", attachments = [] }) {
     const senderAccount = await ZMailAccount.findOne({ userId: senderUserId }).lean();
-    if (!senderAccount) throw new Error("ZMail account not provisioned");
+    if (!senderAccount) throw new Error("ZeroleakMail account not provisioned");
 
     // Create a new thread for the draft
     const thread = await ZMailThread.create({

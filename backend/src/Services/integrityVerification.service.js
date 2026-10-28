@@ -438,6 +438,20 @@ async function _verifyAgainstLedger({ entityId, entityType, commitmentId, comput
     try {
         const fabricResult = await fabricService.verifyCommitment(commitmentId, computedHash);
 
+        // Fetch outbox metadata if available for block height & confirmed tx info
+        let outboxRecord = await IntegrityOutbox.findOne({ commitmentId }).lean();
+        if (!outboxRecord) {
+            outboxRecord = await IntegrityOutbox.findOne({
+                entityId,
+                entityType,
+                status: 'CONFIRMED'
+            }).sort({ version: -1, fabricHeight: -1 }).lean();
+        }
+
+        const txId = fabricResult.txId || outboxRecord?.fabricTxId || null;
+        const blockHeight = outboxRecord?.fabricHeight ?? (fabricResult.height || null);
+        const blockTimestamp = fabricResult.blockTimestamp || outboxRecord?.fabricBlockTimestamp || null;
+
         return {
             valid: fabricResult.valid,
             entityId,
@@ -446,8 +460,12 @@ async function _verifyAgainstLedger({ entityId, entityType, commitmentId, comput
             computedHash,
             ledgerHash: fabricResult.storedHash,
             ledgerVersion: fabricResult.version,
-            txId: fabricResult.txId,
-            blockTimestamp: fabricResult.blockTimestamp,
+            txId,
+            fabricTxId: txId,
+            blockHeight,
+            fabricBlockHeight: blockHeight,
+            blockTimestamp,
+            fabricBlockTimestamp: blockTimestamp,
             reason: fabricResult.reason,
             verifiedAt: new Date().toISOString(),
         };
@@ -457,7 +475,10 @@ async function _verifyAgainstLedger({ entityId, entityType, commitmentId, comput
 
         if (code === 'COMMITMENT_NOT_FOUND') {
             // Check if it's pending in the outbox
-            const outboxRecord = await IntegrityOutbox.findOne({ commitmentId }).lean();
+            let outboxRecord = await IntegrityOutbox.findOne({ commitmentId }).lean();
+            if (!outboxRecord) {
+                outboxRecord = await IntegrityOutbox.findOne({ entityId, entityType }).sort({ version: -1 }).lean();
+            }
             const outboxStatus = outboxRecord?.status || 'NOT_IN_OUTBOX';
 
             return {
@@ -467,6 +488,12 @@ async function _verifyAgainstLedger({ entityId, entityType, commitmentId, comput
                 commitmentId,
                 computedHash,
                 ledgerHash: null,
+                txId: outboxRecord?.fabricTxId || null,
+                fabricTxId: outboxRecord?.fabricTxId || null,
+                blockHeight: outboxRecord?.fabricHeight ?? null,
+                fabricBlockHeight: outboxRecord?.fabricHeight ?? null,
+                blockTimestamp: outboxRecord?.fabricBlockTimestamp || null,
+                fabricBlockTimestamp: outboxRecord?.fabricBlockTimestamp || null,
                 reason: 'COMMITMENT_NOT_FOUND',
                 outboxStatus,
                 message: `No commitment found on ledger. Outbox status: ${outboxStatus}`,

@@ -41,12 +41,12 @@ export default function AdminProfessorsPage() {
         if (!token) { navigate('/admin/login'); return }
         try {
             setLoading(true)
-            const [profRes, statsRes] = await Promise.all([
-                axios.get(`${API}/admin/professors`, { headers: { Authorization: `Bearer ${token}` } }),
-                axios.get(`${API}/admin/stats`, { headers: { Authorization: `Bearer ${token}` } })
-            ]);
+            const profRes = await axios.get(`${API}/admin/professors`, { headers: { Authorization: `Bearer ${token}` } });
             setProfessors(profRes.data.professors || [])
-            setStats(statsRes.data.stats || null)
+            setStats({
+                batches: profRes.data.totalBatches || 0,
+                pendingBatches: profRes.data.pendingBatches || 0
+            })
         } catch {
             toast.error('Failed to load data')
         } finally {

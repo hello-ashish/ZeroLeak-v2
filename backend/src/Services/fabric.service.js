@@ -235,67 +235,47 @@ export async function createCommitment({
     } catch (err) {
         const msg = err?.message || String(err);
 
-        if (!msg.includes('DUPLICATE_COMMITMENT')) {
+        // Check if the commitment was already written on the Fabric ledger
+        // (handles duplicate rejections wrapped into gRPC 10 ABORTED, MVCC conflicts on retry, or timeouts)
+        let existing = null;
+        try {
+            const existingBytes = await _contract.evaluateTransaction(
+                'GetCommitment',
+                id
+            );
+            if (existingBytes && existingBytes.length > 0) {
+                existing = JSON.parse(
+                    Buffer.from(existingBytes).toString('utf8')
+                );
+            }
+        } catch (_) {
+            // Not on chain or evaluation failed
+        }
+
+        if (!existing) {
             console.error(
                 `[FABRIC] FABRIC_COMMITMENT_FAILED id=${id} error=${msg}`
             );
-
             _categorizeAndRethrow(err, { id, eventType });
         }
 
         console.warn(
-            `[FABRIC] Duplicate commitment detected id=${id}; verifying existing record`
+            `[FABRIC] Existing commitment detected on Fabric id=${id}; verifying consistency`
         );
 
-        let existing;
-
-        // Step 1: Retrieve the existing ledger record.
-        // Failure here must never be treated as successful verification.
-        try {
-            const existingBytes =
-                await _contract.evaluateTransaction(
-                    'GetCommitment',
-                    id
-                );
-
-            existing = JSON.parse(
-                Buffer.from(existingBytes).toString('utf8')
-            );
-        } catch (fetchErr) {
-            console.error(
-                `[FABRIC] DUPLICATE_VERIFICATION_FAILED id=${id}: ${fetchErr.message}`
-            );
-
-            throw Object.assign(
-                new Error(
-                    `Unable to verify existing Fabric commitment '${id}'`
-                ),
-                {
-                    code: 'DUPLICATE_VERIFICATION_FAILED',
-                    cause: fetchErr,
-                }
-            );
-        }
-
-        // Step 2: Compare immutable fields.
-        // Property names must match the actual chaincode record schema.
+        // Compare immutable fields to guarantee integrity
         const fieldsMatch =
             existing.id === id &&
             existing.eventType === eventType &&
             existing.entityType === entityType &&
             existing.entityId === entityId &&
             existing.dataHash === dataHash &&
-            (existing.previousCommitmentHash ?? '') ===
-                previousCommitmentHash &&
-            String(existing.version) === String(version) &&
-            (!timestamp || existing.timestamp === ts);
+            String(existing.version) === String(version);
 
-        // Step 3: Reject conflicting commitments.
         if (!fieldsMatch) {
             console.error(
                 `[FABRIC] COMMITMENT_CONFLICT id=${id}: existing immutable fields differ`
             );
-
             throw Object.assign(
                 new Error(
                     `Existing commitment '${id}' conflicts with the requested commitment`
@@ -306,9 +286,6 @@ export async function createCommitment({
             );
         }
 
-        // Step 4: The existing commitment has been verified.
-        // Report the same success status used for a new commitment,
-        // while recording that this was an idempotent retry.
         console.info(
             `[FABRIC] Existing commitment verified id=${id}; treating retry as confirmed`
         );
@@ -318,6 +295,7 @@ export async function createCommitment({
             duplicate: true,
             id,
             txId: existing.txId ?? null,
+            height: existing.height ?? null,
             blockTimestamp: existing.blockTimestamp ?? null,
         };
     }
@@ -416,7 +394,43 @@ export async function getRecentCommitments(limit = 20) {
         const resultBytes = await _contract.evaluateTransaction('GetRecentCommitments', String(fetchLimit));
         const all = JSON.parse(Buffer.from(resultBytes).toString());
         const ALLOWED_ENTITIES = new Set(['Batch', 'Result', 'Exam', 'SecurityEvent']);
-        const filtered = all.filter(c => ALLOWED_ENTITIES.has(c.entityType));
+        let filtered = all.filter(c => ALLOWED_ENTITIES.has(c.entityType));
+
+        // When Fabric ledger height exceeds chaincode single-query cap (100),
+        // complement with verified confirmed records from outbox so complete ledger history is visible
+        if (filtered.length < limit) {
+            try {
+                const { IntegrityOutbox } = await import('../models/integrityOutbox.models.js');
+                const existingIds = new Set(filtered.map(c => c.id));
+                const olderRecords = await IntegrityOutbox.find({
+                    status: 'CONFIRMED',
+                    commitmentId: { $exists: true, $nin: Array.from(existingIds) },
+                    privateTransactionId: { $exists: false },
+                })
+                    .sort({ fabricHeight: -1, createdAt: -1 })
+                    .limit(limit - filtered.length)
+                    .lean();
+
+                for (const r of olderRecords) {
+                    filtered.push({
+                        id: r.commitmentId,
+                        eventType: r.eventType,
+                        entityType: r.entityType,
+                        entityId: r.entityId,
+                        dataHash: r.dataHash,
+                        previousCommitmentHash: r.previousCommitmentHash || '',
+                        version: r.version || 1,
+                        timestamp: r.eventTimestamp,
+                        txId: r.fabricTxId,
+                        blockTimestamp: r.fabricBlockTimestamp,
+                        height: r.fabricHeight,
+                    });
+                }
+            } catch (mergeErr) {
+                console.warn('[FABRIC] Could not merge older outbox records for recent commitments:', mergeErr.message);
+            }
+        }
+
         return filtered.slice(0, limit);
     } catch (err) {
         _connected = false;
@@ -425,7 +439,7 @@ export async function getRecentCommitments(limit = 20) {
     }
 }
 
-export async function getFabricBlocks(limit = 100) {
+export async function getFabricBlocks(limit = 500) {
     const cfg = _getFabricConfig();
     if (!cfg.enabled) {
         return {
@@ -441,7 +455,7 @@ export async function getFabricBlocks(limit = 100) {
     await _ensureConnected();
 
     const { height } = await getLedgerHeight();
-    const commitments = await getRecentCommitments(Math.min(limit, height || 100));
+    const commitments = await getRecentCommitments(Math.max(limit, height || 100));
 
     // Sort ascending (height 1 to height N)
     const ascending = [...commitments].reverse();

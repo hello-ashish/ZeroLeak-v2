@@ -565,7 +565,7 @@
 }
 
 .fi-table tr:hover td {
-    background: rgba(255, 255, 255, 0.02);
+    background: var(--fi-surface-hover);
     color: var(--fi-text-primary);
 }
 
@@ -1311,3 +1311,50 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* ─── Light Mode Overrides ─────────────────────────────────────────────────── */
+[data-theme="light"] .fi-modal-overlay {
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(4px);
+}
+
+[data-theme="light"] .fi-modal-box {
+    box-shadow: 0 20px 48px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="light"] .fi-status-badge.status-connected {
+    color: #059669;
+}
+
+[data-theme="light"] .fi-status-badge.status-disconnected {
+    color: #dc2626;
+}
+
+[data-theme="light"] .fi-status-badge.status-warning {
+    color: #d97706;
+}
+
+[data-theme="light"] .fi-critical-tamper-title {
+    color: #dc2626;
+}
+
+[data-theme="light"] .fi-critical-tamper-desc {
+    color: var(--fi-text-secondary);
+}
+
+[data-theme="light"] .fi-tab-badge-danger {
+    color: #dc2626 !important;
+}
+
+[data-theme="light"] .fi-code-hash {
+    color: var(--brand-primary, #2563eb);
+}
+
+[data-theme="light"] .fi-btn-danger {
+    color: #dc2626;
+}
+
+[data-theme="light"] .fi-alerts-clean {
+    color: #059669;
+}
+

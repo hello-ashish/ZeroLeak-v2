@@ -173,12 +173,14 @@ export const createProfessor = async (req, res) => {
 export const getAllProfessors = async (req, res) => {
     try {
         // Single aggregation replaces N+1 countDocuments pattern
-        const [professors, batchCounts] = await Promise.all([
-            Professor.find({}).select("-password").lean(),
+        const [professors, batchCounts, totalBatches, pendingBatches] = await Promise.all([
+            Professor.find({}).select("-password").sort({ createdAt: -1 }).lean(),
             Batch.aggregate([
                 { $match: { status: { $in: ["Submitted", "Accepted", "Rejected", "MarkForReview"] } } },
                 { $group: { _id: "$createdBy", count: { $sum: 1 } } }
-            ])
+            ]),
+            Batch.countDocuments({ isDeletedByAdmin: { $ne: true } }),
+            Batch.countDocuments({ status: "Submitted", isDeletedByAdmin: { $ne: true } })
         ]);
 
         const countMap = {};
@@ -188,7 +190,11 @@ export const getAllProfessors = async (req, res) => {
             ...prof,
             submittedBatches: countMap[prof._id.toString()] || 0
         }));
-        return res.status(200).json({ professors: professorsWithCounts });
+        return res.status(200).json({
+            professors: professorsWithCounts,
+            totalBatches,
+            pendingBatches
+        });
     } catch (error) {
         console.error("Error fetching professors: ", error);
         return res.status(500).json({ message: "Internal server error while fetching professors" });
@@ -820,7 +826,7 @@ export const getLiveStudents = async (req, res) => {
         const liveStudents = await Student.find({
             lastActiveAt: { $gte: thirtySecondsAgo },
             currentExamId: { $ne: null }
-        }).select("-password").populate("currentExamId", "title");
+        }).select("-password").populate("currentExamId", "title").lean();
 
         return res.status(200).json({ liveStudents });
     } catch (error) {

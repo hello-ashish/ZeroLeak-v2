@@ -18,6 +18,8 @@ const professorSchema = new Schema(
 )
 
 professorSchema.index({ name: 'text', email: 'text' });
+professorSchema.index({ createdAt: -1 });
+professorSchema.index({ isBlocked: 1 });
 
 professorSchema.pre("save", async function () {
     if (!this.isModified("password")) return;

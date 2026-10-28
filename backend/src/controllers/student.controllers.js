@@ -250,7 +250,7 @@ export const getAvailableExams = async (req, res) => {
 // 4. Fetch all students (for Admins only)
 export const getAllStudents = async (req, res) => {
     try {
-        const students = await Student.find().select("-password").sort({ createdAt: -1 });
+        const students = await Student.find().select("-password").sort({ createdAt: -1 }).lean();
         return res.status(200).json({ students });
     } catch (error) {
         return res.status(500).json({ message: "Error fetching students", error: error.message });

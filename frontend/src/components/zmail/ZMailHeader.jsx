@@ -11,7 +11,7 @@ export function ZMailHeader({ searchQuery, onSearch, connected }) {
                     placeholder="Search mail, people, subjects…"
                     value={searchQuery}
                     onChange={(e) => onSearch(e.target.value)}
-                    aria-label="Search ZMail"
+                    aria-label="Search ZeroleakMail"
                 />
                 <span className="zm-search-kbd">⌘K</span>
             </div>

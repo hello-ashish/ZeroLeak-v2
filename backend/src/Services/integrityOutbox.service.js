@@ -83,6 +83,10 @@ export function startIntegrityOutboxWorker() {
 }
 
 async function _processBatch() {
+    if (_recommitJob && _recommitJob.status === 'running') {
+        return;
+    }
+
     const now = new Date();
     const leaseExpiry = new Date(now.getTime() + LEASE_DURATION_MS);
 
@@ -144,6 +148,8 @@ async function _processBatch() {
 
     for (const record of claims) {
         await _processRecord(record);
+        // Small delay between transactions to give Raft consensus time to cut the block
+        await new Promise(r => setTimeout(r, 200));
     }
 }
 
@@ -352,7 +358,71 @@ export async function reconcileUncommittedEntities() {
         );
         stats.stuckProcessingReset = resetResult.modifiedCount || 0;
 
-        // 2. Count permanently failed records
+        // 2. Audit FAILED outbox records: check if they are already confirmed on Fabric
+        const failedRecords = await IntegrityOutbox.find({
+            status: 'FAILED',
+            entityType: { $ne: 'Question' }
+        }).lean();
+
+        let confirmedFromFabric = 0;
+        let requeuedForRetry = 0;
+
+        for (const failedRec of failedRecords) {
+            try {
+                const onChain = await fabricService.getCommitment(failedRec.commitmentId);
+                if (onChain && onChain.id === failedRec.commitmentId) {
+                    await IntegrityOutbox.updateOne(
+                        { _id: failedRec._id },
+                        {
+                            $set: {
+                                status: 'CONFIRMED',
+                                fabricTxId: onChain.txId || null,
+                                fabricBlockTimestamp: onChain.blockTimestamp || null,
+                                fabricHeight: onChain.height || null,
+                                lastError: null,
+                                lastErrorCode: null,
+                                confirmedAt: new Date(),
+                                processingWorker: null,
+                                leaseExpiresAt: null,
+                            }
+                        }
+                    );
+                    confirmedFromFabric++;
+                } else {
+                    await IntegrityOutbox.updateOne(
+                        { _id: failedRec._id },
+                        {
+                            $set: {
+                                status: 'PENDING',
+                                attemptCount: 0,
+                                lastError: null,
+                                lastErrorCode: null,
+                                processingWorker: null,
+                                leaseExpiresAt: null,
+                            }
+                        }
+                    );
+                    requeuedForRetry++;
+                }
+            } catch (_) {
+                await IntegrityOutbox.updateOne(
+                    { _id: failedRec._id },
+                    {
+                        $set: {
+                            status: 'PENDING',
+                            attemptCount: 0,
+                            lastError: null,
+                            lastErrorCode: null,
+                            processingWorker: null,
+                            leaseExpiresAt: null,
+                        }
+                    }
+                );
+                requeuedForRetry++;
+            }
+        }
+        stats.confirmedFromFabric = confirmedFromFabric;
+        stats.requeuedForRetry = requeuedForRetry;
         stats.permanentlyFailed = await IntegrityOutbox.countDocuments({ status: 'FAILED' });
 
         // 3. Reconcile Accepted Batches
@@ -716,6 +786,8 @@ export async function startRecommitJob({ mode = 'all', resetDb = true } = {}) {
                 _recommitJob.failed++;
             } finally {
                 _recommitJob.processed++;
+                // Pace transactions to allow Raft ordering to cut blocks without concurrency conflict
+                await new Promise(r => setTimeout(r, 200));
             }
         }
 

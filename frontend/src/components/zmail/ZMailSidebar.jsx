@@ -50,7 +50,7 @@ export function ZMailSidebar({ currentFolder, onFolderChange, onCompose, account
     };
 
     return (
-        <div className="zmail-sidebar" aria-label="ZMail navigation" ref={sidebarRef}>
+        <div className="zmail-sidebar" aria-label="ZeroleakMail navigation" ref={sidebarRef}>
             <div className="zmail-resizer" onMouseDown={handleMouseDown} />
             <button
                 className="zmail-compose-btn"

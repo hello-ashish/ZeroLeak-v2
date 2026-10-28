@@ -193,6 +193,7 @@ export const getExamResults = async (req, res) => {
 
         const [results, total] = await Promise.all([
             Result.find({})
+                .select("-latestAnswers -assignedQuestions")
                 .populate("student", "name studentId")
                 .populate("exam", "title")
                 .sort({ createdAt: -1 })
