@@ -32,6 +32,7 @@ import { loginRateLimit } from "../middlewares/rateLimit.middleware.js";
 
 // ── Auth ────────────────────────────────────────────────────────────────────────
 router.post("/login", loginRateLimit(), supportController.supportLogin);
+router.post("/logout", verifySupportJWT, supportController.logoutSupport);
 
 // ── Public constants (any authenticated user) ──────────────────────────────────
 router.get("/constants", verifyAnyJWT, supportController.getConstants);

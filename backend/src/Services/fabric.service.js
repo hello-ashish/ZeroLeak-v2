@@ -334,11 +334,6 @@ export async function verifyCommitment(id, expectedHash) {
     try {
         const resultBytes = await _contract.evaluateTransaction('VerifyCommitment', id, expectedHash);
         const result = JSON.parse(Buffer.from(resultBytes).toString());
-        if (result.valid) {
-            console.info(`[FABRIC] FABRIC_VERIFICATION_SUCCESS id=${id}`);
-        } else {
-            console.warn(`[FABRIC] FABRIC_VERIFICATION_FAILED id=${id} reason=${result.reason}`);
-        }
         return result;
     } catch (err) {
         console.error(`[FABRIC] EVALUATE_ERROR VerifyCommitment id=${id} — ${err.message}`);

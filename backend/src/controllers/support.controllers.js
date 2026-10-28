@@ -474,3 +474,32 @@ export const updateSupportProfile = async (req, res) => {
         return res.status(500).json({ message: "Internal server error" });
     }
 };
+
+export const logoutSupport = async (req, res) => {
+    try {
+        const adminId = req.user?._id || req.admin?._id;
+        const admin = await Admin.findById(adminId);
+        if (admin) {
+            admin.isLoggedIn = false;
+            admin.sessionVersion = (admin.sessionVersion || 0) + 1;
+            await admin.save({ validateBeforeSave: false });
+
+            try {
+                await AuditLog.create({
+                    actor: admin.email,
+                    actorRole: "Support",
+                    action: "SUPPORT_LOGOUT",
+                    targetType: "Admin",
+                    targetId: String(admin._id),
+                    targetLabel: admin.name || admin.email,
+                    status: "success"
+                });
+            } catch (auditErr) {
+                console.error("[SUPPORT] AuditLog error on logout:", auditErr.message);
+            }
+        }
+        return res.status(200).json({ success: true, message: "Logout successful" });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: "Error logging out", error: error.message });
+    }
+};

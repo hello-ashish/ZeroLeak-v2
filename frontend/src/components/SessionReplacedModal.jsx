@@ -6,13 +6,20 @@ import { AlertTriangle } from 'lucide-react';
 
 export const SessionReplacedModal = () => {
     const [isOpen, setIsOpen] = useState(false);
+    const [message, setMessage] = useState('');
     const navigate = useNavigate();
 
     useEffect(() => {
         const interceptor = axios.interceptors.response.use(
             response => response,
             error => {
-                if (error.response && error.response.status === 401 && error.response.data?.code === 'SESSION_REPLACED') {
+                const code = error.response?.data?.code;
+                if (error.response?.status === 401 && (code === 'SESSION_REPLACED' || code === 'SESSION_TERMINATED')) {
+                    if (code === 'SESSION_REPLACED') {
+                        setMessage('Your account has been accessed from another device or browser. To protect your security, this session has been automatically logged out.');
+                    } else {
+                        setMessage('Your session has ended or you have been logged out. Please sign in again to continue.');
+                    }
                     setIsOpen(true);
                 }
                 return Promise.reject(error);
@@ -23,14 +30,10 @@ export const SessionReplacedModal = () => {
 
     const handleLogout = () => {
         // Clear all possible tokens
-        localStorage.removeItem('adminToken');
-        localStorage.removeItem('adminData');
-        localStorage.removeItem('profToken');
-        localStorage.removeItem('profData');
-        localStorage.removeItem('studentToken');
-        localStorage.removeItem('studentData');
-        localStorage.removeItem('auditorToken');
-        localStorage.removeItem('auditorData');
+        ['admin', 'prof', 'student', 'auditor', 'support'].forEach(r => {
+            localStorage.removeItem(`${r}Token`);
+            localStorage.removeItem(`${r}Data`);
+        });
         
         setIsOpen(false);
         navigate('/portal');
@@ -54,7 +57,7 @@ export const SessionReplacedModal = () => {
         >
             <div style={{ padding: '8px 0' }}>
                 <p style={{ color: 'var(--text-secondary)' }}>
-                    Your account has been accessed from another device or browser. To protect your security, this session has been automatically logged out.
+                    {message}
                 </p>
             </div>
         </Modal>

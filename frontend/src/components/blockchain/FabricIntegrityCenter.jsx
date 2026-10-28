@@ -1,10 +1,3 @@
-// =============================================================================
-// ZeroLeak — FabricIntegrityCenter.jsx
-// =============================================================================
-// Clean, elegant, modern enterprise dashboard inspired by Stripe, Linear & Vercel.
-// Real Hyperledger Fabric integrity ledger, verification, and tamper surveillance.
-// =============================================================================
-
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
     Blocks, Shield, ShieldCheck, ShieldAlert, ShieldOff,
@@ -414,9 +407,21 @@ function RecentCommitmentsTable({ commitments, loading, onVerify }) {
 
     if (loading && (!validCommitments || validCommitments.length === 0)) {
         return (
-            <div className="fi-empty">
-                <Loader2 size={18} className="spin" />
-                <p>Loading ledger commitments...</p>
+            <div className="fi-commitments-skeleton-wrap">
+                <div className="fi-commitments-skeleton-header">
+                    <Loader2 size={16} className="spin" style={{ color: 'var(--fi-blue)' }} />
+                    <span>Querying Hyperledger Fabric peer ledger for recent commitments...</span>
+                </div>
+                <div className="fi-commitments-skeleton-list">
+                    {[...Array(6)].map((_, i) => (
+                        <div key={i} className="fi-commitments-skeleton-row">
+                            <span className="skeleton" style={{ width: 120, height: 16 }} />
+                            <span className="skeleton" style={{ width: 160, height: 16 }} />
+                            <span className="skeleton" style={{ width: 220, height: 16 }} />
+                            <span className="skeleton" style={{ width: 80, height: 16 }} />
+                        </div>
+                    ))}
+                </div>
             </div>
         );
     }
@@ -1213,19 +1218,19 @@ function OutboxRecommitPanel({ token, fabricStatus, ledgerHeight, onRefreshStatu
             <div className="fi-recommit-overview">
                 <div className="fi-outbox-stat-card">
                     <span className="fi-outbox-stat-lbl">Question Batches</span>
-                    <span className="fi-outbox-stat-val">{stats?.byType?.Batch || 0}</span>
+                    {!stats ? <span className="skeleton fi-outbox-skeleton" /> : <span className="fi-outbox-stat-val">{stats.byType?.Batch || 0}</span>}
                 </div>
                 <div className="fi-outbox-stat-card">
                     <span className="fi-outbox-stat-lbl">Exam Papers</span>
-                    <span className="fi-outbox-stat-val">{stats?.byType?.Exam || 0}</span>
+                    {!stats ? <span className="skeleton fi-outbox-skeleton" /> : <span className="fi-outbox-stat-val">{stats.byType?.Exam || 0}</span>}
                 </div>
                 <div className="fi-outbox-stat-card">
                     <span className="fi-outbox-stat-lbl">Student Results</span>
-                    <span className="fi-outbox-stat-val">{stats?.byType?.Result || 0}</span>
+                    {!stats ? <span className="skeleton fi-outbox-skeleton" /> : <span className="fi-outbox-stat-val">{stats.byType?.Result || 0}</span>}
                 </div>
                 <div className="fi-outbox-stat-card">
                     <span className="fi-outbox-stat-lbl">Security Events</span>
-                    <span className="fi-outbox-stat-val">{stats?.byType?.SecurityEvent || 0}</span>
+                    {!stats ? <span className="skeleton fi-outbox-skeleton" /> : <span className="fi-outbox-stat-val">{stats.byType?.SecurityEvent || 0}</span>}
                 </div>
             </div>
 
@@ -1376,9 +1381,11 @@ export default function FabricIntegrityCenter({ token, onOpenMockLab }) {
     const [fabricStatus, setFabricStatus] = useState(null);
     const [ledgerHeight, setLedgerHeight] = useState(null);
     const [recentCommitments, setRecentCommitments] = useState([]);
+    const [totalCommitmentsCount, setTotalCommitmentsCount] = useState(null);
     const [alertCount, setAlertCount] = useState(0);
     const [outboxStats, setOutboxStats] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [isRefreshing, setIsRefreshing] = useState(false);
     const [loadingCommitments, setLoadingCommitments] = useState(false);
     const [verifyEntityType, setVerifyEntityType] = useState('result');
     const [verifyEntityId, setVerifyEntityId] = useState('');
@@ -1393,10 +1400,10 @@ export default function FabricIntegrityCenter({ token, onOpenMockLab }) {
             ]);
             setFabricStatus(statusData);
             setLedgerHeight(heightData);
+            if (heightData?.totalCommitments !== undefined) {
+                setTotalCommitmentsCount(heightData.totalCommitments);
+            }
         } catch (_) { }
-        finally {
-            setLoading(false);
-        }
     }, [token]);
 
     // Load recent commitments
@@ -1405,6 +1412,9 @@ export default function FabricIntegrityCenter({ token, onOpenMockLab }) {
         try {
             const data = await apiFetch('/recent?limit=100', token);
             setRecentCommitments(data.commitments || []);
+            if (data.totalCommitments !== undefined) {
+                setTotalCommitmentsCount(data.totalCommitments);
+            }
         } catch (_) {
             setRecentCommitments([]);
         } finally {
@@ -1428,8 +1438,28 @@ export default function FabricIntegrityCenter({ token, onOpenMockLab }) {
         try {
             const data = await apiFetch('/outbox/stats', token);
             setOutboxStats(data);
+            if (data?.total !== undefined) {
+                setTotalCommitmentsCount(prev => Math.max(prev || 0, data.total, data.confirmed || 0, data.ledgerHeight || 0));
+            }
         } catch (_) { }
     }, [token]);
+
+    const refreshAll = useCallback(async (isManual = false) => {
+        if (isManual) setIsRefreshing(true);
+        try {
+            await Promise.allSettled([
+                loadStatus(),
+                loadAlertCount(),
+                loadCommitments(),
+                loadOutboxStats(),
+            ]);
+        } finally {
+            setLoading(false);
+            if (isManual) {
+                setTimeout(() => setIsRefreshing(false), 400);
+            }
+        }
+    }, [loadStatus, loadAlertCount, loadCommitments, loadOutboxStats]);
 
     const handleDismissBanner = async (e) => {
         if (e) e.stopPropagation();
@@ -1448,17 +1478,14 @@ export default function FabricIntegrityCenter({ token, onOpenMockLab }) {
     };
 
     useEffect(() => {
-        loadStatus();
-        loadAlertCount();
-        loadCommitments();
-        loadOutboxStats();
+        refreshAll(false);
         const interval = setInterval(() => {
             loadStatus();
             loadAlertCount();
             loadOutboxStats();
         }, 15_000);
         return () => clearInterval(interval);
-    }, [loadStatus, loadAlertCount, loadCommitments, loadOutboxStats]);
+    }, [refreshAll, loadStatus, loadAlertCount, loadOutboxStats]);
 
     useEffect(() => {
         if (activeTab === 'commitments') {
@@ -1519,8 +1546,19 @@ export default function FabricIntegrityCenter({ token, onOpenMockLab }) {
                         DEV NETWORK
                     </div>
 
+                    <button
+                        type="button"
+                        className="fi-btn fi-btn-secondary fi-btn-sm"
+                        onClick={() => refreshAll(true)}
+                        disabled={loading || isRefreshing}
+                        title="Synchronize blockchain ledger status and metrics"
+                    >
+                        <RefreshCw size={12} className={(loading || isRefreshing) ? 'spin' : ''} />
+                        {(loading || isRefreshing) ? 'Syncing...' : 'Sync Ledger'}
+                    </button>
+
                     <StatusBadge status={
-                        !fabricStatus ? 'LOADING' :
+                        (loading || !fabricStatus) ? 'LOADING' :
                             !isEnabled ? 'FABRIC_DISABLED' :
                                 isConnected ? 'CONNECTED' : 'DISCONNECTED'
                     } />
@@ -1539,6 +1577,9 @@ export default function FabricIntegrityCenter({ token, onOpenMockLab }) {
                     )}
                 </div>
             </div>
+
+            {/* ─── Loading / Connecting Banner ────────────────────────────────── */}
+            {loading}
 
             {/* ─── Live Tamper Incident Alert Banner ─────────────────────────── */}
             {alertCount > 0 && (
@@ -1608,19 +1649,37 @@ export default function FabricIntegrityCenter({ token, onOpenMockLab }) {
                         {/* 4 Compact Summary Metrics */}
                         <div className="fi-metrics-strip">
                             <div className="fi-metric-item">
-                                <span className="fi-metric-value">{ledgerHeight?.height ?? '—'}</span>
+                                {loading ? (
+                                    <span className="skeleton fi-metric-skeleton" />
+                                ) : (
+                                    <span className="fi-metric-value">{ledgerHeight?.height ?? '—'}</span>
+                                )}
                                 <span className="fi-metric-label">Ledger Height</span>
                             </div>
                             <div className="fi-metric-item">
-                                <span className="fi-metric-value">{recentCommitments?.length ?? '—'}</span>
+                                {loading ? (
+                                    <span className="skeleton fi-metric-skeleton" />
+                                ) : (
+                                    <span className="fi-metric-value">
+                                        {totalCommitmentsCount ?? outboxStats?.total ?? outboxStats?.confirmed ?? ledgerHeight?.height ?? (recentCommitments?.length || '—')}
+                                    </span>
+                                )}
                                 <span className="fi-metric-label">Total Commitments</span>
                             </div>
                             <div className="fi-metric-item">
-                                <span className="fi-metric-value">{outboxStats?.pending ?? 0}</span>
+                                {loading ? (
+                                    <span className="skeleton fi-metric-skeleton" />
+                                ) : (
+                                    <span className="fi-metric-value">{outboxStats?.pending ?? 0}</span>
+                                )}
                                 <span className="fi-metric-label">Pending Outbox Events</span>
                             </div>
                             <div className={`fi-metric-item ${alertCount > 0 ? 'fi-metric-danger' : ''}`}>
-                                <span className="fi-metric-value">{alertCount}</span>
+                                {loading ? (
+                                    <span className="skeleton fi-metric-skeleton" />
+                                ) : (
+                                    <span className="fi-metric-value">{alertCount}</span>
+                                )}
                                 <span className="fi-metric-label">Tamper Alerts</span>
                             </div>
                         </div>
@@ -1629,43 +1688,61 @@ export default function FabricIntegrityCenter({ token, onOpenMockLab }) {
                         <div className="fi-card">
                             <div className="fi-card-header">
                                 <div className="fi-card-title-row">
-                                    <Network size={16} style={{ color: isConnected ? 'var(--fi-green)' : 'var(--fi-text-muted)' }} />
+                                    <Network size={16} style={{ color: (loading || !fabricStatus) ? 'var(--fi-blue)' : isConnected ? 'var(--fi-green)' : 'var(--fi-text-muted)' }} />
                                     <h3>Fabric Network Status</h3>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                    <StatusBadge status={(!fabricStatus || loading) ? 'LOADING' : isConnected ? 'CONNECTED' : isEnabled ? 'DISCONNECTED' : 'FABRIC_DISABLED'} />
+                                    <StatusBadge status={(loading || !fabricStatus) ? 'LOADING' : isConnected ? 'CONNECTED' : isEnabled ? 'DISCONNECTED' : 'FABRIC_DISABLED'} />
                                 </div>
                             </div>
 
                             <div className="fi-card-body">
-                                <div className="fi-meta-grid">
-                                    <div className="fi-meta-item">
-                                        <span className="fi-meta-label">Connection</span>
-                                        <span className="fi-meta-val" style={{ color: isConnected ? 'var(--fi-green)' : 'var(--fi-red)' }}>
-                                            {isConnected ? 'Connected to Peer' : 'Disconnected'}
-                                        </span>
+                                {loading ? (
+                                    <div className="fi-meta-grid">
+                                        {[
+                                            { label: 'Connection', width: 130 },
+                                            { label: 'Channel', width: 140 },
+                                            { label: 'Chaincode', width: 110 },
+                                            { label: 'MSP ID', width: 80 },
+                                            { label: 'Endorsing Peer', width: 135 },
+                                            { label: 'Consensus Protocol', width: 115 }
+                                        ].map((item, idx) => (
+                                            <div key={idx} className="fi-meta-item">
+                                                <span className="fi-meta-label">{item.label}</span>
+                                                <span className="skeleton fi-meta-skeleton" style={{ width: item.width }} />
+                                            </div>
+                                        ))}
                                     </div>
-                                    <div className="fi-meta-item">
-                                        <span className="fi-meta-label">Channel</span>
-                                        <span className="fi-meta-val">{fabricStatus?.channel || 'zeroleak-channel'}</span>
+                                ) : (
+                                    <div className="fi-meta-grid">
+                                        <div className="fi-meta-item">
+                                            <span className="fi-meta-label">Connection</span>
+                                            <span className="fi-meta-val" style={{ color: isConnected ? 'var(--fi-green)' : 'var(--fi-red)' }}>
+                                                {isConnected ? 'Connected to Peer' : 'Disconnected'}
+                                            </span>
+                                        </div>
+                                        <div className="fi-meta-item">
+                                            <span className="fi-meta-label">Channel</span>
+                                            <span className="fi-meta-val">{fabricStatus?.channel || 'zeroleak-channel'}</span>
+                                        </div>
+                                        <div className="fi-meta-item">
+                                            <span className="fi-meta-label">Chaincode</span>
+                                            <span className="fi-meta-val">{fabricStatus?.chaincode || 'zeroleak'} v1.0</span>
+                                        </div>
+                                        <div className="fi-meta-item">
+                                            <span className="fi-meta-label">MSP ID</span>
+                                            <span className="fi-meta-val">{fabricStatus?.mspId || 'Org1MSP'}</span>
+                                        </div>
+                                        <div className="fi-meta-item">
+                                            <span className="fi-meta-label">Endorsing Peer</span>
+                                            <span className="fi-meta-val">{fabricStatus?.peerEndpoint || 'localhost:7051'}</span>
+                                        </div>
+                                        <div className="fi-meta-item">
+                                            <span className="fi-meta-label">Consensus Protocol</span>
+                                            <span className="fi-meta-val">Raft (etcdraft)</span>
+                                        </div>
                                     </div>
-                                    <div className="fi-meta-item">
-                                        <span className="fi-meta-label">Chaincode</span>
-                                        <span className="fi-meta-val">{fabricStatus?.chaincode || 'zeroleak'} v1.0</span>
-                                    </div>
-                                    <div className="fi-meta-item">
-                                        <span className="fi-meta-label">MSP ID</span>
-                                        <span className="fi-meta-val">{fabricStatus?.mspId || 'Org1MSP'}</span>
-                                    </div>
-                                    <div className="fi-meta-item">
-                                        <span className="fi-meta-label">Endorsing Peer</span>
-                                        <span className="fi-meta-val">{fabricStatus?.peerEndpoint || 'localhost:7051'}</span>
-                                    </div>
-                                    <div className="fi-meta-item">
-                                        <span className="fi-meta-label">Consensus Protocol</span>
-                                        <span className="fi-meta-val">Raft (etcdraft)</span>
-                                    </div>
-                                </div>
+                                )}
 
                                 {/* Architecture Flow */}
                                 <div className="fi-arch-section">

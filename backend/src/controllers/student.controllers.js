@@ -97,6 +97,20 @@ export const logoutStudent = async (req, res) => {
             student.isLoggedIn = false;
             student.sessionVersion = (student.sessionVersion || 0) + 1;
             await student.save({ validateBeforeSave: false });
+
+            try {
+                await AuditLog.create({
+                    actor: student.email,
+                    actorRole: "Student",
+                    action: "STUDENT_LOGOUT",
+                    targetType: "Student",
+                    targetId: String(student._id),
+                    targetLabel: student.name,
+                    status: "success"
+                });
+            } catch (auditErr) {
+                console.error("[STUDENT] AuditLog error on logout:", auditErr.message);
+            }
         }
         return res.status(200).json({ message: "Logout successful" });
     } catch (error) {

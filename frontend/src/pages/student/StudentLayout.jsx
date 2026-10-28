@@ -10,6 +10,7 @@ import { useNotifications } from '../../hooks/useNotifications.jsx'
 import { ZMailUnreadBadge } from '../../components/zmail/ZMailUnreadBadge.jsx'
 import { ReportProblemModal } from '../../components/support/ReportProblemModal.jsx'
 import { useRefresh } from '../../context/RefreshContext.jsx'
+import { performLogout } from '../../utils/auth.js'
 import '../../components/support/support.css'
 
 import axios from 'axios';
@@ -66,9 +67,7 @@ export const StudentLayout = ({ children, noPadding = false }) => {
     const studentData = JSON.parse(localStorage.getItem('studentData') || '{}')
 
     const handleLogout = () => {
-        localStorage.removeItem('studentToken')
-        localStorage.removeItem('studentData')
-        navigate('/portal')
+        performLogout('student', navigate)
     }
 
     const handleRefresh = () => {

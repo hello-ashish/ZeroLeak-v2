@@ -79,6 +79,20 @@ export const logoutAuditor = async (req, res) => {
             auditor.isLoggedIn = false;
             auditor.sessionVersion = (auditor.sessionVersion || 0) + 1;
             await auditor.save({ validateBeforeSave: false });
+
+            try {
+                await AuditLog.create({
+                    actor: auditor.email,
+                    actorRole: "Auditor",
+                    action: "AUDITOR_LOGOUT",
+                    targetType: "Auditor",
+                    targetId: String(auditor._id),
+                    targetLabel: auditor.name || auditor.email,
+                    status: "success"
+                });
+            } catch (auditErr) {
+                console.error("[AUDITOR] AuditLog error on logout:", auditErr.message);
+            }
         }
         return res.status(200).json({ message: "Logout successful" });
     } catch (error) {

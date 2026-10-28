@@ -17,7 +17,7 @@ import {
     Search, Filter, RefreshCw, ChevronRight, ChevronLeft,
     ExternalLink, Copy, Check, Info, Server, Network,
     Cpu, Key, Database, ArrowRight, CornerDownRight, X,
-    List, Columns, FileCode, ArrowUpDown, ArrowDown, ArrowUp
+    List, Columns, FileCode, ArrowUpDown, ArrowDown, ArrowUp, Loader2
 } from 'lucide-react';
 import './FabricBlockchainVisualizer.css';
 
@@ -266,9 +266,12 @@ export default function FabricBlockchainVisualizer({ token, onVerifyEntity }) {
     if (loading && !data) {
         return (
             <div className="fbv-container">
-                <div className="fi-empty">
-                    <RefreshCw size={20} className="spin" />
-                    <p>Loading Hyperledger Fabric blockchain blocks and channel state...</p>
+                <div className="fi-empty" style={{ minHeight: 320 }}>
+                    <Loader2 size={24} className="spin" style={{ color: 'var(--fi-blue)' }} />
+                    <p style={{ marginTop: 12, fontWeight: 600, color: 'var(--fi-text-primary)' }}>Loading Hyperledger Fabric blockchain blocks and channel state...</p>
+                    <span style={{ fontSize: '12px', color: 'var(--fi-text-muted)', marginTop: 4 }}>
+                        Querying peer endorsements, committed height, and cryptographic hash chain...
+                    </span>
                 </div>
             </div>
         );

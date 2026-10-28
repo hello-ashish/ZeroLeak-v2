@@ -258,6 +258,22 @@
     flex-shrink: 0;
 }
 
+/* ─── Loading / Connecting Banner ────────────────────────────────────────── */
+.fi-connecting-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    background: var(--fi-blue-subtle);
+    border: 1px solid var(--fi-blue-border);
+    border-radius: var(--fi-radius);
+    color: var(--fi-text-primary);
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 20px;
+    animation: fiTabFadeIn 0.2s ease-out;
+}
+
 /* ─── Navigation Tabs Bar (Linear-style) ──────────────────────────────────── */
 .fi-tabs-row {
     display: flex;
@@ -398,6 +414,64 @@
 
 .fi-metric-danger .fi-metric-value {
     color: var(--fi-red);
+}
+
+.fi-metric-skeleton {
+    display: inline-block;
+    width: 68px;
+    height: 26px;
+    border-radius: var(--fi-radius-xs);
+    margin-bottom: 2px;
+}
+
+.fi-meta-skeleton {
+    display: inline-block;
+    height: 18px;
+    border-radius: var(--fi-radius-xs);
+    margin-top: 4px;
+}
+
+.fi-outbox-skeleton {
+    display: inline-block;
+    width: 48px;
+    height: 24px;
+    border-radius: var(--fi-radius-xs);
+    margin-top: 4px;
+}
+
+/* Commitments Table Skeleton */
+.fi-commitments-skeleton-wrap {
+    padding: 24px;
+    background: var(--fi-surface);
+    border: 1px solid var(--fi-border);
+    border-radius: var(--fi-radius);
+}
+
+.fi-commitments-skeleton-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--fi-text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 18px;
+}
+
+.fi-commitments-skeleton-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.fi-commitments-skeleton-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 16px;
+    background: var(--fi-surface-subtle);
+    border: 1px solid var(--fi-border-subtle);
+    border-radius: var(--fi-radius-sm);
 }
 
 /* ─── Standard Enterprise Cards & Sections ───────────────────────────────── */

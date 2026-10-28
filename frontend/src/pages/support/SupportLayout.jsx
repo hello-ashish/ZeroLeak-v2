@@ -7,6 +7,7 @@ import { SkeletonCard, Skeleton, SkeletonTable } from '../../components/Skeleton
 import { ZMailUnreadBadge } from '../../components/zmail/ZMailUnreadBadge.jsx';
 import { History } from 'lucide-react';
 import { useRefresh } from '../../context/RefreshContext.jsx';
+import { performLogout } from '../../utils/auth.js';
 import '../../components/support/support.css';
 
 const NAV = [
@@ -88,8 +89,7 @@ export const SupportLayout = ({ children, noPadding = false }) => {
     }, []);
 
     const handleLogout = () => {
-        localStorage.removeItem('supportToken');
-        navigate('/support/login');
+        performLogout('support', navigate);
     };
 
     const isActive = (path) => location.pathname === path;

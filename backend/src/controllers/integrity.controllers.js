@@ -112,10 +112,29 @@ export const getRecentCommitments = async (req, res) => {
     try {
         const limit = Math.min(parseInt(req.query.limit || '20', 10), 100);
         const commitments = await fabricService.getRecentCommitments(limit);
-        return res.status(200).json({ commitments });
+        const outboxConfirmed = await IntegrityOutbox.countDocuments({
+            status: 'CONFIRMED',
+            entityType: { $ne: 'Question' }
+        });
+        const outboxTotal = await IntegrityOutbox.countDocuments({
+            entityType: { $ne: 'Question' }
+        });
+        const heightData = await fabricService.getLedgerHeight().catch(() => ({ height: 0 }));
+        const actualTotal = Math.max(heightData?.height || 0, outboxConfirmed, outboxTotal, commitments.length);
+
+        return res.status(200).json({
+            commitments,
+            totalCommitments: actualTotal,
+            total: actualTotal,
+            ledgerHeight: heightData?.height || 0,
+        });
     } catch (err) {
         if (err.code === 'FABRIC_DISABLED') {
-            return res.status(200).json({ commitments: [], fabricEnabled: false });
+            const outboxConfirmed = await IntegrityOutbox.countDocuments({
+                status: 'CONFIRMED',
+                entityType: { $ne: 'Question' }
+            }).catch(() => 0);
+            return res.status(200).json({ commitments: [], totalCommitments: outboxConfirmed, total: outboxConfirmed, fabricEnabled: false });
         }
         console.error('[INTEGRITY] Error fetching recent commitments:', err.message);
         return res.status(500).json({ message: 'Failed to fetch recent commitments.', error: err.message });
@@ -160,10 +179,28 @@ export const getPendingOutbox = async (req, res) => {
 export const getLedgerHeight = async (req, res) => {
     try {
         const result = await fabricService.getLedgerHeight();
-        return res.status(200).json(result);
+        const outboxConfirmed = await IntegrityOutbox.countDocuments({
+            status: 'CONFIRMED',
+            entityType: { $ne: 'Question' }
+        });
+        const outboxTotal = await IntegrityOutbox.countDocuments({
+            entityType: { $ne: 'Question' }
+        });
+        const actualTotal = Math.max(result?.height || 0, outboxConfirmed, outboxTotal);
+
+        return res.status(200).json({
+            ...result,
+            totalCommitments: actualTotal,
+            outboxConfirmed,
+            outboxTotal,
+        });
     } catch (err) {
         if (err.code === 'FABRIC_DISABLED') {
-            return res.status(200).json({ height: 0, fabricEnabled: false });
+            const outboxConfirmed = await IntegrityOutbox.countDocuments({
+                status: 'CONFIRMED',
+                entityType: { $ne: 'Question' }
+            }).catch(() => 0);
+            return res.status(200).json({ height: 0, totalCommitments: outboxConfirmed, fabricEnabled: false });
         }
         console.error('[INTEGRITY] Error fetching ledger height:', err.message);
         return res.status(500).json({ message: 'Failed to fetch ledger height.', error: err.message });
@@ -172,7 +209,7 @@ export const getLedgerHeight = async (req, res) => {
 
 export const getFabricBlocks = async (req, res) => {
     try {
-        const limit = Math.min(parseInt(req.query.limit || '100', 10), 100);
+        const limit = Math.min(parseInt(req.query.limit || '500', 10), 1000);
         const data = await fabricService.getFabricBlocks(limit);
         return res.status(200).json(data);
     } catch (err) {

@@ -8,6 +8,7 @@ import { useNotifications } from '../../hooks/useNotifications.jsx'
 import { ZMailUnreadBadge } from '../../components/zmail/ZMailUnreadBadge.jsx'
 import { ReportProblemModal } from '../../components/support/ReportProblemModal.jsx'
 import { useRefresh } from '../../context/RefreshContext.jsx'
+import { performLogout } from '../../utils/auth.js'
 import '../../components/support/support.css'
 
 const NAV = [
@@ -82,9 +83,7 @@ export const AuditorLayout = ({ children, openAnomaliesCount = 0, noPadding = fa
     }, [])
 
     const handleLogout = () => {
-        localStorage.removeItem('auditorToken')
-        localStorage.removeItem('auditorData')
-        navigate('/portal')
+        performLogout('auditor', navigate)
     }
 
     const handleSidebarDrag = (e) => {

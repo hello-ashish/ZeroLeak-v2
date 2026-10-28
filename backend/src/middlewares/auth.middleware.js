@@ -12,6 +12,9 @@ export const validateSession = async (Model, decodedToken) => {
     if (user.sessionVersion !== decodedToken.sessionVersion) {
         throw new Error("SESSION_REPLACED");
     }
+    if (user.isLoggedIn === false) {
+        throw new Error("SESSION_TERMINATED");
+    }
     if (user.isBlocked) {
         throw new Error("BLOCKED");
     }
@@ -83,6 +86,9 @@ export const verifyAdminJWT = async (req, res, next) => {
         if (error.message === "SESSION_REPLACED") {
             return res.status(401).json({ message: "This session has been replaced by a new login.", code: "SESSION_REPLACED" })
         }
+        if (error.message === "SESSION_TERMINATED") {
+            return res.status(401).json({ message: "Session has been terminated. Please log in again.", code: "SESSION_TERMINATED" })
+        }
         if (error.message === "BLOCKED") {
             return res.status(403).json({ message: "Account is blocked.", code: "BLOCKED" })
         }
@@ -107,6 +113,9 @@ export const verifyProfessorJWT = async (req, res, next) => {
     } catch (error) {
         if (error.message === "SESSION_REPLACED") {
             return res.status(401).json({ message: "This session has been replaced by a new login.", code: "SESSION_REPLACED" })
+        }
+        if (error.message === "SESSION_TERMINATED") {
+            return res.status(401).json({ message: "Session has been terminated. Please log in again.", code: "SESSION_TERMINATED" })
         }
         if (error.message === "BLOCKED") {
             return res.status(403).json({ message: "Account is blocked.", code: "BLOCKED" })
@@ -133,6 +142,9 @@ export const verifyStudentJWT = async (req, res, next) => {
         if (error.message === "SESSION_REPLACED") {
             return res.status(401).json({ message: "This session has been replaced by a new login.", code: "SESSION_REPLACED" })
         }
+        if (error.message === "SESSION_TERMINATED") {
+            return res.status(401).json({ message: "Session has been terminated. Please log in again.", code: "SESSION_TERMINATED" })
+        }
         if (error.message === "BLOCKED") {
             return res.status(403).json({ message: "Account is blocked.", code: "BLOCKED" })
         }
@@ -150,7 +162,6 @@ export const verifyAuditorJWT = async (req, res, next) => {
         }
 
         const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET)
-        // Use the shared validateSession helper for consistent error handling
         const auditor = await validateSession(Auditor, decodedToken);
 
         req.auditor = auditor
@@ -158,6 +169,9 @@ export const verifyAuditorJWT = async (req, res, next) => {
     } catch (error) {
         if (error.message === "SESSION_REPLACED") {
             return res.status(401).json({ message: "This session has been replaced by a new login.", code: "SESSION_REPLACED" })
+        }
+        if (error.message === "SESSION_TERMINATED") {
+            return res.status(401).json({ message: "Session has been terminated. Please log in again.", code: "SESSION_TERMINATED" })
         }
         if (error.message === "BLOCKED") {
             return res.status(403).json({ message: "Account is blocked.", code: "BLOCKED" })
@@ -197,6 +211,15 @@ export const verifyAdminOrAuditorJWT = async (req, res, next) => {
 
         return res.status(401).json({ message: "Unauthorized request: Neither Admin nor Auditor found" })
     } catch (error) {
+        if (error.message === "SESSION_REPLACED") {
+            return res.status(401).json({ message: "This session has been replaced by a new login.", code: "SESSION_REPLACED" });
+        }
+        if (error.message === "SESSION_TERMINATED") {
+            return res.status(401).json({ message: "Session has been terminated. Please log in again.", code: "SESSION_TERMINATED" });
+        }
+        if (error.message === "BLOCKED") {
+            return res.status(403).json({ message: "Account is blocked.", code: "BLOCKED" });
+        }
         return res.status(401).json({ message: "Invalid or Expired Access Token", code: "TOKEN_EXPIRED" })
     }
 }
@@ -248,6 +271,15 @@ export const verifyAnyJWT = async (req, res, next) => {
 
         return res.status(401).json({ message: "User not found" })
     } catch (error) {
+        if (error.message === "SESSION_REPLACED") {
+            return res.status(401).json({ message: "This session has been replaced by a new login.", code: "SESSION_REPLACED" });
+        }
+        if (error.message === "SESSION_TERMINATED") {
+            return res.status(401).json({ message: "Session has been terminated. Please log in again.", code: "SESSION_TERMINATED" });
+        }
+        if (error.message === "BLOCKED") {
+            return res.status(403).json({ message: "Account is blocked.", code: "BLOCKED" });
+        }
         return res.status(401).json({ message: "Invalid or Expired Access Token", code: "TOKEN_EXPIRED" })
     }
 }
@@ -282,6 +314,9 @@ export const verifySupportJWT = async (req, res, next) => {
     } catch (error) {
         if (error.message === "SESSION_REPLACED") {
             return res.status(401).json({ message: "This session has been replaced by a new login.", code: "SESSION_REPLACED" })
+        }
+        if (error.message === "SESSION_TERMINATED") {
+            return res.status(401).json({ message: "Session has been terminated. Please log in again.", code: "SESSION_TERMINATED" })
         }
         if (error.message === "BLOCKED") {
             return res.status(403).json({ message: "Account is blocked.", code: "BLOCKED" })

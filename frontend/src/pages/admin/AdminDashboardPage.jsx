@@ -64,7 +64,14 @@ export default function AdminDashboardPage() {
 
     const s = stats?.stats || {}
     const adminData = JSON.parse(localStorage.getItem('adminData') || '{}')
-    const adminName = (adminData.email || 'Admin').split('@')[0]
+    const adminName = adminData.name || (adminData.email || 'Admin').split('@')[0]
+
+    const getGreeting = () => {
+        const hour = new Date().getHours()
+        if (hour < 12) return 'Good morning'
+        if (hour < 17) return 'Good afternoon'
+        return 'Good evening'
+    }
 
     const performanceData = (stats?.performanceData || []).map(d => ({
         ...d,
@@ -88,7 +95,7 @@ export default function AdminDashboardPage() {
                             Academic Intelligence
                         </p>
                         <h1 className="page-title" style={{ fontSize: 28, letterSpacing: '-0.02em' }}>
-                            Good evening, {adminName}
+                            {getGreeting()}, {adminName}
                         </h1>
                         <p className="page-subtitle" style={{ fontSize: 14 }}>
                             Here is what's happening across the ZeroLeak platform today.

@@ -11,6 +11,7 @@ import { Modal } from '../../components/Modal.jsx'
 import { ZMailUnreadBadge } from '../../components/zmail/ZMailUnreadBadge.jsx'
 import { ReportProblemModal } from '../../components/support/ReportProblemModal.jsx'
 import { useRefresh } from '../../context/RefreshContext.jsx'
+import { performLogout } from '../../utils/auth.js'
 import '../../components/support/support.css'
 
 const NAV = [
@@ -179,9 +180,7 @@ export const AdminLayout = ({ children, pendingBatchCount = 0, noPadding = false
     }, [])
 
     const handleLogout = () => {
-        localStorage.removeItem('adminToken')
-        localStorage.removeItem('adminData')
-        navigate('/portal')
+        performLogout('admin', navigate)
     }
 
     const initials = (adminData.email || 'A')

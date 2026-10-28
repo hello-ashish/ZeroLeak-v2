@@ -133,6 +133,7 @@ export const logoutAdmin = async (req, res) => {
             admin.isLoggedIn = false;
             admin.sessionVersion = (admin.sessionVersion || 0) + 1;
             await admin.save({ validateBeforeSave: false });
+            await logAction({ actor: admin.email, action: "ADMIN_LOGOUT", targetType: "Admin", targetId: admin._id, targetLabel: admin.email });
         }
         return res.status(200).json({ message: "Logout successful" });
     } catch (error) {

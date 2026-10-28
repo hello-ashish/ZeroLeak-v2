@@ -91,6 +91,20 @@ export const logoutProfessor = async (req, res) => {
             professor.isLoggedIn = false;
             professor.sessionVersion = (professor.sessionVersion || 0) + 1;
             await professor.save({ validateBeforeSave: false });
+
+            try {
+                await AuditLog.create({
+                    actor: professor.email,
+                    actorRole: "Professor",
+                    action: "PROFESSOR_LOGOUT",
+                    targetType: "Professor",
+                    targetId: String(professor._id),
+                    targetLabel: professor.name || professor.email,
+                    status: "success"
+                });
+            } catch (auditErr) {
+                console.error("[PROFESSOR] AuditLog error on logout:", auditErr.message);
+            }
         }
         return res.status(200).json({ message: "Logout successful" });
     } catch (error) {
