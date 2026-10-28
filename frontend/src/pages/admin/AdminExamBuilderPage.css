@@ -360,6 +360,8 @@
     border-radius: var(--radius-pill);
     cursor: pointer;
     transition: all var(--transition-fast);
+    display: inline-flex;
+    align-items: center;
 }
 
 .ai-preset-chip:hover {
@@ -540,6 +542,8 @@
     border-radius: var(--radius-pill);
     cursor: pointer;
     transition: all var(--transition-fast);
+    display: inline-flex;
+    align-items: center;
 }
 
 .difficulty-preset-btn:hover {

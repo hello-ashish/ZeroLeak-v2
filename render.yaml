@@ -20,6 +20,8 @@ services:
         sync: false
       - key: CORS_ORIGIN
         sync: false
+      - key: ALLOWED_ORIGIN
+        sync: false
       - key: ADMIN_BOOTSTRAP_SECRET
         sync: false
       - key: AUDITOR_BOOTSTRAP_SECRET

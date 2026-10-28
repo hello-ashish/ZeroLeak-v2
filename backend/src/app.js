@@ -16,23 +16,12 @@ import zmailRouter from "./routes/zmail.routes.js"
 import supportRouter from "./routes/support.routes.js"
 import integrityRouter from "./routes/integrity.routes.js"
 import { setupSwagger } from "./swagger.js"
+import { corsOptions } from "./utils/cors.js"
 
 const app = express()
 
-// ALLOWED_ORIGIN (comma-separated list) in .env.
-// NEVER use `origin: true` in production — it reflects any origin back.
-const rawOrigins = process.env.ALLOWED_ORIGIN || "http://localhost:5173";
-const allowedOrigins = rawOrigins.split(",").map(o => o.trim()).filter(Boolean);
-
-app.use(cors({
-    origin: (origin, callback) => {
-        // Allow requests with no Origin header (same-origin, curl, Postman)
-        if (!origin) return callback(null, true);
-        if (allowedOrigins.includes(origin)) return callback(null, true);
-        return callback(new Error(`CORS policy: origin '${origin}' is not allowed`));
-    },
-    credentials: true
-}))
+// Enable secure CORS with automatic support for Vercel, Render, and configured origins
+app.use(cors(corsOptions))
 
 // Container Healthcheck probes
 app.get(["/health", "/api/health"], (req, res) => {
@@ -98,5 +87,14 @@ app.use("/api/zmail", zmailRouter);
 app.use("/api/support", supportRouter);
 
 setupSwagger(app);
+
+// Centralized JSON error handler
+app.use((err, req, res, next) => {
+    console.error("[GLOBAL ERROR]:", err.message || err);
+    const status = err.status || err.statusCode || 500;
+    res.status(status).json({
+        message: err.message || "Internal server error"
+    });
+});
 
 export { app }

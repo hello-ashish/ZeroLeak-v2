@@ -3,7 +3,7 @@ import {
     Blocks, Shield, ShieldCheck, ShieldAlert, ShieldOff,
     Activity, Database, Hash, Clock, RefreshCw,
     CheckCircle, XCircle, AlertTriangle, Loader2,
-    ChevronRight, Eye, Network, Layers, Box,
+    ChevronRight, ChevronLeft, Eye, Network, Layers, Box,
     AlertCircle, Info, BellRing, ScanLine, Play,
     ChevronDown, ChevronUp, Zap, Lock, Unlock,
     Filter, Search, Square, RotateCcw, ArrowRight,
@@ -570,8 +570,9 @@ function RecentCommitmentsTable({ commitments, loading, onVerify }) {
                             className="fi-page-btn"
                             disabled={validCurrentPage <= 1}
                             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
                         >
-                            ‹ Prev
+                            <ChevronLeft size={13} /> Prev
                         </button>
                         <span style={{ fontSize: '13px', padding: '0 8px' }}>
                             {validCurrentPage} / {totalPages}
@@ -581,8 +582,9 @@ function RecentCommitmentsTable({ commitments, loading, onVerify }) {
                             className="fi-page-btn"
                             disabled={validCurrentPage >= totalPages}
                             onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
                         >
-                            Next ›
+                            Next <ChevronRight size={13} />
                         </button>
                     </div>
                 </div>
@@ -888,12 +890,12 @@ function VerifyLedgerPanel({ token }) {
                                     )
                                 ) : (
                                     <>
-                                        <span style={{ color: 'var(--fi-green)', fontWeight: 600 }}>
-                                            ✓ {report?.summary?.verified || 0} Matches Verified
+                                        <span style={{ color: 'var(--fi-green)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                            <Check size={14} strokeWidth={2.5} /> {report?.summary?.verified || 0} Matches Verified
                                         </span>
                                         {(report?.summary?.tampered || 0) > 0 && (
-                                            <span style={{ color: 'var(--fi-red)', fontWeight: 600, marginLeft: 12 }}>
-                                                ⚠ {report.summary.tampered} Tampered
+                                            <span style={{ color: 'var(--fi-red)', fontWeight: 600, marginLeft: 12, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                                <AlertTriangle size={14} /> {report.summary.tampered} Tampered
                                             </span>
                                         )}
                                         {(report?.summary?.skipped || 0) > 0 && (
@@ -1637,8 +1639,9 @@ export default function FabricIntegrityCenter({ token, onOpenMockLab }) {
                             type="button"
                             className="fi-btn fi-btn-danger fi-btn-sm"
                             onClick={() => switchTab('alerts')}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
                         >
-                            View Tamper Log →
+                            View Tamper Log <ArrowRight size={14} />
                         </button>
                         <button
                             type="button"
@@ -1646,8 +1649,9 @@ export default function FabricIntegrityCenter({ token, onOpenMockLab }) {
                             disabled={dismissingBanner}
                             onClick={handleDismissBanner}
                             title="Acknowledge alert and hide banner"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
                         >
-                            {dismissingBanner ? 'Dismissing...' : 'Dismiss Alert ✕'}
+                            {dismissingBanner ? 'Dismissing...' : <>Dismiss Alert <X size={14} /></>}
                         </button>
                     </div>
                 </div>

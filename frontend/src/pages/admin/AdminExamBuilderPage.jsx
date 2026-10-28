@@ -5,7 +5,7 @@ import {
     ArrowLeft, Check, BookOpen, Database, Trash2, Plus, 
     Sparkles, Shield, ShieldAlert, Cpu, Clock, Award, 
     FileText, CheckCircle2, AlertTriangle, AlertCircle, 
-    Layers, Sliders, ChevronRight, CheckCircle
+    Layers, Sliders, ChevronRight, CheckCircle, Target, Flame, Scale
 } from 'lucide-react'
 import { useToast } from '../../components/Toast.jsx'
 import axios from 'axios'
@@ -15,17 +15,17 @@ const API = '/api'
 const getToken = () => localStorage.getItem('adminToken')
 
 const DIFFICULTY_PRESETS = [
-    { label: '🎯 Balanced', easy: 30, medium: 50, hard: 20 },
-    { label: '⚡ Rigorous', easy: 15, medium: 45, hard: 40 },
-    { label: '📚 Foundational', easy: 50, medium: 40, hard: 10 },
-    { label: '⚖️ Equal Split', easy: 34, medium: 33, hard: 33 }
+    { label: 'Balanced', icon: Target, easy: 30, medium: 50, hard: 20 },
+    { label: 'Rigorous', icon: Flame, easy: 15, medium: 45, hard: 40 },
+    { label: 'Foundational', icon: BookOpen, easy: 50, medium: 40, hard: 10 },
+    { label: 'Equal Split', icon: Scale, easy: 34, medium: 33, hard: 33 }
 ]
 
 const AI_SUGGESTION_CHIPS = [
-    { label: '⚡ JEE Mains (PCM - 75 Qs)', prompt: 'Create a full JEE Mains pattern examination with Physics, Chemistry, and Mathematics. 25 questions each, 60 minutes each, 50% passing threshold.' },
-    { label: '⚡ CS Midterm (OS & Networks)', prompt: 'Build a computer science midterm on Operating Systems and Computer Networks, 30 questions each, 45 minutes duration.' },
-    { label: '⚡ Medical Entrance (Bio, Chem, Phys)', prompt: 'Design a standard medical entrance examination covering Biology, Chemistry, and Physics with balanced difficulty.' },
-    { label: '⚡ General Aptitude & English', prompt: 'Create a 2-section assessment for Quantitative Aptitude and Verbal English, 20 questions each, 30 minutes each.' }
+    { label: 'JEE Mains (PCM - 75 Qs)', prompt: 'Create a full JEE Mains pattern examination with Physics, Chemistry, and Mathematics. 25 questions each, 60 minutes each, 50% passing threshold.' },
+    { label: 'CS Midterm (OS & Networks)', prompt: 'Build a computer science midterm on Operating Systems and Computer Networks, 30 questions each, 45 minutes duration.' },
+    { label: 'Medical Entrance (Bio, Chem, Phys)', prompt: 'Design a standard medical entrance examination covering Biology, Chemistry, and Physics with balanced difficulty.' },
+    { label: 'General Aptitude & English', prompt: 'Create a 2-section assessment for Quantitative Aptitude and Verbal English, 20 questions each, 30 minutes each.' }
 ]
 
 export const AdminExamBuilderPage = () => {
@@ -394,6 +394,7 @@ export const AdminExamBuilderPage = () => {
                                             handleAiCopilot(chip.prompt)
                                         }}
                                     >
+                                        <Sparkles size={11} style={{ marginRight: 5, color: 'var(--brand-primary)' }} />
                                         {chip.label}
                                     </button>
                                 ))}
@@ -436,9 +437,9 @@ export const AdminExamBuilderPage = () => {
                                         type="button" 
                                         className="btn btn-ghost btn-sm" 
                                         onClick={insertStandardInstructions}
-                                        style={{ fontSize: 11, padding: '2px 8px', height: 24, color: 'var(--brand-primary)' }}
+                                        style={{ fontSize: 11, padding: '2px 8px', height: 24, color: 'var(--brand-primary)', display: 'inline-flex', alignItems: 'center', gap: 4 }}
                                     >
-                                        + Insert Standard Rules Template
+                                        <Plus size={12} /> Insert Standard Rules Template
                                     </button>
                                 </div>
                                 <textarea 
@@ -554,9 +555,13 @@ export const AdminExamBuilderPage = () => {
                                         type="button" 
                                         className="btn btn-ghost btn-sm"
                                         onClick={() => setIsCustomSubject(!isCustomSubject)}
-                                        style={{ fontSize: 11, height: 20, padding: '0 6px', color: 'var(--brand-primary)' }}
+                                        style={{ fontSize: 11, height: 20, padding: '0 6px', color: 'var(--brand-primary)', display: 'inline-flex', alignItems: 'center', gap: 4 }}
                                     >
-                                        {isCustomSubject ? '← Pick from Bank' : '+ Enter Custom Subject'}
+                                        {isCustomSubject ? (
+                                            <><ArrowLeft size={11} /> Pick from Bank</>
+                                        ) : (
+                                            <><Plus size={11} /> Enter Custom Subject</>
+                                        )}
                                     </button>
                                 </div>
 
@@ -643,23 +648,35 @@ export const AdminExamBuilderPage = () => {
                                     <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                                         Difficulty Distribution Ratio
                                     </span>
-                                    <span style={{ fontSize: 11, color: isDifficultyBalanced ? 'var(--success)' : 'var(--danger)', fontWeight: 600 }}>
-                                        {isDifficultyBalanced ? '✓ 100% Balanced' : `Sum: ${difficultySum}% (Must be 100%)`}
+                                    <span style={{ fontSize: 11, color: isDifficultyBalanced ? 'var(--success)' : 'var(--danger)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                        {isDifficultyBalanced ? (
+                                            <>
+                                                <Check size={13} strokeWidth={2.5} /> 100% Balanced
+                                            </>
+                                        ) : (
+                                            <>
+                                                <AlertCircle size={13} /> Sum: {difficultySum}% (Must be 100%)
+                                            </>
+                                        )}
                                     </span>
                                 </div>
 
                                 {/* Preset Buttons */}
                                 <div className="difficulty-presets-row">
-                                    {DIFFICULTY_PRESETS.map((p, i) => (
-                                        <button 
-                                            key={i} 
-                                            type="button" 
-                                            className={`difficulty-preset-btn ${currentSubj.easy === p.easy && currentSubj.medium === p.medium && currentSubj.hard === p.hard ? 'active' : ''}`}
-                                            onClick={() => applyDifficultyPreset(p)}
-                                        >
-                                            {p.label}
-                                        </button>
-                                    ))}
+                                    {DIFFICULTY_PRESETS.map((p, i) => {
+                                        const PresetIcon = p.icon
+                                        return (
+                                            <button 
+                                                key={i} 
+                                                type="button" 
+                                                className={`difficulty-preset-btn ${currentSubj.easy === p.easy && currentSubj.medium === p.medium && currentSubj.hard === p.hard ? 'active' : ''}`}
+                                                onClick={() => applyDifficultyPreset(p)}
+                                            >
+                                                <PresetIcon size={12} style={{ marginRight: 4 }} />
+                                                {p.label}
+                                            </button>
+                                        )
+                                    })}
                                     {!isDifficultyBalanced && (
                                         <button 
                                             type="button" 
