@@ -39,33 +39,37 @@ import {
     reconnectFabric,
 } from '../controllers/integrity.controllers.js';
 import { verifyAdminOrAuditorJWT } from '../middlewares/auth.middleware.js';
+import { cacheMiddleware, invalidateCacheMiddleware } from '../middlewares/cache.middleware.js';
 
 const router = Router();
 
+const integrityCache = (ttl = 15) => cacheMiddleware({ ttl, prefix: 'zl:api:integrity:' });
+const invalidateIntegrity = () => invalidateCacheMiddleware(['zl:api:integrity:*', 'fabric:*']);
+
 // Public read-only network health status & ledger metrics
-router.get('/fabric-status', getFabricStatus);
-router.get('/ledger-height', getLedgerHeight);
+router.get('/fabric-status', integrityCache(25), getFabricStatus);
+router.get('/ledger-height', integrityCache(15), getLedgerHeight);
 
 // Protected integrity routes require Admin OR Auditor JWT
 // Support accounts are blocked by verifyAdminOrAuditorJWT (Admin.isSupport check)
 router.use(verifyAdminOrAuditorJWT);
 
-router.get('/recent', getRecentCommitments);
-router.get('/blocks', getFabricBlocks);
-router.get('/alerts', getIntegrityAlerts);
-router.post('/alerts/dismiss', dismissIntegrityAlerts);
-router.delete('/alerts', clearIntegrityAlerts);
+router.get('/recent', integrityCache(15), getRecentCommitments);
+router.get('/blocks', integrityCache(20), getFabricBlocks);
+router.get('/alerts', integrityCache(15), getIntegrityAlerts);
+router.post('/alerts/dismiss', invalidateIntegrity(), dismissIntegrityAlerts);
+router.delete('/alerts', invalidateIntegrity(), clearIntegrityAlerts);
 
 // Outbox reconciliation & bulk ledger verification
-router.post('/reconcile', triggerReconciliation);
-router.post('/verify-ledger', verifyAllCommitments);
+router.post('/reconcile', invalidateIntegrity(), triggerReconciliation);
+router.post('/verify-ledger', invalidateIntegrity(), verifyAllCommitments);
 
 // Outbox stats & Recommit engine
-router.get('/outbox/stats', getOutboxStats);
-router.post('/outbox/recommit', startRecommit);
+router.get('/outbox/stats', integrityCache(15), getOutboxStats);
+router.post('/outbox/recommit', invalidateIntegrity(), startRecommit);
 router.get('/outbox/recommit-status', getRecommitStatus);
-router.post('/outbox/recommit-stop', stopRecommit);
-router.post('/fabric/reconnect', reconnectFabric);
+router.post('/outbox/recommit-stop', invalidateIntegrity(), stopRecommit);
+router.post('/fabric/reconnect', invalidateIntegrity(), reconnectFabric);
 
 // Entity verification
 router.get('/result/:resultId', verifyResult);

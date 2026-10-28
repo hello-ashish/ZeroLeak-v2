@@ -14,6 +14,7 @@ import { connect, hash, signers } from '@hyperledger/fabric-gateway';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import { cacheGet, cacheSet, cacheDelPattern } from '../redis/cache.service.js';
 
 // Internal state
 let _gateway = null;
@@ -226,6 +227,10 @@ export async function createCommitment({
             `[FABRIC] FABRIC_COMMITMENT_CONFIRMED id=${id} txId=${result.txId ?? 'unknown'} duration=${durationMs}ms`
         );
 
+        // Invalidate cached ledger metrics so fresh state is immediately available
+        cacheDelPattern('fabric:*').catch(() => {});
+        cacheDelPattern('zl:api:/api/integrity*').catch(() => {});
+
         return {
             ...result,
             id,
@@ -301,17 +306,24 @@ export async function createCommitment({
     }
 }
 
-export async function getCommitment(id) {
+export async function getCommitment(id, force = false) {
     const cfg = _getFabricConfig();
     if (!cfg.enabled) {
         throw Object.assign(new Error('FABRIC_DISABLED'), { code: 'FABRIC_DISABLED' });
+    }
+
+    if (!force) {
+        const cached = await cacheGet(`fabric:commitment:${id}`);
+        if (cached) return cached;
     }
 
     await _ensureConnected();
 
     try {
         const resultBytes = await _contract.evaluateTransaction('GetCommitment', id);
-        return JSON.parse(Buffer.from(resultBytes).toString());
+        const commitment = JSON.parse(Buffer.from(resultBytes).toString());
+        await cacheSet(`fabric:commitment:${id}`, commitment, 3600); // Commitments are immutable
+        return commitment;
     } catch (err) {
         if (err.message?.includes('COMMITMENT_NOT_FOUND')) {
             const notFound = new Error(`COMMITMENT_NOT_FOUND: ${id}`);
@@ -358,17 +370,24 @@ export async function getCommitmentHistory(id) {
     }
 }
 
-export async function getLedgerHeight() {
+export async function getLedgerHeight(force = false) {
     const cfg = _getFabricConfig();
     if (!cfg.enabled) {
         return { height: 0, status: 'FABRIC_DISABLED' };
+    }
+
+    if (!force) {
+        const cached = await cacheGet('fabric:ledger_height');
+        if (cached) return cached;
     }
 
     await _ensureConnected();
 
     try {
         const resultBytes = await _contract.evaluateTransaction('GetLedgerHeight');
-        return JSON.parse(Buffer.from(resultBytes).toString());
+        const heightData = JSON.parse(Buffer.from(resultBytes).toString());
+        await cacheSet('fabric:ledger_height', heightData, 15);
+        return heightData;
     } catch (err) {
         _connected = false;
         closeFabricGateway();
@@ -376,10 +395,15 @@ export async function getLedgerHeight() {
     }
 }
 
-export async function getRecentCommitments(limit = 20) {
+export async function getRecentCommitments(limit = 20, force = false) {
     const cfg = _getFabricConfig();
     if (!cfg.enabled) {
         return [];
+    }
+
+    if (!force) {
+        const cached = await cacheGet(`fabric:recent:${limit}`);
+        if (cached) return cached;
     }
 
     await _ensureConnected();
@@ -426,7 +450,9 @@ export async function getRecentCommitments(limit = 20) {
             }
         }
 
-        return filtered.slice(0, limit);
+        const finalResult = filtered.slice(0, limit);
+        await cacheSet(`fabric:recent:${limit}`, finalResult, 15);
+        return finalResult;
     } catch (err) {
         _connected = false;
         closeFabricGateway();
@@ -434,7 +460,7 @@ export async function getRecentCommitments(limit = 20) {
     }
 }
 
-export async function getFabricBlocks(limit = 500) {
+export async function getFabricBlocks(limit = 500, force = false) {
     const cfg = _getFabricConfig();
     if (!cfg.enabled) {
         return {
@@ -447,10 +473,15 @@ export async function getFabricBlocks(limit = 500) {
         };
     }
 
+    if (!force) {
+        const cached = await cacheGet(`fabric:blocks:${limit}`);
+        if (cached) return cached;
+    }
+
     await _ensureConnected();
 
-    const { height } = await getLedgerHeight();
-    const commitments = await getRecentCommitments(Math.max(limit, height || 100));
+    const { height } = await getLedgerHeight(force);
+    const commitments = await getRecentCommitments(Math.max(limit, height || 100), force);
 
     // Sort ascending (height 1 to height N)
     const ascending = [...commitments].reverse();
@@ -528,7 +559,7 @@ export async function getFabricBlocks(limit = 500) {
         prevHash = blockHash;
     }
 
-    return {
+    const blocksResult = {
         height,
         channel: cfg.channelName,
         chaincode: cfg.chaincodeName,
@@ -551,6 +582,9 @@ export async function getFabricBlocks(limit = 500) {
             ]
         }
     };
+
+    await cacheSet(`fabric:blocks:${limit}`, blocksResult, 15);
+    return blocksResult;
 }
 
 export async function commitmentExists(id) {
@@ -565,7 +599,7 @@ export async function commitmentExists(id) {
     return JSON.parse(Buffer.from(resultBytes).toString()) === true;
 }
 
-export async function getFabricStatus() {
+export async function getFabricStatus(force = false) {
     const cfg = _getFabricConfig();
     if (!cfg.enabled) {
         return {
@@ -576,6 +610,11 @@ export async function getFabricStatus() {
             mspId: cfg.mspId,
             reason: 'FABRIC_DISABLED',
         };
+    }
+
+    if (!force) {
+        const cached = await cacheGet('fabric:status');
+        if (cached) return cached;
     }
 
     // Actively verify connection health
@@ -598,7 +637,7 @@ export async function getFabricStatus() {
         };
     }
 
-    return {
+    const statusObj = {
         enabled: true,
         connected: _connected,
         channel: cfg.channelName,
@@ -609,6 +648,12 @@ export async function getFabricStatus() {
         error: _connected ? null : (_connectError?.message || null),
         lastAttemptedAt: _connectAttemptedAt ? new Date(_connectAttemptedAt).toISOString() : null,
     };
+
+    if (_connected) {
+        await cacheSet('fabric:status', statusObj, 25);
+    }
+
+    return statusObj;
 }
 
 export async function closeFabricGateway() {

@@ -7,14 +7,16 @@ import { SkeletonTable, EmptyState } from '../../components/SkeletonLoader.jsx'
 import { Pagination } from '../../components/Pagination.jsx'
 import { useToast } from '../../components/Toast.jsx'
 import { Search, Users, Trash2, AlertTriangle, BookOpen, Clock, Activity, X, Mail, Upload, Download, CheckSquare, Loader2 } from 'lucide-react'
+import { getCachedData } from '../../utils/apiCache.js'
 
 const API = '/api'
 const getToken = () => localStorage.getItem('adminToken')
 
 export default function AdminAuditorsPage() {
-    const [auditors, setAuditors] = useState([])
+    const cachedAud = getCachedData(`${API}/admin/auditors`)
+    const [auditors, setAuditors] = useState(() => cachedAud?.auditors || [])
     const [stats, setStats] = useState(null)
-    const [loading, setLoading] = useState(true)
+    const [loading, setLoading] = useState(() => !cachedAud)
     const [search, setSearch] = useState('')
     const [showAdd, setShowAdd] = useState(false)
     const [deleteTarget, setDeleteTarget] = useState(null)
@@ -40,7 +42,7 @@ export default function AdminAuditorsPage() {
         const token = getToken()
         if (!token) { navigate('/admin/login'); return }
         try {
-            setLoading(true)
+            if (!getCachedData(`${API}/admin/auditors`)) setLoading(true)
             const audRes = await axios.get(`${API}/admin/auditors`, { headers: { Authorization: `Bearer ${token}` } });
             setAuditors(audRes.data.auditors || [])
         } catch {

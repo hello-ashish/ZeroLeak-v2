@@ -7,14 +7,19 @@ import { SkeletonTable, EmptyState } from '../../components/SkeletonLoader.jsx'
 import { Pagination } from '../../components/Pagination.jsx'
 import { useToast } from '../../components/Toast.jsx'
 import { Search, Users, Trash2, AlertTriangle, BookOpen, Clock, Activity, X, Mail, Upload, Download, CheckSquare, Loader2 } from 'lucide-react'
+import { getCachedData } from '../../utils/apiCache.js'
 
 const API = '/api'
 const getToken = () => localStorage.getItem('adminToken')
 
 export default function AdminProfessorsPage() {
-    const [professors, setProfessors] = useState([])
-    const [stats, setStats] = useState(null)
-    const [loading, setLoading] = useState(true)
+    const cachedProf = getCachedData(`${API}/admin/professors`)
+    const [professors, setProfessors] = useState(() => cachedProf?.professors || [])
+    const [stats, setStats] = useState(() => cachedProf ? {
+        batches: cachedProf.totalBatches || 0,
+        pendingBatches: cachedProf.pendingBatches || 0
+    } : null)
+    const [loading, setLoading] = useState(() => !cachedProf)
     const [search, setSearch] = useState('')
     const [showAdd, setShowAdd] = useState(false)
     const [deleteTarget, setDeleteTarget] = useState(null)
@@ -40,7 +45,7 @@ export default function AdminProfessorsPage() {
         const token = getToken()
         if (!token) { navigate('/admin/login'); return }
         try {
-            setLoading(true)
+            if (!getCachedData(`${API}/admin/professors`)) setLoading(true)
             const profRes = await axios.get(`${API}/admin/professors`, { headers: { Authorization: `Bearer ${token}` } });
             setProfessors(profRes.data.professors || [])
             setStats({

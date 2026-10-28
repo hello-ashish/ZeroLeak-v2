@@ -15,21 +15,39 @@ import FabricBlockchainVisualizer from './FabricBlockchainVisualizer';
 const rawApiBase = import.meta.env.VITE_API_URL || '';
 const API_BASE = rawApiBase.replace(/\/api\/?$/, '');
 
+import { getCachedData, setCachedData, invalidateCache } from '../../utils/apiCache.js';
+
 // ---------------------------------------------------------------------------
-// API Helper
+// API Helper (Cached)
 // ---------------------------------------------------------------------------
 async function apiFetch(path, token, options = {}) {
     const effectiveToken = token || localStorage.getItem('adminToken') || localStorage.getItem('auditorToken') || localStorage.getItem('token');
+    const fullPath = `/api/integrity${path}`;
+    const isGet = !options.method || options.method.toUpperCase() === 'GET';
+
+    if (!isGet) {
+        invalidateCache('/api/integrity');
+    } else if (options.force !== true && options.skipCache !== true) {
+        const cached = getCachedData(fullPath, options.params, effectiveToken);
+        if (cached !== null && cached !== undefined) {
+            return cached;
+        }
+    }
+
     const headers = { 'Content-Type': 'application/json' };
     if (effectiveToken && effectiveToken !== 'undefined' && effectiveToken !== 'null') {
         headers['Authorization'] = `Bearer ${effectiveToken}`;
     }
-    const res = await fetch(`${API_BASE}/api/integrity${path}`, {
+    const res = await fetch(`${API_BASE}${fullPath}`, {
         headers,
         ...options,
     });
     const data = await res.json();
     if (!res.ok) throw Object.assign(new Error(data.message || 'Request failed'), { status: res.status, data });
+
+    if (isGet) {
+        setCachedData(fullPath, data, 25_000, options.params, effectiveToken);
+    }
     return data;
 }
 
@@ -1378,13 +1396,25 @@ export default function FabricIntegrityCenter({ token, onOpenMockLab }) {
         });
     }, []);
 
-    const [fabricStatus, setFabricStatus] = useState(null);
-    const [ledgerHeight, setLedgerHeight] = useState(null);
-    const [recentCommitments, setRecentCommitments] = useState([]);
-    const [totalCommitmentsCount, setTotalCommitmentsCount] = useState(null);
-    const [alertCount, setAlertCount] = useState(0);
-    const [outboxStats, setOutboxStats] = useState(null);
-    const [loading, setLoading] = useState(true);
+    // Initial States populated from cache for instant 0ms mount
+    const [fabricStatus, setFabricStatus] = useState(() => getCachedData('/api/integrity/fabric-status', {}, token));
+    const [ledgerHeight, setLedgerHeight] = useState(() => getCachedData('/api/integrity/ledger-height', {}, token));
+    const [recentCommitments, setRecentCommitments] = useState(() => {
+        const cached = getCachedData('/api/integrity/recent?limit=100', {}, token);
+        return cached?.commitments || (Array.isArray(cached) ? cached : []);
+    });
+    const [totalCommitmentsCount, setTotalCommitmentsCount] = useState(() => {
+        const heightData = getCachedData('/api/integrity/ledger-height', {}, token);
+        const outbox = getCachedData('/api/integrity/outbox/stats', {}, token);
+        return heightData?.totalCommitments || outbox?.total || null;
+    });
+    const [alertCount, setAlertCount] = useState(() => {
+        const d = getCachedData('/api/integrity/alerts', {}, token);
+        if (!d) return 0;
+        return d.activeIncidents !== undefined ? d.activeIncidents : (d.alerts || []).filter(a => !a.isAcknowledged).length;
+    });
+    const [outboxStats, setOutboxStats] = useState(() => getCachedData('/api/integrity/outbox/stats', {}, token));
+    const [loading, setLoading] = useState(() => !getCachedData('/api/integrity/fabric-status', {}, token));
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [loadingCommitments, setLoadingCommitments] = useState(false);
     const [verifyEntityType, setVerifyEntityType] = useState('result');
@@ -1392,11 +1422,11 @@ export default function FabricIntegrityCenter({ token, onOpenMockLab }) {
     const [dismissingBanner, setDismissingBanner] = useState(false);
 
     // Load Fabric status
-    const loadStatus = useCallback(async () => {
+    const loadStatus = useCallback(async (force = false) => {
         try {
             const [statusData, heightData] = await Promise.all([
-                apiFetch('/fabric-status', token),
-                apiFetch('/ledger-height', token),
+                apiFetch('/fabric-status', token, { force }),
+                apiFetch('/ledger-height', token, { force }),
             ]);
             setFabricStatus(statusData);
             setLedgerHeight(heightData);
@@ -1407,10 +1437,10 @@ export default function FabricIntegrityCenter({ token, onOpenMockLab }) {
     }, [token]);
 
     // Load recent commitments
-    const loadCommitments = useCallback(async () => {
+    const loadCommitments = useCallback(async (force = false) => {
         setLoadingCommitments(true);
         try {
-            const data = await apiFetch('/recent?limit=100', token);
+            const data = await apiFetch('/recent?limit=100', token, { force });
             setRecentCommitments(data.commitments || []);
             if (data.totalCommitments !== undefined) {
                 setTotalCommitmentsCount(data.totalCommitments);
@@ -1423,9 +1453,9 @@ export default function FabricIntegrityCenter({ token, onOpenMockLab }) {
     }, [token]);
 
     // Load alert count for badge & banner
-    const loadAlertCount = useCallback(async () => {
+    const loadAlertCount = useCallback(async (force = false) => {
         try {
-            const data = await apiFetch('/alerts', token);
+            const data = await apiFetch('/alerts', token, { force });
             const active = data.activeIncidents !== undefined
                 ? data.activeIncidents
                 : (data.alerts || []).filter(a => !a.isAcknowledged).length;
@@ -1434,9 +1464,9 @@ export default function FabricIntegrityCenter({ token, onOpenMockLab }) {
     }, [token]);
 
     // Load outbox stats
-    const loadOutboxStats = useCallback(async () => {
+    const loadOutboxStats = useCallback(async (force = false) => {
         try {
-            const data = await apiFetch('/outbox/stats', token);
+            const data = await apiFetch('/outbox/stats', token, { force });
             setOutboxStats(data);
             if (data?.total !== undefined) {
                 setTotalCommitmentsCount(prev => Math.max(prev || 0, data.total, data.confirmed || 0, data.ledgerHeight || 0));
@@ -1448,10 +1478,10 @@ export default function FabricIntegrityCenter({ token, onOpenMockLab }) {
         if (isManual) setIsRefreshing(true);
         try {
             await Promise.allSettled([
-                loadStatus(),
-                loadAlertCount(),
-                loadCommitments(),
-                loadOutboxStats(),
+                loadStatus(isManual),
+                loadAlertCount(isManual),
+                loadCommitments(isManual),
+                loadOutboxStats(isManual),
             ]);
         } finally {
             setLoading(false);

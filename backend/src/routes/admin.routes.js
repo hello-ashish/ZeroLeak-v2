@@ -40,10 +40,14 @@ import {
     broadcastAnnouncement
 } from "../controllers/admin.controllers.js"
 import { verifyAdminJWT } from "../middlewares/auth.middleware.js"
+import { cacheMiddleware, invalidateCacheMiddleware } from "../middlewares/cache.middleware.js"
 import notificationRouter from "./notification.routes.js"
 import { registerAuditor } from "../controllers/auditor.controllers.js"
 
 const router = Router()
+
+const adminCache = (ttl = 30) => cacheMiddleware({ ttl, prefix: 'zl:api:admin:' });
+const invalidateAdmin = () => invalidateCacheMiddleware(['zl:api:admin:*']);
 
 router.use("/notifications", verifyAdminJWT, notificationRouter)
 
@@ -84,7 +88,7 @@ router.route("/logout").post(verifyAdminJWT, logoutAdmin)
 // ─── Protected Routes ─────────────────────────────────────────────────────────
 
 // Dashboard Stats
-router.route("/stats").get(verifyAdminJWT, getDashboardStats)
+router.route("/stats").get(verifyAdminJWT, adminCache(30), getDashboardStats)
 
 // Audit Logs
 router.route("/audit-logs").get(verifyAdminJWT, getAuditLogs)

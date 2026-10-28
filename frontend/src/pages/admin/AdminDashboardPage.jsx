@@ -15,6 +15,7 @@ import {
     Tooltip, CartesianGrid, BarChart, Bar, Cell
 } from 'recharts'
 import { format, subDays } from 'date-fns'
+import { getCachedData } from '../../utils/apiCache.js'
 
 const API = '/api'
 const getToken = () => localStorage.getItem('adminToken')
@@ -29,8 +30,8 @@ const CHART_COLORS = {
 }
 
 export default function AdminDashboardPage() {
-    const [stats, setStats] = useState(null)
-    const [loading, setLoading] = useState(true)
+    const [stats, setStats] = useState(() => getCachedData(`${API}/admin/stats`))
+    const [loading, setLoading] = useState(() => !getCachedData(`${API}/admin/stats`))
     const [error, setError] = useState(null)
     const navigate = useNavigate()
 

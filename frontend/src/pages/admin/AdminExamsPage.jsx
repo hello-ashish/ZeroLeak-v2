@@ -7,6 +7,7 @@ import { ConfirmDialog } from '../../components/Modal.jsx'
 import { SkeletonCard, EmptyState } from '../../components/SkeletonLoader.jsx'
 import { useToast } from '../../components/Toast.jsx'
 import { Search, ClipboardList, Play, Square, Trash2, Plus, ChevronDown, ChevronRight, Check, Calendar } from 'lucide-react'
+import { getCachedData } from '../../utils/apiCache.js'
 
 const API = '/api'
 const getToken = () => localStorage.getItem('adminToken')
@@ -14,8 +15,9 @@ const getToken = () => localStorage.getItem('adminToken')
 const TABS = ['All', 'Draft', 'Ongoing', 'Completed', 'Archived']
 
 export default function AdminExamsPage() {
-    const [examinations, setExaminations] = useState([])
-    const [loading, setLoading] = useState(true)
+    const cached = getCachedData(`${API}/admin/examinations`)
+    const [examinations, setExaminations] = useState(() => cached?.examinations || [])
+    const [loading, setLoading] = useState(() => !cached)
     const [activeTab, setActiveTab] = useState('All')
     const [search, setSearch] = useState('')
     const [expandedExams, setExpandedExams] = useState({})
@@ -30,7 +32,9 @@ export default function AdminExamsPage() {
         const token = getToken()
         if (!token) { navigate('/admin/login'); return }
         try {
-            setLoading(true)
+            if (!getCachedData(`${API}/admin/examinations`)) {
+                setLoading(true)
+            }
             const res = await axios.get(`${API}/admin/examinations`, { headers: { Authorization: `Bearer ${token}` } })
             setExaminations(res.data.examinations || [])
         } catch {

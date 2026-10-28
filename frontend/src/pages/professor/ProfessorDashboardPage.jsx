@@ -4,11 +4,13 @@ import axios from 'axios'
 import { Activity, PackageOpen, CheckCircle, Clock, Plus, ChevronRight } from 'lucide-react'
 import { StatusBadge } from '../../components/StatusBadge.jsx'
 import { Skeleton, SkeletonTable } from '../../components/SkeletonLoader.jsx'
+import { getCachedData } from '../../utils/apiCache.js'
 
 const ProfessorDashboardPage = () => {
     const [profName, setProfName] = useState('')
-    const [batches, setBatches] = useState([])
-    const [loading, setLoading] = useState(true)
+    const cached = getCachedData('/api/professor/batches')
+    const [batches, setBatches] = useState(() => cached?.batches || [])
+    const [loading, setLoading] = useState(() => !cached)
     const navigate = useNavigate()
 
     const fetchMyBatches = async (token) => {

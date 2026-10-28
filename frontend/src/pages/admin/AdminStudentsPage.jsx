@@ -9,14 +9,16 @@ import { SkeletonTable, EmptyState } from '../../components/SkeletonLoader.jsx'
 import { ScorePill } from '../../components/StatusBadge.jsx'
 import { Pagination } from '../../components/Pagination.jsx'
 import { useToast } from '../../components/Toast.jsx'
+import { getCachedData } from '../../utils/apiCache.js'
 
 const API = '/api'
 const getToken = () => localStorage.getItem('adminToken')
 
 export default function AdminStudentsPage() {
-    const [students, setStudents] = useState([])
-    const [results, setResults] = useState([])
-    const [loading, setLoading] = useState(true)
+    const cachedStu = getCachedData(`${API}/students`)
+    const [students, setStudents] = useState(() => cachedStu?.students || [])
+    const [results, setResults] = useState(() => getCachedData(`${API}/exams/results`)?.results || [])
+    const [loading, setLoading] = useState(() => !cachedStu)
     const [search, setSearch] = useState('')
     const [filterStatus, setFilterStatus] = useState('all')
     const [showAdd, setShowAdd] = useState(false)
@@ -47,7 +49,7 @@ export default function AdminStudentsPage() {
         const token = getToken()
         if (!token) { navigate('/admin/login'); return }
         try {
-            if (showLoad) setLoading(true)
+            if (showLoad && !getCachedData(`${API}/students`)) setLoading(true)
             const [stuRes, resRes, liveRes] = await Promise.all([
                 axios.get(`${API}/students`, { headers: { Authorization: `Bearer ${token}` } }),
                 axios.get(`${API}/exams/results`, { headers: { Authorization: `Bearer ${token}` } }),

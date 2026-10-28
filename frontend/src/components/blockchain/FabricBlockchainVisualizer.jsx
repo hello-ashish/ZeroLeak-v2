@@ -20,17 +20,26 @@ import {
     List, Columns, FileCode, ArrowUpDown, ArrowDown, ArrowUp, Loader2
 } from 'lucide-react';
 import './FabricBlockchainVisualizer.css';
+import { getCachedData, setCachedData } from '../../utils/apiCache.js';
 
 const rawApiBase = import.meta.env.VITE_API_URL || '';
 const API_BASE = rawApiBase.replace(/\/api\/?$/, '');
 
-async function fetchBlocks(token) {
+async function fetchBlocks(token, force = false) {
     const effectiveToken = token || localStorage.getItem('adminToken') || localStorage.getItem('auditorToken') || localStorage.getItem('token');
-    const res = await fetch(`${API_BASE}/api/integrity/blocks`, {
+    const fullPath = '/api/integrity/blocks';
+    if (!force) {
+        const cached = getCachedData(fullPath, {}, effectiveToken);
+        if (cached !== null && cached !== undefined) {
+            return cached;
+        }
+    }
+    const res = await fetch(`${API_BASE}${fullPath}`, {
         headers: { Authorization: `Bearer ${effectiveToken}`, 'Content-Type': 'application/json' },
     });
     const data = await res.json();
     if (!res.ok) throw Object.assign(new Error(data.message || 'Failed to fetch blocks'), { status: res.status, data });
+    setCachedData(fullPath, data, 25_000, {}, effectiveToken);
     return data;
 }
 
@@ -105,8 +114,8 @@ const DEFAULT_THEME = {
 };
 
 export default function FabricBlockchainVisualizer({ token, onVerifyEntity }) {
-    const [data, setData] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [data, setData] = useState(() => getCachedData('/api/integrity/blocks', {}, token));
+    const [loading, setLoading] = useState(() => !getCachedData('/api/integrity/blocks', {}, token));
     const [refreshing, setRefreshing] = useState(false);
     const [refreshSuccess, setRefreshSuccess] = useState(false);
     const [lastRefreshed, setLastRefreshed] = useState(null);
@@ -159,7 +168,7 @@ export default function FabricBlockchainVisualizer({ token, onVerifyEntity }) {
         try {
             setError(null);
             const effectiveToken = token || localStorage.getItem('adminToken') || localStorage.getItem('auditorToken') || localStorage.getItem('token');
-            const res = await fetchBlocks(effectiveToken);
+            const res = await fetchBlocks(effectiveToken, isManual);
             setData(res);
             setLastRefreshed(new Date());
             if (isManual) {

@@ -6,6 +6,7 @@ import { StatusBadge, DifficultyBadge } from '../../components/StatusBadge.jsx'
 import { SkeletonCard, EmptyState } from '../../components/SkeletonLoader.jsx'
 import { useToast } from '../../components/Toast.jsx'
 import { AlertTriangle, PackageOpen, Check, X, Eye, Clock, MessageSquare, ChevronRight, Trash2, Sparkles, Copy, FileText } from 'lucide-react'
+import { getCachedData } from '../../utils/apiCache.js'
 
 const API = '/api'
 const getToken = () => localStorage.getItem('adminToken')
@@ -13,11 +14,12 @@ const getToken = () => localStorage.getItem('adminToken')
 const TABS = ['Pending', 'Accepted', 'Rejected', 'Marked', 'All']
 
 export default function AdminBatchesPage() {
-    const [batches, setBatches] = useState([])
-    const [loading, setLoading] = useState(true)
+    const cachedBatches = getCachedData(`${API}/admin/batches`)
+    const [batches, setBatches] = useState(() => cachedBatches?.batches || [])
+    const [loading, setLoading] = useState(() => !cachedBatches)
     const [activeTab, setActiveTab] = useState('Pending')
     const [activeBatch, setActiveBatch] = useState(null)
-    const [pendingCount, setPendingCount] = useState(0)
+    const [pendingCount, setPendingCount] = useState(() => (cachedBatches?.batches || []).filter(b => b.status === 'Submitted').length)
     const [reviewing, setReviewing] = useState(false)
     const [rejectReason, setRejectReason] = useState('')
     const [markReason, setMarkReason] = useState('')
@@ -34,7 +36,7 @@ export default function AdminBatchesPage() {
         const token = getToken()
         if (!token) { navigate('/admin/login'); return }
         try {
-            setLoading(true)
+            if (!getCachedData(`${API}/admin/batches`)) setLoading(true)
             const res = await axios.get(`${API}/admin/batches`, { headers: { Authorization: `Bearer ${token}` } })
             const all = res.data.batches || []
             setBatches(all)

@@ -3,11 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Target, ClipboardList, TrendingUp, TrendingDown, Clock, PlayCircle, CheckCircle2, User, ChevronRight, BookOpen, Award, AlertCircle } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, Tooltip } from 'recharts';
+import { getCachedData } from '../../utils/apiCache.js';
 
 const StudentDashboardPage = () => {
-    const [exams, setExams] = useState([]);
-    const [results, setResults] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const cachedExams = getCachedData('/api/students/exams');
+    const cachedResults = getCachedData('/api/students/results');
+    const [exams, setExams] = useState(() => cachedExams?.exams || []);
+    const [results, setResults] = useState(() => cachedResults?.results ? [...cachedResults.results].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)) : []);
+    const [loading, setLoading] = useState(() => !cachedExams && !cachedResults);
     const navigate = useNavigate();
     const studentData = JSON.parse(localStorage.getItem('studentData') || '{}');
 
