@@ -73,3 +73,4 @@ Based on the current architecture, the project is ready for the following advanc
 4. **Redis (Yashwant):** Implementing a caching layer to handle massive traffic spikes when hundreds of students start an exam at the exact same second.
 5. **End-to-End Encryption:** Encrypting the exam payload over the wire so it cannot be scraped from the browser's Network tab before the exam starts.
 6. **Notes in CBT:** Adding a digital sketchpad/whiteboard for students to do "rough work" and syncing those drawings to the server for professors to review.
+

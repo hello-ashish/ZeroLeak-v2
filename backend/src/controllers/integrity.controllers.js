@@ -606,6 +606,7 @@ export const verifyAllCommitments = async (req, res) => {
             fabricEnabled: true,
             summary: {
                 total: activeRecords.length,
+                confirmedCommitmentsCount: confirmedRecords.length,
                 verified,
                 tampered,
                 skipped,

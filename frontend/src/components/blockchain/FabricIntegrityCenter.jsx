@@ -847,7 +847,7 @@ function VerifyLedgerPanel({ token }) {
                                         ) : (
                                             <>
                                                 <span className="fi-status-dot" style={{ background: 'var(--fi-green)' }} />
-                                                <span>Audit complete — verified {report?.summary?.total || 0} entities ({report?.summary?.confirmedCommitmentsCount || 122} on-chain commitments) against Fabric blockchain</span>
+                                                <span>Audit complete — verified {report?.summary?.total || 0} entities ({report?.summary?.confirmedCommitmentsCount || totalCommitmentsCount || report?.summary?.total || 0} on-chain commitments) against Fabric blockchain</span>
                                             </>
                                         )}
                                     </div>
